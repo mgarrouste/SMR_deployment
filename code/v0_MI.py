@@ -8,8 +8,7 @@ def load_parameters(model):
   return model
 
 def load_data():
-  ANR_data = pd.read_excel('../ANRs coupling.xlsx', sheet_name='ANRs',nrows=16,index_col=0)
-  ANR_data = ANR_data.transpose()
+  ANR_data = pd.read_excel('./ANRs.xlsx', index_col=0)
   H2_data = pd.read_excel('./h2_tech.xlsx', sheet_name='Summary', index_col=[0,1])
   return ANR_data, H2_data
 
