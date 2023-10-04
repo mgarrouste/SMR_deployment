@@ -10,7 +10,7 @@ def load_parameters(model):
   return model
 
 def load_data():
-  ANR_data = pd.read_excel('./ANRs.xlsx', index_col=0)
+  ANR_data = pd.read_excel('./ANRs.xlsx', sheet_name='FOAK', index_col=0)
   H2_data = pd.read_excel('./h2_tech.xlsx', sheet_name='Summary', index_col=[0,1])
   return ANR_data, H2_data
 
@@ -44,13 +44,19 @@ def build_model():
 
   ## Parameters ##
   model.pRefDem = Param(initialize=get_refinery_demand)
-  print(H2_data)
+
   @model.Param(model.H)
   def pH2CapH2(model, h):
     data = H2_data.reset_index(level='ANR')[['H2Cap (kgh2/h)']]
     data.drop_duplicates(inplace=True)
     return float(data.loc[h,'H2Cap (kgh2/h)'])
-  model.pH2CapH2.pprint()
+
+  @model.Param(model.H, model.G)
+  def pH2CapElec(model, h, g):
+    data = H2_data[['H2Cap (MWe)']]
+    return float(data.loc[h,g]['H2Cap (MWe)'])
+  model.pH2CapElec.pprint()
+
 
   return model
 
