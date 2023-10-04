@@ -46,7 +46,7 @@ def build_model():
   # Demand
   model.pRefDem = Param(initialize=get_refinery_demand)
 
-  # Capacity in kg-h2/h and MWe
+  # H2 tech capacity in kg-h2/h and MWe
   @model.Param(model.H)
   def pH2CapH2(model, h):
     data = H2_data.reset_index(level='ANR')[['H2Cap (kgh2/h)']]
@@ -66,7 +66,29 @@ def build_model():
   def pH2HeatCons(model, h, g):
     return float(H2_data.loc[h,g]['H2HeatCons (MWht/kgh2)'])
 
+  # Capacity of ANRs MWth
+  @model.Param(model.G)
+  def pANRCap(model, g):
+    return float(ANR_data.loc[g]['Power in MWe'])
+
+  @model.Param(model.G)
+  def pANRVOM(model, g):
+    return float(ANR_data.loc[g]['VOM in $/MWh-e'])
+  
+  @model.Param(model.G)
+  def pANRFC(model, g):
+    return float(ANR_data.loc[g]['FC in $/MWh-e'])
+
+  @model.Param(model.G)
+  def pANRCAPEX(model, g):
+    return float(ANR_data.loc[g]['CAPEX $/MWe'])
+
+  @model.Param(model.G)
+  def pANRThEff(model, g):
+    return float(ANR_data.loc[g]['Power in MWe']/ANR_data.loc[g]['Power in MWt'])
+
   return model
+
 
 if __name__ == '__main__':
   build_model()
