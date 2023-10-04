@@ -43,8 +43,10 @@ def build_model():
   model.vQ = Var(model.H, model.O, within=Binary, doc='Indicator of built H2 module')
 
   ## Parameters ##
+  # Demand
   model.pRefDem = Param(initialize=get_refinery_demand)
 
+  # Capacity in kg-h2/h and MWe
   @model.Param(model.H)
   def pH2CapH2(model, h):
     data = H2_data.reset_index(level='ANR')[['H2Cap (kgh2/h)']]
@@ -53,10 +55,16 @@ def build_model():
 
   @model.Param(model.H, model.G)
   def pH2CapElec(model, h, g):
-    data = H2_data[['H2Cap (MWe)']]
-    return float(data.loc[h,g]['H2Cap (MWe)'])
-  model.pH2CapElec.pprint()
+    return float(H2_data.loc[h,g]['H2Cap (MWe)'])
 
+  # Electric and heat consumption
+  @model.Param(model.H, model.G)
+  def pH2ElecCons(model, h, g):
+    return float(H2_data.loc[h,g]['H2ElecCons (MWhe/kgh2)'])
+
+  @model.Param(model.H, model.G)
+  def pH2HeatCons(model, h, g):
+    return float(H2_data.loc[h,g]['H2HeatCons (MWht/kgh2)'])
 
   return model
 
