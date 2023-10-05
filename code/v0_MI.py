@@ -170,10 +170,11 @@ def build_model():
   return model
 
 
-def solve(model):
-  opt = SolverFactory('glpk')
 
-  results = opt.solve(model, load_solutions=False) 
+def solve(model):
+  opt = SolverFactory('mindtpy')
+
+  results = opt.solve(model, mip_solver='glpk', nlp_solver='ipopt', tee=True) 
   if results.solver.termination_condition == TerminationCondition.optimal: 
     model.solutions.load_from(results)
     print(model.solutions)
