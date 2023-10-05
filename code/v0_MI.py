@@ -6,8 +6,6 @@ MaxH2Mod = 1000
 Refinery_id_example = 'HU_TUS'
 SCF_TO_KGH2 = 0.002408 #kgh2/scf
 
-def load_parameters(model):
-  return model
 
 def load_data():
   ANR_data = pd.read_excel('./ANRs.xlsx', sheet_name='FOAK', index_col=0)
@@ -66,11 +64,37 @@ def build_model():
   def pH2HeatCons(model, h, g):
     return float(H2_data.loc[h,g]['H2HeatCons (MWht/kgh2)'])
 
+  # Costs for H2
+  @model.Param(model.H)
+  def pH2VOM(model, h):
+    data = H2_data.reset_index(level='ANR')[['VOM ($/MWhe)']]
+    data.drop_duplicates(inplace=True)
+    return float(data.loc[h,'VOM ($/MWhe)'])
+
+  @model.Param(model.H)
+  def pH2FC(model, h):
+    data = H2_data.reset_index(level='ANR')[['FOM ($/MWe-year)']]
+    data.drop_duplicates(inplace=True)
+    return float(data.loc[h,'FOM ($/MWe-year)'])
+  
+  @model.Param(model.H)
+  def pH2CAPEX(model, h):
+    data = H2_data.reset_index(level='ANR')[['CAPEX ($/MWe)']]
+    data.drop_duplicates(inplace=True)
+    return float(data.loc[h,'CAPEX ($/MWe)'])
+  
+  @model.Param(model.H)
+  def pH2LT(model, h):
+    data = H2_data.reset_index(level='ANR')[['Life (y)']]
+    data = data.groupby(level=0).mean()
+    return float(data.loc[h,'Life (y)'])
+
   # Capacity of ANRs MWth
   @model.Param(model.G)
   def pANRCap(model, g):
     return float(ANR_data.loc[g]['Power in MWe'])
 
+  # Parameters for ANRs
   @model.Param(model.G)
   def pANRVOM(model, g):
     return float(ANR_data.loc[g]['VOM in $/MWh-e'])
