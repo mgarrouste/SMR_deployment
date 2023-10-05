@@ -2,7 +2,7 @@ from pyomo.environ import *
 import pandas as pd
 
 MaxANRMod = 12
-MaxH2Mod = 1000
+MaxH2Mod = 100
 Refinery_id_example = 'HU_TUS'
 SCF_TO_KGH2 = 0.002408 #kgh2/scf
 
@@ -170,5 +170,17 @@ def build_model():
   return model
 
 
+def solve(model):
+  opt = SolverFactory('glpk')
+
+  results = opt.solve(model, load_solutions=False) 
+  if results.solver.termination_condition == TerminationCondition.optimal: 
+    model.solutions.load_from(results)
+    print(model.solutions)
+  else:
+    print('Not feasible?')
+    model.display()
+
 if __name__ == '__main__':
-  build_model()
+  model = build_model()
+  solve(model)
