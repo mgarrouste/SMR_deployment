@@ -36,7 +36,7 @@ def build_model():
   model.H = Set(initialize=list(set([elem[0] for elem in H2_data.index])))
   model.O = Set(initialize=list(range(MaxH2Mod)))
 
-
+  print('Sets established')
 
   #### Variables ####
   model.c = Var(doc='Annualized costs')
@@ -45,6 +45,7 @@ def build_model():
   model.vP = Var(model.H, within=Binary, doc='Indicator of chosen H2 type')
   model.vQ = Var(model.H, model.O, within=Binary, doc='Indicator of built H2 module')
 
+  print('Variables established')
 
 
   #### Parameters ####
@@ -52,6 +53,9 @@ def build_model():
   model.pWACC = 0.08
   # Demand in kg/year
   model.pRefDem = Param(initialize=get_refinery_demand)
+  # Max modules
+  model.pANRMaxMod = [MaxANRMod]*len(model.G)
+  model.pANRMaxMod = Param(model.G, initialize = {model.G[i]: model.pANRMaxMod[i] for i in range(len(model.G))}, doc = "maximum number of modules")
 
   # H2 tech capacity in kg-h2/h and MWe
   @model.Param(model.H)
@@ -125,12 +129,15 @@ def build_model():
   def pANRThEff(model, g):
     return float(ANR_data.loc[g]['Power in MWe']/ANR_data.loc[g]['Power in MWt'])
 
+  
+  print('Parameters established')
+
 
 
   #### Objective ####
   def annualized_cost(model):
-    return sum(model.pANRCap[g]*model.pANRThEff[g]*model.vM[g,n]*((model.pANRCAPEX[g]*model.pANRCRF[g]+model.pANRFC[g])+model.pANRVOM[g]) for n in model.N for g in model.G)\
-      + sum(model.pH2CapElec[h,g]*model.vQ[h,o]*(model.pH2CAPEX[h]*model.pH2CRF[h]+model.pH2FC[h]+model.pH2VOM[h]) for o in model.O for h in model.H for g in model.G)
+    return sum(sum(model.pANRCap[g]*model.vM[g,n]*((model.pANRCAPEX[g]*model.pANRCRF[g]+model.pANRFC[g])+model.pANRVOM[g]*365*24) for n in model.N) for g in model.G)\
+      + sum(sum(model.pH2CapElec[h,g]*model.vQ[h,o]*(model.pH2CAPEX[h]*model.pH2CRF[h]+model.pH2FC[h]+model.pH2VOM[h]*365*24) for o in model.O) for h in model.H for g in model.G)
   model.Cost = Objective(rule=annualized_cost, sense=minimize)  
 
 
@@ -173,8 +180,9 @@ def build_model():
 
 def solve(model):
   opt = SolverFactory('mindtpy')
+  opt.options.mipgap = 0.01
 
-  results = opt.solve(model, mip_solver='glpk', nlp_solver='ipopt', tee=True) 
+  results = opt.solve(model, mip_solver='glpk', nlp_solver='ipopt', tee = True, logfile="solver_log.log") 
   if results.solver.termination_condition == TerminationCondition.optimal: 
     model.solutions.load_from(results)
     print(model.solutions)
