@@ -114,7 +114,7 @@ def build_model():
   
   @model.Param(model.G)
   def pANRFC(model, g):
-    return float(ANR_data.loc[g]['FC in $/MWh-e'])
+    return float(ANR_data.loc[g]['FOPEX $/MWe-y'])
 
   @model.Param(model.G)
   def pANRCAPEX(model, g):
@@ -148,12 +148,12 @@ def build_model():
 
   # At least one ANR module of any type deployed
   def min_ANR_mod(model):
-    return 1 <= sum(model.vM[g,n] for n in model.N for g in model.G)
+    return 1 <= sum(sum(model.vM[g,n] for n in model.N) for g in model.G)
   model.min_ANR_mod = Constraint(rule=min_ANR_mod)
 
   # At least one H2 module of any type deployed
   def min_H2_mod(model):
-    return 1 <= sum(model.vQ[h,o] for o in model.O for h in model.H)
+    return 1 <= sum(sum(model.vQ[h,o] for o in model.O) for h in model.H)
   model.min_H2_mod = Constraint(rule=min_H2_mod)
 
   # Only one type of ANR deployed 
@@ -168,9 +168,9 @@ def build_model():
 
   # Heat and electricity balance
   def heat_elec_balance(model, g):
-    return sum(model.pH2CapH2[h]*model.vQ[h,o]*(model.pH2ElecCons[h,g]/model.pANRThEff[g]) \
-      + model.pH2CapH2[h]*model.vQ[h,o]*model.pH2HeatCons[h,g] for o in model.O for h in model.H)\
-        <= sum(model.pANRCap[g]*model.vM[g,n] for n in model.N)
+    return sum(sum(model.pH2CapH2[h]*model.vQ[h,o]*(model.pH2ElecCons[h,g]/model.pANRThEff[g]) \
+      + model.pH2CapH2[h]*model.vQ[h,o]*model.pH2HeatCons[h,g] for o in model.O) for h in model.H)\
+        <= sum((model.pANRCap[g]/model.pANRThEff[g])*model.vM[g,n] for n in model.N)
   model.heat_elec_balance = Constraint(model.G, rule=heat_elec_balance)
 
   return model
