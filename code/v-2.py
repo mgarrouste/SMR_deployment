@@ -107,7 +107,7 @@ model.min_ANR_mod = Constraint(rule=min_ANR_mod)
 # At least one H2 module of any type deployed
 def min_H2_mod(model):
   return 1 <= sum(model.vQ[n] for n in model.N) 
-#model.min_H2_mod = Constraint(rule=min_H2_mod)
+model.min_H2_mod = Constraint(rule=min_H2_mod)
 
 # Heat and electricity balance
 def heat_elec_balance(model, n):
