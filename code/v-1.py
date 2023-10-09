@@ -95,14 +95,9 @@ model.pANRThEff = Param(initialize = float(ANR_data.loc[g]['Power in MWe']/ANR_d
 
 #### Objective ####
 def annualized_cost(model):
-    return sum(model.pANRCap*model.vM[n]*((model.pANRCAPEX*model.pANRCRF+model.pANRFC)+model.pANRVOM*365*24) for n in model.N)\
-      + sum(sum(model.pH2CapElec*model.vQ[n,h]*(model.pH2CAPEX*model.pH2CRF+model.pH2FC+model.pH2VOM*365*24) for h in model.H)for n in model.N) 
-#model.Cost = Objective(rule=annualized_cost, sense=minimize)  
-model.value = Objective(
-  expr = sum(sum(model.pANRCap*model.vM[n]*model.pANRCAPEX + model.pH2CapElec[h]*model.vQ[n,h]*model.pH2CAPEX[h] for h in model.H) for n in model.N), 
-  sense= minimize
-)
-
+    return sum(model.pANRCap*model.vM[n]*((model.pANRCAPEX*model.pANRCRF+model.pANRFC)+model.pANRVOM*365*24) \
+      + sum(model.pH2CapElec[h]*model.vQ[n,h]*(model.pH2CAPEX[h]*model.pH2CRF[h]+model.pH2FC[h]+model.pH2VOM[h]*365*24) for h in model.H)for n in model.N) 
+model.Cost = Objective(rule=annualized_cost, sense=minimize)  
 
 
 #### Constraints ####
@@ -136,7 +131,7 @@ opt = SolverFactory('mindtpy')
 results = opt.solve(model, tee = True)
 if results.solver.termination_condition == TerminationCondition.optimal: 
   model.solutions.load_from(results)
-  print(' ------------ SOLUTION  -------------')
+  print('\n',' ------------ SOLUTION  -------------')
   for n in model.N:
     print('ANR Module # ',int(value(model.vM[n])))
     print('Waste heat : ',value(model.wasteHeat[n]), ' MWh')
