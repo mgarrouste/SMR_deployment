@@ -36,15 +36,15 @@ def build_model():
   model.H = Set(initialize=list(set([elem[0] for elem in H2_data.index])))
   model.O = Set(initialize=list(range(MaxH2Mod)))
 
-
+  print('Sets established')
 
   #### Variables ####
-  model.c = Var(doc='Annualized costs')
   model.vS = Var(model.G, within=Binary, doc='Indicator of chosen ANR type')
   model.vM = Var(model.G, model.N, within=Binary, doc='Indicator of built ANR module')
   model.vP = Var(model.H, within=Binary, doc='Indicator of chosen H2 type')
   model.vQ = Var(model.H, model.O, within=Binary, doc='Indicator of built H2 module')
 
+  print('Variables established')
 
 
   #### Parameters ####
@@ -52,6 +52,9 @@ def build_model():
   model.pWACC = 0.08
   # Demand in kg/year
   model.pRefDem = Param(initialize=get_refinery_demand)
+  # Max modules
+  #model.pANRMaxMod = [MaxANRMod]*len(model.G)
+  #model.pANRMaxMod = Param(model.G, initialize = {model.G[i]: model.pANRMaxMod[i] for i in range(len(model.G))}, doc = "maximum number of modules")
 
   # H2 tech capacity in kg-h2/h and MWe
   @model.Param(model.H)
@@ -96,7 +99,7 @@ def build_model():
   def pH2CRF(model, h):
     data = H2_data.reset_index(level='ANR')[['Life (y)']]
     data = data.groupby(level=0).mean()
-    crf = model.pWACC / (1 - (1+model.pWACC)**float(data.loc[h,'Life (y)']))
+    crf = model.pWACC / (1 - (1/(1+model.pWACC)**float(data.loc[h,'Life (y)']) ) )
     return crf
   
   # Capacity of ANRs MWt
@@ -111,7 +114,7 @@ def build_model():
   
   @model.Param(model.G)
   def pANRFC(model, g):
-    return float(ANR_data.loc[g]['FC in $/MWh-e'])
+    return float(ANR_data.loc[g]['FOPEX $/MWe-y'])
 
   @model.Param(model.G)
   def pANRCAPEX(model, g):
@@ -119,41 +122,44 @@ def build_model():
   
   @model.Param(model.G)
   def pANRCRF(model, g):
-    return model.pWACC / (1 - (1+model.pWACC)**float(ANR_data.loc[g,'Life (y)']))
+    return model.pWACC / (1 - (1/(1+model.pWACC)**float(ANR_data.loc[g,'Life (y)'])))
     
   @model.Param(model.G)
   def pANRThEff(model, g):
     return float(ANR_data.loc[g]['Power in MWe']/ANR_data.loc[g]['Power in MWt'])
 
+  
+  print('Parameters established')
+
 
 
   #### Objective ####
   def annualized_cost(model):
-    return sum(model.pANRCap[g]*model.pANRThEff[g]*model.vM[g,n]*((model.pANRCAPEX[g]*model.pANRCRF[g]+model.pANRFC[g])+model.pANRVOM[g]) for n in model.N for g in model.G)\
-      + sum(model.pH2CapElec[h,g]*model.vQ[h,o]*(model.pH2CAPEX[h]*model.pH2CRF[h]+model.pH2FC[h]+model.pH2VOM[h]) for o in model.O for h in model.H for g in model.G)
+    return sum(sum(model.pANRCap[g]*model.vM[g,n]*((model.pANRCAPEX[g]*model.pANRCRF[g]+model.pANRFC[g])+model.pANRVOM[g]*365*24) for n in model.N) for g in model.G)\
+      + sum(sum(model.pH2CapElec[h,g]*model.vQ[h,o]*(model.pH2CAPEX[h]*model.pH2CRF[h]+model.pH2FC[h]+model.pH2VOM[h]*365*24) for o in model.O) for h in model.H for g in model.G)
   model.Cost = Objective(rule=annualized_cost, sense=minimize)  
 
 
   #### Constraints ####
   # Meet refinery demand
   def meet_ref_demand(model):
-    return model.pRefDem <= sum(model.vQ[h,o]*model.pH2CapH2[h]*365*24 for o in model.O for h in model.H)
+    return model.pRefDem <= sum(sum(model.vQ[h,o]*model.pH2CapH2[h]*365*24 for o in model.O) for h in model.H)
   model.meet_ref_demand = Constraint(rule=meet_ref_demand)
 
   # At least one ANR module of any type deployed
   def min_ANR_mod(model):
-    return 1 <= sum(model.vM[g,n] for n in model.N for g in model.G)
+    return 1 <= sum(sum(model.vM[g,n] for n in model.N) for g in model.G)
   model.min_ANR_mod = Constraint(rule=min_ANR_mod)
 
   # At least one H2 module of any type deployed
   def min_H2_mod(model):
-    return 1 <= sum(model.vQ[h,o] for o in model.O for h in model.H)
+    return 1 <= sum(sum(model.vQ[h,o] for o in model.O) for h in model.H)
   model.min_H2_mod = Constraint(rule=min_H2_mod)
 
   # Only one type of ANR deployed 
   def max_ANR_type(model):
     return 1 == sum(model.vS[g] for g in model.G)
-  model.max_ANR_type = Constraint(rule=max_ANR_type)
+  #model.max_ANR_type = Constraint(rule=max_ANR_type)
 
   # Only modules of the chosen ANR type can be built
   def match_ANR_type(model, g, n):
@@ -162,19 +168,25 @@ def build_model():
 
   # Heat and electricity balance
   def heat_elec_balance(model, g):
-    return sum(model.pH2CapH2[h]*model.vQ[h,o]*(model.pH2ElecCons[h,g]/model.pANRThEff[g]) \
-      + model.pH2CapH2[h]*model.vQ[h,o]*model.pH2HeatCons[h,g] for o in model.O for h in model.H)\
-        <= sum(model.pANRCap[g]*model.vM[g,n] for n in model.N)
+    return sum(sum(model.pH2CapH2[h]*model.vQ[h,o]*(model.pH2ElecCons[h,g]/model.pANRThEff[g]) \
+      + model.pH2CapH2[h]*model.vQ[h,o]*model.pH2HeatCons[h,g] for o in model.O) for h in model.H)\
+        <= sum((model.pANRCap[g]/model.pANRThEff[g])*model.vM[g,n] for n in model.N)
   model.heat_elec_balance = Constraint(model.G, rule=heat_elec_balance)
 
   return model
 
-
+def check_model(model):
+  # Sets 
+  print('SETS')
+  model.G.pprint()
+  model.N.pprint()
+  model.H.pprint()
+  model.O.pprint()
 
 def solve(model):
   opt = SolverFactory('mindtpy')
 
-  results = opt.solve(model, mip_solver='glpk', nlp_solver='ipopt', tee=True) 
+  results = opt.solve(model, mip_solver='glpk', nlp_solver='ipopt', tee = True)
   if results.solver.termination_condition == TerminationCondition.optimal: 
     model.solutions.load_from(results)
     print(model.solutions)
@@ -184,4 +196,5 @@ def solve(model):
 
 if __name__ == '__main__':
   model = build_model()
+  check_model(model)
   solve(model)
