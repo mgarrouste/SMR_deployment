@@ -3,8 +3,7 @@ import pandas as pd
 import numpy as np
 
 
-MaxANRMod = 2
-MaxH2Mod = 10
+MaxANRMod = 50
 Refinery_id_example = 'TE_KEN'
 SCF_TO_KGH2 = 0.002408 #kgh2/scf
 
@@ -27,7 +26,7 @@ def get_refinery_demand(refinery_id = Refinery_id_example):
 model = ConcreteModel('deployment at one refinery')
 
 #### Data ####
-model.pRefDem = Param(initialize=650000) # kg/day
+model.pRefDem = Param(initialize=50000) # kg/day
 
 ANR_data, H2_data = load_data()
 
@@ -133,12 +132,12 @@ model.meet_ref_demand = Constraint(
 # At least one ANR module of any type deployed
 def min_ANR_mod(model):
   return 1 <= sum(sum(model.vM[n,g] for g in model.G) for n in model.N)
-model.min_ANR_mod = Constraint(rule=min_ANR_mod)
+#model.min_ANR_mod = Constraint(rule=min_ANR_mod)
 
 # At least one H2 module of any type deployed
 def min_H2_mod(model):
   return 1 <= sum(sum(sum(model.vQ[n,h,g] for g in model.G) for h in model.H)for n in model.N) 
-model.min_H2_mod = Constraint(rule=min_H2_mod)
+#model.min_H2_mod = Constraint(rule=min_H2_mod)
 
 # Only one type of ANR deployed 
 def max_ANR_type(model):
@@ -153,8 +152,7 @@ model.match_ANR_type = Constraint(model.N, model.G, rule=match_ANR_type)
 
 # Heat and electricity balance
 def heat_elec_balance(model, n, g):
-  return sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]/model.pANRThEff[g] for h in model.H)\
-      == ((model.pANRCap[g]/model.pANRThEff[g]) +model.wasteHeat[n,g])*model.vM[n,g]
+  return sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]/model.pANRThEff[g] for h in model.H) == ((model.pANRCap[g]/model.pANRThEff[g]) - model.wasteHeat[n,g])*model.vM[n,g]
 model.heat_elec_balance = Constraint(model.N, model.G, rule=heat_elec_balance)
 
 # Waste heat
@@ -163,7 +161,6 @@ def waste_heat_max(model, g, n):
 model.waste_heat_max = Constraint(model.G, model.N, rule=waste_heat_max)
 
 
-model.pprint()
 
 opt = SolverFactory('mindtpy')
 
