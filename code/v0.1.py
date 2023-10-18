@@ -129,16 +129,6 @@ model.meet_ref_demand = Constraint(
   expr = model.pRefDem <= sum(sum(sum(model.vQ[n,h,g]*model.pH2CapH2[h]*24 for g in model.G) for h in model.H)for n in model.N)
 )
 
-# At least one ANR module of any type deployed
-def min_ANR_mod(model):
-  return 1 <= sum(sum(model.vM[n,g] for g in model.G) for n in model.N)
-#model.min_ANR_mod = Constraint(rule=min_ANR_mod)
-
-# At least one H2 module of any type deployed
-def min_H2_mod(model):
-  return 1 <= sum(sum(sum(model.vQ[n,h,g] for g in model.G) for h in model.H)for n in model.N) 
-#model.min_H2_mod = Constraint(rule=min_H2_mod)
-
 # Only one type of ANR deployed 
 def max_ANR_type(model):
   return 1 == sum(model.vS[g] for g in model.G)
