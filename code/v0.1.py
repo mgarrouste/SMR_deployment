@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 
 
-MaxANRMod = 50
+MaxANRMod = 20
 Refinery_id_example = 'TE_KEN'
 SCF_TO_KGH2 = 0.002408 #kgh2/scf
 
@@ -26,7 +26,7 @@ def get_refinery_demand(refinery_id = Refinery_id_example):
 model = ConcreteModel('deployment at one refinery')
 
 #### Data ####
-model.pRefDem = Param(initialize=50000) # kg/day
+model.pRefDem = Param(initialize=10000) # kg/day
 
 ANR_data, H2_data = load_data()
 
