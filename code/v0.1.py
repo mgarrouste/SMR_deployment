@@ -26,7 +26,7 @@ def get_refinery_demand(refinery_id = Refinery_id_example):
 model = ConcreteModel('deployment at one refinery')
 
 #### Data ####
-model.pRefDem = Param(initialize=10000) # kg/day
+model.pRefDem = Param(initialize=200000) # kg/day
 
 ANR_data, H2_data = load_data()
 
@@ -130,9 +130,7 @@ model.meet_ref_demand = Constraint(
 )
 
 # Only one type of ANR deployed 
-def max_ANR_type(model):
-  return 1 == sum(model.vS[g] for g in model.G)
-model.max_ANR_type = Constraint(rule=max_ANR_type)
+model.max_ANR_type = Constraint(expr = sum(model.vS[g] for g in model.G)<=1)
 
 # Only modules of the chosen ANR type can be built
 def match_ANR_type(model, n, g):
