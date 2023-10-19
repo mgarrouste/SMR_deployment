@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 
 
-MaxANRMod = 2
+MaxANRMod = 20
 MaxH2Mod = 10
 Refinery_id_example = 'HU_TUS'
 SCF_TO_KGH2 = 0.002408 #kgh2/scf
@@ -27,7 +27,7 @@ def get_refinery_demand(refinery_id = Refinery_id_example):
 model = ConcreteModel('deployment at one refinery')
 
 #### Data ####
-model.pRefDem = Param(initialize=get_refinery_demand) # kg/day
+model.pRefDem = Param(initialize=100000) # kg/day
 
 ANR_data, H2_data = load_data()
 
@@ -45,7 +45,7 @@ model.vM = Var(model.N, model.G, within=Binary, doc='Indicator of built ANR modu
 model.vQ = Var(model.N, model.H, model.G, within=NonNegativeIntegers, doc='Nb of H2 module of type H for an ANR module of type g')
 model.wasteHeat = Var(model.N, model.G, within=PositiveReals, doc='Remaining heat no fed to h2 processes per ANR module')
 
-print('\n', 'Variables established')
+print('\n', 'Variables established', '\n')
 
 #### Parameters ####
 model.pWACC = Param(initialize = 0.08)
@@ -155,7 +155,7 @@ model.match_ANR_type = Constraint(model.N, model.G, rule=match_ANR_type)
 def heat_elec_balance(model, n, g):
   return sum(model.pH2CapH2[h]*model.vQ[n,h,g]*(model.pH2ElecCons[h,g]/model.pANRThEff[g])\
     + model.pH2CapH2[h]*model.vQ[n,h,g]*model.pH2HeatCons[h,g] for h in model.H)\
-      == (model.pANRCap[g]/model.pANRThEff[g] +model.wasteHeat[n,g])*model.vM[n,g]
+      == ((model.pANRCap[g]/model.pANRThEff[g]) - model.wasteHeat[n,g])*model.vM[n,g]
 model.heat_elec_balance = Constraint(model.N, model.G, rule=heat_elec_balance)
 
 

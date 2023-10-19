@@ -120,7 +120,7 @@ model.min_H2_mod = Constraint(rule=min_H2_mod)
 def heat_elec_balance(model, n):
   return sum(model.pH2CapH2[h]*model.vQ[n,h]*(model.pH2ElecCons[h]/model.pANRThEff)\
     + model.pH2CapH2[h]*model.vQ[n,h]*model.pH2HeatCons[h] for h in model.H)\
-      == (model.pANRCap/model.pANRThEff +model.wasteHeat[n])*model.vM[n]
+      == ((model.pANRCap/model.pANRThEff) -model.wasteHeat[n])*model.vM[n]
 model.heat_elec_balance = Constraint(model.N, rule=heat_elec_balance)
 
 
