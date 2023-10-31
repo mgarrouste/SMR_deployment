@@ -27,7 +27,7 @@ def get_refinery_demand(refinery_id = Refinery_id_example):
 model = ConcreteModel('deployment at one refinery')
 
 #### Data ####
-model.pRefDem = Param(initialize=65000) # kg/day
+model.pRefDem = Param(initialize=get_refinery_demand) # kg/day
 
 ANR_data, H2_data = load_data()
 
