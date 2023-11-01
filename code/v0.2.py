@@ -2,14 +2,10 @@ from pyomo.environ import *
 import pandas as pd
 import numpy as np
 
+"""version 0.2 Relaxed the heat balance constraint to be <= instead of ==, now the problem is feasible"""
 
-<<<<<<< HEAD
-MaxANRMod = 2
-=======
 MaxANRMod = 20
->>>>>>> ca0adae36ed6b233f4c976babc42c9cd5cee9cfa
-MaxH2Mod = 10
-Refinery_id_example = 'HU_TUS'
+Refinery_id_example = 'TE_KEN'
 SCF_TO_KGH2 = 0.002408 #kgh2/scf
 
 
@@ -31,11 +27,7 @@ def get_refinery_demand(refinery_id = Refinery_id_example):
 model = ConcreteModel('deployment at one refinery')
 
 #### Data ####
-<<<<<<< HEAD
 model.pRefDem = Param(initialize=get_refinery_demand) # kg/day
-=======
-model.pRefDem = Param(initialize=100000) # kg/day
->>>>>>> ca0adae36ed6b233f4c976babc42c9cd5cee9cfa
 
 ANR_data, H2_data = load_data()
 
@@ -53,11 +45,7 @@ model.vM = Var(model.N, model.G, within=Binary, doc='Indicator of built ANR modu
 model.vQ = Var(model.N, model.H, model.G, within=NonNegativeIntegers, doc='Nb of H2 module of type H for an ANR module of type g')
 model.wasteHeat = Var(model.N, model.G, within=PositiveReals, doc='Remaining heat no fed to h2 processes per ANR module')
 
-<<<<<<< HEAD
 print('\n', 'Variables established')
-=======
-print('\n', 'Variables established', '\n')
->>>>>>> ca0adae36ed6b233f4c976babc42c9cd5cee9cfa
 
 #### Parameters ####
 model.pWACC = Param(initialize = 0.08)
@@ -142,20 +130,8 @@ model.meet_ref_demand = Constraint(
   expr = model.pRefDem <= sum(sum(sum(model.vQ[n,h,g]*model.pH2CapH2[h]*24 for g in model.G) for h in model.H)for n in model.N)
 )
 
-# At least one ANR module of any type deployed
-def min_ANR_mod(model):
-  return 1 <= sum(sum(model.vM[n,g] for g in model.G) for n in model.N)
-model.min_ANR_mod = Constraint(rule=min_ANR_mod)
-
-# At least one H2 module of any type deployed
-def min_H2_mod(model):
-  return 1 <= sum(sum(sum(model.vQ[n,h,g] for g in model.G) for h in model.H)for n in model.N) 
-model.min_H2_mod = Constraint(rule=min_H2_mod)
-
 # Only one type of ANR deployed 
-def max_ANR_type(model):
-  return 1 == sum(model.vS[g] for g in model.G)
-model.max_ANR_type = Constraint(rule=max_ANR_type)
+model.max_ANR_type = Constraint(expr = sum(model.vS[g] for g in model.G)<=1)
 
 # Only modules of the chosen ANR type can be built
 def match_ANR_type(model, n, g):
@@ -165,13 +141,15 @@ model.match_ANR_type = Constraint(model.N, model.G, rule=match_ANR_type)
 
 # Heat and electricity balance
 def heat_elec_balance(model, n, g):
-  return sum(model.pH2CapH2[h]*model.vQ[n,h,g]*(model.pH2ElecCons[h,g]/model.pANRThEff[g])\
-    + model.pH2CapH2[h]*model.vQ[n,h,g]*model.pH2HeatCons[h,g] for h in model.H)\
-      == (model.pANRCap[g]/model.pANRThEff[g] -model.wasteHeat[n,g])*model.vM[n,g]
+  return sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]/model.pANRThEff[g] for h in model.H) <= ((model.pANRCap[g]/model.pANRThEff[g]) - model.wasteHeat[n,g])*model.vM[n,g]
 model.heat_elec_balance = Constraint(model.N, model.G, rule=heat_elec_balance)
 
+# Waste heat
+def waste_heat_max(model, g, n):
+  return model.wasteHeat[n,g] <= model.pANRCap[g]
+model.waste_heat_max = Constraint(model.G, model.N, rule=waste_heat_max)
 
-model.pprint()
+
 
 opt = SolverFactory('mindtpy')
 
