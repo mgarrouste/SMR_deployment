@@ -8,7 +8,7 @@ import csv, os
   version 0.4 Solving with CPLEX, cannot solve problems with non-convex constraints so removing the wasteHeat variable"""
 
 MaxANRMod = 20
-SCF_TO_KGH2 = 0.002408 #kgh2/scf
+#SCF_TO_KGH2 = 0.002408 #kgh2/scf
 
 
 def load_data():
@@ -19,8 +19,7 @@ def load_data():
 def get_refinery_demand(ref_id):
     ref_df = pd.read_excel('h2_demand_refineries.xlsx', sheet_name='processed')
     select_df = ref_df[ref_df['refinery_id']==ref_id]
-    demand_sfc = float(select_df['demand_2022'])
-    demand_kg_day = demand_sfc*SCF_TO_KGH2
+    demand_kg_day = float(select_df['demand_2022 (kg/day)'])
     return demand_kg_day
 
 
