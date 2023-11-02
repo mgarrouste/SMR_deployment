@@ -118,12 +118,31 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data):
 
 
   #### Objective ####
-  def annualized_net_revenues(model):
-      revenues = NAT_GAS_PRICE * EFF_H2_SMR * CONV_MJ_TO_MMBTU * model.pRefDem *365
-      costs =  sum(sum(model.pANRCap[g]*model.vM[n,g]*((model.pANRCAPEX[g]*model.pANRCRF[g]+model.pANRFC[g])+model.pANRVOM[g]*365*24) \
-        + sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]*(model.pH2CAPEX[h]*model.pH2CRF[h]+model.pH2FC[h]+model.pH2VOM[h]*365*24) for h in model.H) for g in model.G) for n in model.N) 
-      return revenues-costs
-  model.Cost = Objective(rule=annualized_net_revenues, sense=maximize)  
+  def annualized_revenues(model):
+    revenues = NAT_GAS_PRICE * EFF_H2_SMR * CONV_MJ_TO_MMBTU * model.pRefDem *365
+    return revenues
+  
+
+  def annualized_ANR_CAPEX(model):
+    return sum(sum(model.pANRCap[g]*model.vM[n,g]*(model.pANRCAPEX[g]*model.pANRCRF[g]) for g in model.G) for n in model.N) 
+  
+  def annualized_ANR_OM(model):
+    return sum(sum(model.pANRCap[g]*model.vM[n,g]*(model.pANRFC[g]+model.pANRVOM[g]*365*24)for g in model.G) for n in model.N) 
+  
+  def annualized_H2_CAPEX(model):
+    return sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]*(model.pH2CAPEX[h]*model.pH2CRF[h]) for h in model.H) for g in model.G) for n in model.N)
+  
+  def annualized_H2_OM(model):
+    return sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]*(model.pH2FC[h]+model.pH2VOM[h]*365*24) for h in model.H) for g in model.G) for n in model.N) 
+  
+  def annualized_costs(model):
+    costs =  sum(sum(model.pANRCap[g]*model.vM[n,g]*((model.pANRCAPEX[g]*model.pANRCRF[g]+model.pANRFC[g])+model.pANRVOM[g]*365*24) \
+      + sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]*(model.pH2CAPEX[h]*model.pH2CRF[h]+model.pH2FC[h]+model.pH2VOM[h]*365*24) for h in model.H) for g in model.G) for n in model.N) 
+    return costs
+
+  def annualized_net_rev(model):
+    return annualized_revenues(model)-annualized_costs(model)
+  model.NetRevenues = Objective(expr=annualized_net_rev, sense=maximize)  
 
 
   #### Constraints ####
@@ -153,7 +172,13 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data):
   results_ref = {}
   results_ref['ref_id'] = [ref_id]
   results_ref['Ref. Dem. (kg/day)'] = [value(model.pRefDem)]
-  results_ref['Cost ($/year)'] = [value(model.Cost)]
+  results_ref['Net Revenues ($/year)'] = [value(model.NetRevenues)]
+  results_ref['Revenues ($/year)'] = [value(annualized_revenues(model))]
+  results_ref['Costs ($/year)'] = [value(annualized_costs(model))]
+  results_ref['ANR CAPEX ($/year)'] = [value(annualized_ANR_CAPEX(model))]
+  results_ref['ANR OM ($/year)'] = [value(annualized_ANR_OM(model))]
+  results_ref['H2 CAPEX ($/year)'] = [value(annualized_H2_CAPEX(model))]
+  results_ref['H2 OM ($/year)'] = [value(annualized_H2_OM(model))]
   for h in model.H:
     results_ref[h] = [0]
   if results.solver.termination_condition == TerminationCondition.optimal: 
@@ -188,7 +213,9 @@ def main():
   ref_df = pd.read_excel('h2_demand_refineries.xlsx', sheet_name='processed')
   ref_ids = list(ref_df['refinery_id'])
   ANR_data, H2_data = load_data()
-  total_df = pd.DataFrame(columns=['ref_id', 'Ref. Dem. (kg/day)', 'Cost ($/year)', 'Alkaline', 'HTSE', 'PEM', 'ANR type', '# ANR modules'])
+  total_df = pd.DataFrame(columns=['ref_id', 'Ref. Dem. (kg/day)', 'Net Revenues ($/year)', 'Revenues ($/year)',\
+                                   'Costs ($/year)', 'ANR CAPEX ($/year)', 'ANR OM ($/year)', 'H2 CAPEX ($/year)', \
+                                    'H2 OM ($/year)', 'Alkaline', 'HTSE', 'PEM', 'ANR type', '# ANR modules'])
   not_feasible =[]
   for ref_id in ref_ids:
     print(ref_id)
