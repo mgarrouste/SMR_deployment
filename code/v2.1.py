@@ -22,7 +22,7 @@ def load_data():
   return ANR_data, H2_data
 
 def get_refinery_demand(ref_id):
-    ref_df = pd.read_excel('h2_demand_refineries.xlsx', sheet_name='processed')
+    ref_df = pd.read_excel('h2_demand_refineries.csv')
     select_df = ref_df[ref_df['refinery_id']==ref_id]
     demand_kg_day = float(select_df['demand_2022 (kg/day)'])
     return demand_kg_day
@@ -221,7 +221,7 @@ def main():
       not_feasible.append(ref_id)
 
   breakeven_df.sort_values(by=['Ref. Dem. (kg/day)'], inplace=True)
-  breakeven_df.to_csv('breakeven_prices_refineries.csv', header=True, index=False)
+  breakeven_df.to_csv('./results/breakeven_prices_refineries.csv', header=True, index=False)
 
   if len(not_feasible) >= 1:
     print('\n\n\n\n\n Not feasible: ')
