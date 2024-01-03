@@ -22,9 +22,9 @@ def load_data():
   return ANR_data, H2_data
 
 def get_refinery_demand(ref_id):
-    ref_df = pd.read_excel('h2_demand_refineries.csv')
+    ref_df = pd.read_excel('h2_demand_refineries.xlsx', sheet_name='processed')
     select_df = ref_df[ref_df['refinery_id']==ref_id]
-    demand_kg_day = float(select_df['demand_2022 (kg/day)'])
+    demand_kg_day = float(select_df['Corrected 2022 demand (kg/day)'])
     return demand_kg_day
 
 
