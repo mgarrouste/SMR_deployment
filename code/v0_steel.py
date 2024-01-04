@@ -145,10 +145,16 @@ def build_steel_plant_deployment(plant, ANR_data, H2_data):
     return model.vM[n,g] <= model.vS[g]
   model.match_ANR_type = Constraint(model.N, model.G, rule=match_ANR_type)
 
-  # Heat and electricity balance: include electricity demand from steel plant
-  def heat_elec_balance(model, n, g): 
-    return sum(model.pH2CapElec[h,g]*model.vQ[n,h,g] for h in model.H) <= (model.pANRCap[g]-model.pElecDem)*model.vM[n,g]
-  model.heat_elec_balance = Constraint(model.N, model.G, rule = heat_elec_balance)
+  # Heat and electricity balance at the ANR module level
+  def energy_balance_module(model, n, g): 
+    return sum(model.pH2CapElec[h,g]*model.vQ[n,h,g] for h in model.H) <= model.pANRCap[g]*model.vM[n,g]
+  model.energy_balance_module = Constraint(model.N, model.G, rule = energy_balance_module)
+
+  # Energy balance at the steel plant level: include auxiliary electricity demand
+  def energy_balance_plant(model, g): 
+    return sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g] for h in model.H) for n in model.N) + model.pElecDem*model.vS[g] \
+            <= sum(model.pANRCap[g]*model.vM[n,g] for n in model.N)
+  model.energy_balance_plant = Constraint(model.G, rule = energy_balance_plant)
 
   
   return model
@@ -162,13 +168,17 @@ def solve_steel_plant_deployment(model, plant):
           model.pDRICO2Intensity*steel_cap_ton_per_annum
 
   ############## SOLVE ###################
-  opt = SolverFactory('cplex')
-
-  results = opt.solve(model, tee = True)
+  solver = SolverFactory('cplex')
+  solver.options['timelimit'] = 240
+  solver.options['mip pool relgap'] = 0.02
+  solver.options['mip tolerances absmipgap'] = 1e-4
+  solver.options['mip tolerances mipgap'] = 5e-3
+  results = solver.solve(model, tee = True)
 
   results_dic = {}
   results_dic['Plant'] = [plant]
   results_dic['H2 Dem (kg/day)'] = [value(model.pH2Dem)]
+  results_dic['Aux Elec Dem (MWe)'] = [value(model.pElecDem)]
   results_dic['Cost ($/year)'] = [value(model.NetRevenues)]
   results_dic['Ann. CO2 emissions (kgCO2eq/year)'] = [value(compute_annual_carbon_emissions(model))]
   for h in model.H:
@@ -214,7 +224,7 @@ def main():
   ANR_data, H2_data = load_data()
 
   # Build results dataset one by one
-  breakeven_df = pd.DataFrame(columns=['Plant', 'H2 Dem (kg/day)','Alkaline', 'HTSE', 'PEM', 'ANR type', '# ANR modules',\
+  breakeven_df = pd.DataFrame(columns=['Plant', 'H2 Dem (kg/day)', 'Aux Elec Dem (MWe)','Alkaline', 'HTSE', 'PEM', 'ANR type', '# ANR modules',\
                                         'Breakeven price ($/MMBtu)', 'Ann. CO2 emissions (kgCO2eq/year)'])
   not_feasible = []
   for plant in steel_ids:
