@@ -15,9 +15,9 @@ def get_steel_plant_demand(plant):
   steel_df = pd.read_excel('./h2_demand_bfbof_steel_us_2022.xlsx', sheet_name='processed')
   plant_df = steel_df[steel_df['Plant'] == plant]
   h2_demand_kg_per_day = float(plant_df['Hydrogen demand (kg/day)'].iloc[0])
-  elec_demand_MWh_per_day = float(plant_df['Electricity demand (MWh/day)'].iloc[0])
+  elec_demand_MWe = float(plant_df['Electricity demand (MWe)'].iloc[0])
   steel_cap_ton_per_annum = float(plant_df['Steel production capacity (ttpa)'].iloc[0]*1000)
-  return steel_cap_ton_per_annum, h2_demand_kg_per_day, elec_demand_MWh_per_day
+  return steel_cap_ton_per_annum, h2_demand_kg_per_day, elec_demand_MWe
 
 def build_steel_plant_deployment(plant, ANR_data, H2_data): 
   
@@ -25,9 +25,9 @@ def build_steel_plant_deployment(plant, ANR_data, H2_data):
 
   ############### DATA ####################
   ### Hydrogen and electricity demand
-  steel_cap_ton_per_annum, h2_dem_kg_per_day, elec_dem_MWh_per_day = get_steel_plant_demand(plant)
+  steel_cap_ton_per_annum, h2_dem_kg_per_day, elec_dem_MWe = get_steel_plant_demand(plant)
   model.pH2Dem = Param(initialize = h2_dem_kg_per_day) # kg/day
-  model.pElecDem = Param(initialize = elec_dem_MWh_per_day) #MWh/day
+  model.pElecDem = Param(initialize = elec_dem_MWe) #MW-e
 
   ############### SETS ####################
   #### Sets ####
@@ -147,8 +147,7 @@ def build_steel_plant_deployment(plant, ANR_data, H2_data):
 
   # Heat and electricity balance: include electricity demand from steel plant
   def heat_elec_balance(model, n, g): 
-    return sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]/model.pANRThEff[g] for h in model.H) <= (model.pANRCap[g]/model.pANRThEff[g])*model.vM[n,g]
- #         model.pElecDem <= (model.pANRCap[g]/model.pANRThEff[g])*model.vM[n,g]
+    return sum(model.pH2CapElec[h,g]*model.vQ[n,h,g] for h in model.H) <= (model.pANRCap[g]-model.pElecDem)*model.vM[n,g]
   model.heat_elec_balance = Constraint(model.N, model.G, rule = heat_elec_balance)
 
   
