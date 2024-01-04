@@ -215,7 +215,7 @@ def main():
 
   # Build results dataset one by one
   breakeven_df = pd.DataFrame(columns=['Plant', 'H2 Dem (kg/day)','Alkaline', 'HTSE', 'PEM', 'ANR type', '# ANR modules',\
-                                        'Breakeven price ($/MMBtu)', 'Ann. carbon emissions (kgCO2eq/year)'])
+                                        'Breakeven price ($/MMBtu)', 'Ann. CO2 emissions (kgCO2eq/year)'])
   not_feasible = []
   for plant in steel_ids:
     try: 
