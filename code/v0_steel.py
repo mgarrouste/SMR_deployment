@@ -9,7 +9,7 @@ from v_2_1_refining import load_data, compute_breakeven_price
 MaxANRMod = 20
 NAT_GAS_PRICE = 6.45 #$/MMBTU
 CONV_MJ_TO_MMBTU = 1/1055.05585 #MMBTU/MJ
-EFF_H2_SMR = 159.6 #MJ/kgH2
+COAL_CONS_RATE = 0.663 #ton-coal/ton-steel for conventional BF/BOF plant
 
 def get_steel_plant_demand(plant):
   steel_df = pd.read_excel('./h2_demand_bfbof_steel_us_2022.xlsx', sheet_name='processed')
@@ -177,6 +177,7 @@ def solve_steel_plant_deployment(model, plant):
 
   results_dic = {}
   results_dic['Plant'] = [plant]
+  results_dic['Steel prod. (ton/year)'] = [steel_cap_ton_per_annum]
   results_dic['H2 Dem (kg/day)'] = [value(model.pH2Dem)]
   results_dic['Aux Elec Dem (MWe)'] = [value(model.pElecDem)]
   results_dic['Cost ($/year)'] = [value(model.NetRevenues)]
@@ -207,7 +208,7 @@ def solve_steel_plant_deployment(model, plant):
 
 def compute_breakeven_price(results_ref):
   revenues = results_ref['Cost ($/year)'][0]
-  breakeven_price = -revenues/(EFF_H2_SMR * CONV_MJ_TO_MMBTU * results_ref['H2 Dem (kg/day)'][0]*365)
+  breakeven_price = -revenues/(COAL_CONS_RATE* results_ref['Steel prod. (ton/year)'][0])
   return breakeven_price
 
 def main(): 
@@ -225,13 +226,13 @@ def main():
 
   # Build results dataset one by one
   breakeven_df = pd.DataFrame(columns=['Plant', 'H2 Dem (kg/day)', 'Aux Elec Dem (MWe)','Alkaline', 'HTSE', 'PEM', 'ANR type', '# ANR modules',\
-                                        'Breakeven price ($/MMBtu)', 'Ann. CO2 emissions (kgCO2eq/year)'])
+                                        'Breakeven coal price ($/ton)', 'Ann. CO2 emissions (kgCO2eq/year)'])
   not_feasible = []
   for plant in steel_ids:
     try: 
       model = build_steel_plant_deployment(plant, ANR_data, H2_data)
       result_plant = solve_steel_plant_deployment(model, plant)
-      result_plant['Breakeven price ($/MMBtu)'] = [compute_breakeven_price(result_plant)]
+      result_plant['Breakeven price coal ($/ton)'] = [compute_breakeven_price(result_plant)]
       breakeven_df = pd.concat([breakeven_df, pd.DataFrame.from_dict(data=result_plant)])
     except ValueError: 
       not_feasible.append(plant)
