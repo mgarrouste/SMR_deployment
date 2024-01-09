@@ -27,6 +27,11 @@ def get_plant_demand(plant_id):
     demand_kg_day = float(select_df['H2 demand (kg/year)']/365)
     return demand_kg_day
 
+def get_heat_demand(plant_id):
+  ref_df = pd.read_excel('h2_demand_industry_heat.xlsx', sheet_name='max')
+  select_df = ref_df[ref_df['FACILITY_ID']==plant_id]
+  yearly_heat_demand = float(select_df['Heat demand (MJ/year)'])
+  return yearly_heat_demand
 
 def solve_refinery_deployment(plant_id, ANR_data, H2_data):
 
@@ -35,6 +40,8 @@ def solve_refinery_deployment(plant_id, ANR_data, H2_data):
   #### Data ####
   demand_daily = get_plant_demand(plant_id)
   model.pH2Dem = Param(initialize=demand_daily) # kg/day
+  yearly_heat_demand = get_heat_demand(plant_id)
+  model.pHeatDem = Param(initialize = yearly_heat_demand) #MJ/year
 
 
   #### Sets ####
@@ -165,6 +172,7 @@ def solve_refinery_deployment(plant_id, ANR_data, H2_data):
   results_ref = {}
   results_ref['FACILITY_ID'] = [plant_id]
   results_ref['H2 Dem. (kg/day)'] = [value(model.pH2Dem)]
+  results_ref['Heat Dem. (MJ/year)'] = [value(model.pHeatDem)]
   results_ref['Cost ($/year)'] = [value(model.NetRevenues)]
   results_ref['Ann. carbon emissions (kgCO2eq/year)'] = [value(compute_annual_carbon_emissions(model))]
   for h in model.H:
@@ -192,6 +200,11 @@ def solve_refinery_deployment(plant_id, ANR_data, H2_data):
     print('Not feasible.')
     return None
 
+def compute_breakeven_price(results_ref):
+  cost = results_ref['Cost ($/year)'][0]
+  heat_demand = results_ref['Heat Dem. (MJ/year)'][0]*CONV_MJ_TO_MMBTU
+  breakeven_price = -cost/heat_demand
+  return breakeven_price
 
 
 def main():
@@ -202,12 +215,12 @@ def main():
   ref_ids = list(ref_df['FACILITY_ID'])
   ANR_data, H2_data = load_data()
 
-  results_df = pd.DataFrame(columns=['FACILITY_ID', 'H2 Dem. (kg/day)','Alkaline', 'HTSE', 'PEM', 'ANR type', '# ANR modules', 'Ann. carbon emissions (kgCO2eq/year)'])
+  results_df = pd.DataFrame(columns=['FACILITY_ID', 'H2 Dem. (kg/day)', 'Heat Dem. (MJ/year)','Alkaline', 'HTSE', 'PEM', 'ANR type', '# ANR modules', 'Cost ($/year)','Ann. carbon emissions (kgCO2eq/year)', 'Breakeven NG price ($/MMBtu)'])
   not_feasible = []
   for ref_id in ref_ids:
     try:
       result_ref = solve_refinery_deployment(ref_id, ANR_data, H2_data)
-      #result_ref['Breakeven price ($/MMBtu)'] = [compute_breakeven_price(result_ref)]
+      result_ref['Breakeven NG price ($/MMBtu)'] = [compute_breakeven_price(result_ref)]
       results_df = pd.concat([results_df, pd.DataFrame.from_dict(data=result_ref)])
     except ValueError:
       not_feasible.append(ref_id)
