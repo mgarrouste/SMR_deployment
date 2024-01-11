@@ -46,7 +46,15 @@ def build_steel_plant_deployment(plant, ANR_data, H2_data):
 
   ### Steel ###
   # Carbon emissions from DRI process at 95% H2 concentration
-  model.pDRICO2Intensity = 40 # kgCO2/ton-DRI
+  model.pDRICO2Intensity = 40 # kgCO2/ton-DRI`````````````````
+  model.pShaftFCAPEX = 250 # $/tDRI/year
+  model.pEAFCAPEX = 160 # $/tsteel/year
+  model.pEAFOM  = 24.89 # $/tsteel (EAF and casting)
+  model.pIronOre = 100 # $/tironore
+  model.pSteel = 800 # $/tsteel
+  model.pRatioSteelDRI = 0.9311 # tsteel/tDRI
+  model.pRatioIronOreDRI = 1.391 # tironore/tDRI
+
 
   ### H2 ###
   data = H2_data.reset_index(level='ANR')[['H2Cap (kgh2/h)']]
@@ -120,13 +128,21 @@ def build_steel_plant_deployment(plant, ANR_data, H2_data):
 
   ############### OBJECTIVE ##############
 
-  def annualized_costs(model):
+  def annualized_costs_anr_h2(model):
     costs =  sum(sum(model.pANRCap[g]*model.vM[n,g]*((model.pANRCAPEX[g]*model.pANRCRF[g]+model.pANRFC[g])+model.pANRVOM[g]*365*24) \
       + sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]*(model.pH2CAPEX[h]*model.pH2CRF[h]+model.pH2FC[h]+model.pH2VOM[h]*365*24) for h in model.H) for g in model.G) for n in model.N) 
     return costs
+  
+  def annualized_costs_dri_eaf(model):
+    costs = steel_cap_ton_per_annum*(model.pEAFCAPEX + model.pShaftFCAPEX/model.pRatioSteelDRI + model.pEAFOM +\
+            model.pIronOre*model.pRatioIronOreDRI/model.pRatioSteelDRI)
+    return costs
+
+  def annualized_revenues(model):
+    return model.pSteel*steel_cap_ton_per_annum
 
   def annualized_net_rev(model):
-    return -annualized_costs(model)
+    return annualized_revenues(model)-annualized_costs_anr_h2(model)-annualized_costs_dri_eaf(model)
   model.NetRevenues = Objective(expr=annualized_net_rev, sense=maximize)  
 
 
@@ -152,7 +168,7 @@ def build_steel_plant_deployment(plant, ANR_data, H2_data):
 
   # Energy balance at the steel plant level: include auxiliary electricity demand
   def energy_balance_plant(model, g): 
-    return sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g] for h in model.H) for n in model.N) + model.pElecDem*model.vS[g] \
+    return sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g] for h in model.H) for n in model.N) + (model.pElecDem)*model.vS[g] \
             <= sum(model.pANRCap[g]*model.vM[n,g] for n in model.N)
   model.energy_balance_plant = Constraint(model.G, rule = energy_balance_plant)
 
@@ -180,7 +196,7 @@ def solve_steel_plant_deployment(model, plant):
   results_dic['Steel prod. (ton/year)'] = [steel_cap_ton_per_annum]
   results_dic['H2 Dem (kg/day)'] = [value(model.pH2Dem)]
   results_dic['Aux Elec Dem (MWe)'] = [value(model.pElecDem)]
-  results_dic['Cost ($/year)'] = [value(model.NetRevenues)]
+  results_dic['Net Rev. ($/year)'] = [value(model.NetRevenues)]
   results_dic['Ann. CO2 emissions (kgCO2eq/year)'] = [value(compute_annual_carbon_emissions(model))]
   for h in model.H:
     results_dic[h] = [0]
@@ -207,8 +223,8 @@ def solve_steel_plant_deployment(model, plant):
     return None
 
 def compute_breakeven_price(results_ref):
-  revenues = results_ref['Cost ($/year)'][0]
-  breakeven_price = -revenues/(COAL_CONS_RATE* results_ref['Steel prod. (ton/year)'][0])
+  revenues = results_ref['Net Rev. ($/year)'][0]
+  breakeven_price = revenues/(COAL_CONS_RATE* results_ref['Steel prod. (ton/year)'][0])
   return breakeven_price
 
 def main(): 
@@ -232,7 +248,7 @@ def main():
     try: 
       model = build_steel_plant_deployment(plant, ANR_data, H2_data)
       result_plant = solve_steel_plant_deployment(model, plant)
-      result_plant['Breakeven price coal ($/ton)'] = [compute_breakeven_price(result_plant)]
+      result_plant['Breakeven coal price ($/ton)'] = [compute_breakeven_price(result_plant)]
       breakeven_df = pd.concat([breakeven_df, pd.DataFrame.from_dict(data=result_plant)])
     except ValueError: 
       not_feasible.append(plant)
