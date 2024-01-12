@@ -11,10 +11,16 @@ import csv, os
   version 2.1 Compute annual CO2 emissions from carbon intensity of nuclear energy"""
 
 MaxANRMod = 20
+WACC = 0.08
 #SCF_TO_KGH2 = 0.002408 #kgh2/scf
 NAT_GAS_PRICE = 6.45 #$/MMBTU
 CONV_MJ_TO_MMBTU = 1/1055.05585 #MMBTU/MJ
 EFF_H2_SMR = 159.6 #MJ/kgH2
+CONV_MWh_to_MJ = 3600 #MJ/MWh
+# GF: Glass Furnace
+GFCAPEX = 1340000 #$/MWth
+GFLT = 12 # years
+GFFOM = 0.03 # % of capex
 
 def load_data():
   ANR_data = pd.read_excel('./ANRs.xlsx', sheet_name='FOAK', index_col=0)
@@ -56,7 +62,12 @@ def solve_refinery_deployment(plant_id, ANR_data, H2_data):
   model.vQ = Var(model.N, model.H, model.G, within=NonNegativeIntegers, doc='Nb of H2 module of type H for an ANR module of type g')
 
   #### Parameters ####
-  model.pWACC = Param(initialize = 0.08)
+  model.pWACC = Param(initialize = WACC)
+
+  ### Glass furnace fueled by hydrogen ###
+  model.pGFCAPEX = Param(initialize = GFCAPEX)#$/MWth
+  model.pGFLT = Param(initialize = GFLT) # years
+  model.pGFFOM = Param(initialize = GFFOM) # % of capex
 
   ### H2 ###
   data = H2_data.reset_index(level='ANR')[['H2Cap (kgh2/h)']]
@@ -130,13 +141,19 @@ def solve_refinery_deployment(plant_id, ANR_data, H2_data):
 
   #### Objective ####  
 
-  def annualized_costs(model):
+  def annualized_costs_anr_h2(model):
     costs =  sum(sum(model.pANRCap[g]*model.vM[n,g]*((model.pANRCAPEX[g]*model.pANRCRF[g]+model.pANRFC[g])+model.pANRVOM[g]*365*24) \
       + sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]*(model.pH2CAPEX[h]*model.pH2CRF[h]+model.pH2FC[h]+model.pH2VOM[h]*365*24) for h in model.H) for g in model.G) for n in model.N) 
     return costs
+  
+  def annualized_costs_gf(model):
+    #capital recovery factor
+    gf_crf = model.pWACC / (1 - (1/(1+model.pWACC)**model.pGFLT) ) 
+    costs = (model.pHeatDem/(CONV_MWh_to_MJ*365))*model.pGFCAPEX*gf_crf#*(1+model.pGFFOM)
+    return costs
 
   def annualized_net_rev(model):
-    return -annualized_costs(model)
+    return -annualized_costs_anr_h2(model) - annualized_costs_gf(model)
   model.NetRevenues = Objective(expr=annualized_net_rev, sense=maximize)  
 
 
@@ -201,9 +218,9 @@ def solve_refinery_deployment(plant_id, ANR_data, H2_data):
     return None
 
 def compute_breakeven_price(results_ref):
-  cost = results_ref['Cost ($/year)'][0]
+  anr_h2_rev = results_ref['Cost ($/year)'][0]
   heat_demand = results_ref['Heat Dem. (MJ/year)'][0]*CONV_MJ_TO_MMBTU
-  breakeven_price = -cost/heat_demand
+  breakeven_price = -anr_h2_rev/heat_demand
   return breakeven_price
 
 
