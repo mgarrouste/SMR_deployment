@@ -22,6 +22,10 @@ GFCAPEX = 1340000 #$/MWth
 GFLT = 12 # years
 GFFOM = 0.03 # % of capex
 
+
+H2_PTC = True
+H2_PTC_VALUE = 3 #$/kg
+
 def load_data():
   ANR_data = pd.read_excel('./ANRs.xlsx', sheet_name='FOAK', index_col=0)
   H2_data = pd.read_excel('./h2_tech.xlsx', sheet_name='Summary', index_col=[0,1])
@@ -39,7 +43,7 @@ def get_heat_demand(plant_id):
   yearly_heat_demand = float(select_df['Heat demand (MJ/year)'])
   return yearly_heat_demand
 
-def solve_refinery_deployment(plant_id, ANR_data, H2_data):
+def solve_refinery_deployment(plant_id, ANR_data, H2_data, H2_PTC=False):
 
   model = ConcreteModel(plant_id)
 
@@ -153,7 +157,12 @@ def solve_refinery_deployment(plant_id, ANR_data, H2_data):
     return costs
 
   def annualized_net_rev(model):
-    return -annualized_costs_anr_h2(model) - annualized_costs_gf(model)
+    if H2_PTC:
+      #ann_rev = sum( sum( sum (model.pH2CapH2[h]*model.vQ[n,h,g]*365*24*H2_PTC_VALUE for h in model.H)for g in model.G) for n in model.N)
+      ann_rev = model.pH2Dem*365*H2_PTC_VALUE
+    else:
+      ann_rev = 0
+    return ann_rev-annualized_costs_anr_h2(model) - annualized_costs_gf(model)
   model.NetRevenues = Objective(expr=annualized_net_rev, sense=maximize)  
 
 
@@ -236,14 +245,17 @@ def main():
   not_feasible = []
   for ref_id in ref_ids:
     try:
-      result_ref = solve_refinery_deployment(ref_id, ANR_data, H2_data)
+      result_ref = solve_refinery_deployment(ref_id, ANR_data, H2_data, H2_PTC=H2_PTC)
       result_ref['Breakeven NG price ($/MMBtu)'] = [compute_breakeven_price(result_ref)]
       results_df = pd.concat([results_df, pd.DataFrame.from_dict(data=result_ref)])
     except ValueError:
       not_feasible.append(ref_id)
 
   results_df.sort_values(by=['H2 Dem. (kg/day)'], inplace=True)
-  results_df.to_csv('./results/results_heat_process_deployment.csv', header=True, index=False)
+  if H2_PTC:
+    results_df.to_csv('./results/results_heat_process_deployment_h2_ptc.csv', header=True, index=False)
+  else :
+    results_df.to_csv('./results/results_heat_process_deployment.csv', header=True, index=False)
 
   if len(not_feasible) >= 1:
     print('\n\n\n\n\n Not feasible: ')
