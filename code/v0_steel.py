@@ -194,6 +194,7 @@ def solve_steel_plant_deployment(model, plant):
   results_dic = {}
   results_dic['Plant'] = [plant]
   results_dic['Steel prod. (ton/year)'] = [steel_cap_ton_per_annum]
+  results_dic['Steel sales ($/year)'] = [value(model.pSteel)*steel_cap_ton_per_annum]
   results_dic['H2 Dem (kg/day)'] = [value(model.pH2Dem)]
   results_dic['Aux Elec Dem (MWe)'] = [value(model.pElecDem)]
   results_dic['Net Rev. ($/year)'] = [value(model.NetRevenues)]
@@ -224,7 +225,12 @@ def solve_steel_plant_deployment(model, plant):
 
 def compute_breakeven_price(results_ref):
   revenues = results_ref['Net Rev. ($/year)'][0]
-  breakeven_price = revenues/(COAL_CONS_RATE* results_ref['Steel prod. (ton/year)'][0])
+  steel_sales = results_ref['Steel sales ($/year)'][0]
+  plant_cap = results_ref['Steel prod. (ton/year)'][0]
+  iron_ore_cost = 100 #$/t_ironore !!! must match model
+  bfbof_iron_cons = 1.226 #t_ironore/t_steel
+  om_bfbof = 353.25 #$/t_steel
+  breakeven_price = (steel_sales - revenues - iron_ore_cost*bfbof_iron_cons*plant_cap - om_bfbof*plant_cap)/(COAL_CONS_RATE*plant_cap)
   return breakeven_price
 
 def main(): 
