@@ -2,7 +2,7 @@ from pyomo.environ import *
 import pandas as pd
 import numpy as np
 import os
-from v_2_1_refining import load_data, compute_breakeven_price
+from opt_deployment_refining import load_data, compute_breakeven_price
 
 """ Version 0"""
 
@@ -10,6 +10,13 @@ MaxANRMod = 20
 NAT_GAS_PRICE = 6.45 #$/MMBTU
 CONV_MJ_TO_MMBTU = 1/1055.05585 #MMBTU/MJ
 COAL_CONS_RATE = 0.663 #ton-coal/ton-steel for conventional BF/BOF plant
+
+H2_PTC = False
+H2_PTC_VALUE = 3 #$/kg
+
+NOAK = True
+LEARNING_rate = 7
+N_NOAK = 1000
 
 def get_steel_plant_demand(plant):
   steel_df = pd.read_excel('./h2_demand_bfbof_steel_us_2022.xlsx', sheet_name='processed')
@@ -244,7 +251,7 @@ def main():
   steel_ids = list(steel_df['Plant'])
 
   # Load ANR and H2 parameters
-  ANR_data, H2_data = load_data()
+  ANR_data, H2_data = load_data(NOAK=NOAK, N = N_NOAK)
 
   # Build results dataset one by one
   breakeven_df = pd.DataFrame(columns=['Plant', 'H2 Dem (kg/day)', 'Aux Elec Dem (MWe)','Alkaline', 'HTSE', 'PEM', 'ANR type', '# ANR modules',\
@@ -262,7 +269,15 @@ def main():
 
   # Sort results by h2 demand 
   breakeven_df.sort_values(by=['H2 Dem (kg/day)'], inplace=True)
-  breakeven_df.to_csv('./results/breakeven_prices_steel.csv', header = True, index=False)
+  if H2_PTC and NOAK:
+    csv_path = './results/results_steel_deployment_noak_'+str(N_NOAK)+'_h2_ptc.csv'
+  elif H2_PTC:
+    csv_path = './results/results_steel_deployment_foak_h2_ptc.csv'
+  elif NOAK:
+    csv_path = './results/results_steel_deployment_noak_'+str(N_NOAK)+'.csv'
+  else :
+    csv_path = './results/results_steel_deployment_foak_h2_ptc.csv'
+  breakeven_df.to_csv(csv_path, header = True, index=False)
 
   if len(not_feasible)>=1: 
     print('\n\n NOT FEASIBLE: \n')
