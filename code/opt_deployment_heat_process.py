@@ -26,12 +26,17 @@ GFFOM = 0.03 # % of capex
 H2_PTC = False
 H2_PTC_VALUE = 3 #$/kg
 
+NOAK = True
+LEARNING_rate = 7
+N_NOAK = 1000
+
 def load_data(NOAK=False, N=100):
   H2_data = pd.read_excel('./h2_tech.xlsx', sheet_name='Summary', index_col=[0,1])
   if NOAK:
     ANR_data = pd.read_excel('./ANRs.xlsx', sheet_name='FOAK', index_col=0)
     ANR_data = ANR_data[ANR_data.columns.difference(['CAPEX $/MWe'])]
-    capex_data = pd.read_excel('./ANRs.xlsx', sheet_name='NOAK_16%')
+    sheet_name= 'NOAK_'+str(LEARNING_rate)+'%'
+    capex_data = pd.read_excel('./ANRs.xlsx', sheet_name=sheet_name)
     capex_data = capex_data[['Reactor', N]]
     ANR_data = ANR_data.merge(capex_data, on='Reactor')
     ANR_data.rename(columns={N:'CAPEX $/MWe'}, inplace=True)
@@ -248,7 +253,7 @@ def main():
   os.chdir(dname)
   ref_df = pd.read_excel('h2_demand_industry_heat.xlsx', sheet_name='max')
   ref_ids = list(ref_df['FACILITY_ID'])
-  ANR_data, H2_data = load_data()
+  ANR_data, H2_data = load_data(NOAK=NOAK, N = N_NOAK)
 
   results_df = pd.DataFrame(columns=['FACILITY_ID', 'H2 Dem. (kg/day)', 'Heat Dem. (MJ/year)','Alkaline', 'HTSE', 'PEM', 'ANR type', '# ANR modules', 'Cost ($/year)','Ann. carbon emissions (kgCO2eq/year)', 'Breakeven NG price ($/MMBtu)'])
   not_feasible = []
@@ -261,11 +266,15 @@ def main():
       not_feasible.append(ref_id)
 
   results_df.sort_values(by=['H2 Dem. (kg/day)'], inplace=True)
-  if H2_PTC:
-    results_df.to_csv('./results/results_heat_process_deployment_h2_ptc.csv', header=True, index=False)
+  if H2_PTC and NOAK:
+    csv_path = './results/results_heat_process_deployment_noak_'+str(N_NOAK)+'_h2_ptc.csv'
+  elif H2_PTC:
+    csv_path = './results/results_heat_process_deployment_foak_h2_ptc.csv'
+  elif NOAK:
+    csv_path = './results/results_heat_process_deployment_noak_'+str(N_NOAK)+'.csv'
   else :
-    results_df.to_csv('./results/results_heat_process_deployment.csv', header=True, index=False)
-
+    csv_path = './results/results_heat_process_deployment_foak_h2_ptc.csv'
+  results_df.to_csv(csv_path, header=True, index=False)
   if len(not_feasible) >= 1:
     print('\n\n\n\n\n Not feasible: ')
     for ref in not_feasible:
