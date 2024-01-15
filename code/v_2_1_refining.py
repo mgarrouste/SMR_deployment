@@ -16,9 +16,26 @@ NAT_GAS_PRICE = 6.45 #$/MMBTU
 CONV_MJ_TO_MMBTU = 1/1055.05585 #MMBTU/MJ
 EFF_H2_SMR = 159.6 #MJ/kgH2
 
-def load_data():
-  ANR_data = pd.read_excel('./ANRs.xlsx', sheet_name='FOAK', index_col=0)
+H2_PTC = False
+H2_PTC_VALUE = 3 #$/kg
+
+NOAK = True
+LEARNING_rate = 7
+N_NOAK = 1000
+
+def load_data(NOAK=False, N=100):
   H2_data = pd.read_excel('./h2_tech.xlsx', sheet_name='Summary', index_col=[0,1])
+  if NOAK:
+    ANR_data = pd.read_excel('./ANRs.xlsx', sheet_name='FOAK', index_col=0)
+    ANR_data = ANR_data[ANR_data.columns.difference(['CAPEX $/MWe'])]
+    sheet_name= 'NOAK_'+str(LEARNING_rate)+'%'
+    capex_data = pd.read_excel('./ANRs.xlsx', sheet_name=sheet_name)
+    capex_data = capex_data[['Reactor', N]]
+    ANR_data = ANR_data.merge(capex_data, on='Reactor')
+    ANR_data.rename(columns={N:'CAPEX $/MWe'}, inplace=True)
+    ANR_data.set_index('Reactor', inplace=True)
+  else:
+    ANR_data = pd.read_excel('./ANRs.xlsx', sheet_name='FOAK', index_col=0)
   return ANR_data, H2_data
 
 def get_refinery_demand(ref_id):
@@ -35,8 +52,6 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data):
   #### Data ####
   demand_daily = get_refinery_demand(ref_id)
   model.pRefDem = Param(initialize=demand_daily) # kg/day
-
-  ANR_data, H2_data = load_data()
 
 
   #### Sets ####
@@ -207,7 +222,7 @@ def main():
   os.chdir(dname)
   ref_df = pd.read_excel('h2_demand_refineries.xlsx', sheet_name='processed')
   ref_ids = list(ref_df['refinery_id'])
-  ANR_data, H2_data = load_data()
+  ANR_data, H2_data = load_data(NOAK=NOAK, N = N_NOAK)
 
   breakeven_df = pd.DataFrame(columns=['ref_id', 'Ref. Dem. (kg/day)','Alkaline', 'HTSE', 'PEM', 'ANR type', '# ANR modules',\
                                         'Breakeven price ($/MMBtu)', 'Ann. carbon emissions (kgCO2eq/year)'])
@@ -221,7 +236,15 @@ def main():
       not_feasible.append(ref_id)
 
   breakeven_df.sort_values(by=['Ref. Dem. (kg/day)'], inplace=True)
-  breakeven_df.to_csv('./results/breakeven_prices_refineries.csv', header=True, index=False)
+  if H2_PTC and NOAK:
+    csv_path = './results/results_refining_deployment_noak_'+str(N_NOAK)+'_h2_ptc.csv'
+  elif H2_PTC:
+    csv_path = './results/results_refining_deployment_foak_h2_ptc.csv'
+  elif NOAK:
+    csv_path = './results/results_refining_deployment_noak_'+str(N_NOAK)+'.csv'
+  else :
+    csv_path = './results/results_refining_deployment_foak_h2_ptc.csv'
+  breakeven_df.to_csv(csv_path, header=True, index=False)
 
   if len(not_feasible) >= 1:
     print('\n\n\n\n\n Not feasible: ')
