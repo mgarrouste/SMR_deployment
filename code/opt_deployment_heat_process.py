@@ -23,12 +23,21 @@ GFLT = 12 # years
 GFFOM = 0.03 # % of capex
 
 
-H2_PTC = True
+H2_PTC = False
 H2_PTC_VALUE = 3 #$/kg
 
-def load_data():
-  ANR_data = pd.read_excel('./ANRs.xlsx', sheet_name='FOAK', index_col=0)
+def load_data(NOAK=False, N=100):
   H2_data = pd.read_excel('./h2_tech.xlsx', sheet_name='Summary', index_col=[0,1])
+  if NOAK:
+    ANR_data = pd.read_excel('./ANRs.xlsx', sheet_name='FOAK', index_col=0)
+    ANR_data = ANR_data[ANR_data.columns.difference(['CAPEX $/MWe'])]
+    capex_data = pd.read_excel('./ANRs.xlsx', sheet_name='NOAK_16%')
+    capex_data = capex_data[['Reactor', N]]
+    ANR_data = ANR_data.merge(capex_data, on='Reactor')
+    ANR_data.rename(columns={N:'CAPEX $/MWe'}, inplace=True)
+    ANR_data.set_index('Reactor', inplace=True)
+  else:
+    ANR_data = pd.read_excel('./ANRs.xlsx', sheet_name='FOAK', index_col=0)
   return ANR_data, H2_data
 
 def get_plant_demand(plant_id):
@@ -263,7 +272,10 @@ def main():
       print('Refinery :', ref)
       print('Demand :', get_plant_demand(ref), ' kg/day')
 
-
+def test():
+  anr_data, h2data = load_data(NOAK=True)
+  print(anr_data)
 
 if __name__ == '__main__':
   main()
+  #test()
