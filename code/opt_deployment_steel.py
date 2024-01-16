@@ -11,6 +11,10 @@ NAT_GAS_PRICE = 6.45 #$/MMBTU
 CONV_MJ_TO_MMBTU = 1/1055.05585 #MMBTU/MJ
 COAL_CONS_RATE = 0.663 #ton-coal/ton-steel for conventional BF/BOF plant
 
+iron_ore_cost = 100 #$/t_ironore
+bfbof_iron_cons = 1.226 #t_ironore/t_steel
+om_bfbof = 353.25 #$/t_steel
+
 H2_PTC = False
 H2_PTC_VALUE = 3 #$/kg
 
@@ -57,7 +61,7 @@ def build_steel_plant_deployment(plant, ANR_data, H2_data):
   model.pShaftFCAPEX = 250 # $/tDRI/year
   model.pEAFCAPEX = 160 # $/tsteel/year
   model.pEAFOM  = 24.89 # $/tsteel (EAF and casting)
-  model.pIronOre = 100 # $/tironore
+  model.pIronOre = iron_ore_cost # $/tironore
   model.pSteel = 800 # $/tsteel
   model.pRatioSteelDRI = 0.9311 # tsteel/tDRI
   model.pRatioIronOreDRI = 1.391 # tironore/tDRI
@@ -234,9 +238,6 @@ def compute_breakeven_price(results_ref):
   revenues = results_ref['Net Rev. ($/year)'][0]
   steel_sales = results_ref['Steel sales ($/year)'][0]
   plant_cap = results_ref['Steel prod. (ton/year)'][0]
-  iron_ore_cost = 100 #$/t_ironore !!! must match model
-  bfbof_iron_cons = 1.226 #t_ironore/t_steel
-  om_bfbof = 353.25 #$/t_steel
   breakeven_price = (steel_sales - revenues - iron_ore_cost*bfbof_iron_cons*plant_cap - om_bfbof*plant_cap)/(COAL_CONS_RATE*plant_cap)
   return breakeven_price
 
@@ -266,7 +267,6 @@ def main():
     except ValueError: 
       not_feasible.append(plant)
   
-
   # Sort results by h2 demand 
   breakeven_df.sort_values(by=['H2 Dem (kg/day)'], inplace=True)
   if H2_PTC and NOAK:

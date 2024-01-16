@@ -215,14 +215,6 @@ def compute_breakeven_price(results_ref):
   breakeven_price = -revenues/(EFF_H2_SMR * CONV_MJ_TO_MMBTU * results_ref['Ref. Dem. (kg/day)'][0]*365)
   return breakeven_price
 
-def compute_res_be():
-  lcoh_res_df = pd.read_excel('./input_data/lcoh_res.xlsx')
-  res_be_df = pd.DataFrame(columns=['RES', 'Breakeven price ($/MMBtu)'])
-  res_be_df['RES'] = lcoh_res_df['RES']
-  res_be_df['Breakeven price ($/MMBtu)'] = lcoh_res_df.apply(lambda x:x['LCOH']/(EFF_H2_SMR*CONV_MJ_TO_MMBTU), axis=1)
-  return res_be_df
-
-
 
 def main():
   abspath = os.path.abspath(__file__)
@@ -253,9 +245,6 @@ def main():
   else :
     csv_path = './results/results_refining_deployment_foak_h2_ptc.csv'
   breakeven_df.to_csv(csv_path, header=True, index=False)
-
-  res_be_df = compute_res_be()
-  res_be_df.to_csv('./results/res_be_refining.csv', header=True, index=False)
 
   if len(not_feasible) >= 1:
     print('\n\n\n\n\n Not feasible: ')
