@@ -6,9 +6,10 @@ from opt_deployment_refining import load_data
 
 MaxANRMod = 40
 
-auxNucNH3CAPEX = 0 #TOUPDATE $/year
-ngNH3OM = 0# TOUPDATE $/year
-ngNH3ConsRate = 1#TOPUPDATE MMBtu/tNH3
+auxNucNH3CAPEX = 64511550 #$/year
+auxNucNH3LT = 20 # years
+
+ngNH3ConsRate = 30.82# MMBtu/tNH3
 
 H2_PTC = False 
 H2_PTC_VALUE = 3
@@ -128,9 +129,14 @@ def build_ammonia_plant_deployment(plant, ANR_data, H2_data):
     costs =  sum(sum(model.pANRCap[g]*model.vM[n,g]*((model.pANRCAPEX[g]*model.pANRCRF[g]+model.pANRFC[g])+model.pANRVOM[g]*365*24) \
       + sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]*(model.pH2CAPEX[h]*model.pH2CRF[h]+model.pH2FC[h]+model.pH2VOM[h]*365*24) for h in model.H) for g in model.G) for n in model.N) 
     return costs
+  
+  def annualized_nuc_NH3_costs(model):
+    crf = model.pWACC / (1 - (1/(1+model.pWACC)**auxNucNH3LT) ) 
+    costs =auxNucNH3CAPEX*crf
+    return costs
 
   def annualized_net_rev(model):
-    return -model.pAuxNH3CAPEX-annualized_costs_anr_h2(model)
+    return -annualized_nuc_NH3_costs(model)-annualized_costs_anr_h2(model)
   model.NetRevenues = Objective(expr=annualized_net_rev, sense=maximize)  
 
 
@@ -217,7 +223,7 @@ def solve_ammonia_plant_deployment(model, plant):
 def compute_breakeven_price(results_ref):
   net_rev = results_ref['Net Rev. ($/year)'][0]
   capacity = results_ref['Ammonia capacity (tNH3/year)'][0]
-  be_price = (-net_rev -ngNH3OM)/(ngNH3ConsRate*capacity)
+  be_price = (-net_rev)/(ngNH3ConsRate*capacity)
   return be_price
 
 
