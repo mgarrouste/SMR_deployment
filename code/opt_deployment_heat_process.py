@@ -83,7 +83,6 @@ def solve_refinery_deployment(plant_id, ANR_data, H2_data, H2_PTC=False):
   ### Glass furnace fueled by hydrogen ###
   model.pGFCAPEX = Param(initialize = GFCAPEX)#$/MWth
   model.pGFLT = Param(initialize = GFLT) # years
-  model.pGFFOM = Param(initialize = GFFOM) # % of capex
 
   ### H2 ###
   data = H2_data.reset_index(level='ANR')[['H2Cap (kgh2/h)']]
@@ -165,7 +164,8 @@ def solve_refinery_deployment(plant_id, ANR_data, H2_data, H2_PTC=False):
   def annualized_costs_gf(model):
     #capital recovery factor
     gf_crf = model.pWACC / (1 - (1/(1+model.pWACC)**model.pGFLT) ) 
-    costs = (model.pHeatDem/(CONV_MWh_to_MJ*365))*model.pGFCAPEX*gf_crf
+    heat_power_dem = model.pHeatDem/(CONV_MWh_to_MJ*365*24) #MWth
+    costs = heat_power_dem*model.pGFCAPEX*gf_crf
     return costs
 
   def annualized_net_rev(model):
