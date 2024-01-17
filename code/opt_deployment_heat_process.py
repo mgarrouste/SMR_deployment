@@ -15,12 +15,10 @@ WACC = 0.08
 #SCF_TO_KGH2 = 0.002408 #kgh2/scf
 NAT_GAS_PRICE = 6.45 #$/MMBTU
 CONV_MJ_TO_MMBTU = 1/1055.05585 #MMBTU/MJ
-EFF_H2_SMR = 159.6 #MJ/kgH2
 CONV_MWh_to_MJ = 3600 #MJ/MWh
 # GF: Glass Furnace
 GFCAPEX = 1340000 #$/MWth
 GFLT = 12 # years
-GFFOM = 0.03 # % of capex
 
 
 H2_PTC = False
@@ -167,12 +165,11 @@ def solve_refinery_deployment(plant_id, ANR_data, H2_data, H2_PTC=False):
   def annualized_costs_gf(model):
     #capital recovery factor
     gf_crf = model.pWACC / (1 - (1/(1+model.pWACC)**model.pGFLT) ) 
-    costs = (model.pHeatDem/(CONV_MWh_to_MJ*365))*model.pGFCAPEX*gf_crf#*(1+model.pGFFOM)
+    costs = (model.pHeatDem/(CONV_MWh_to_MJ*365))*model.pGFCAPEX*gf_crf
     return costs
 
   def annualized_net_rev(model):
     if H2_PTC:
-      #ann_rev = sum( sum( sum (model.pH2CapH2[h]*model.vQ[n,h,g]*365*24*H2_PTC_VALUE for h in model.H)for g in model.G) for n in model.N)
       ann_rev = model.pH2Dem*365*H2_PTC_VALUE
     else:
       ann_rev = 0
