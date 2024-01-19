@@ -2,7 +2,7 @@ from pyomo.environ import *
 import pandas as pd
 import numpy as np
 import os
-from opt_deployment_refining import load_data
+from utils import load_data
 
 MaxANRMod = 40
 NG_PRICE = 6.4 #$/MMBtu
@@ -13,12 +13,6 @@ auxNucNH3LT = 20 # years
 
 ngNH3ConsRate = 30.82# MMBtu/tNH3
 ngNH3ElecCons = 0.061 # MWh/tNH3
-
-H2_PTC = False 
-H2_PTC_VALUE = 3
-
-NOAK = False
-N_NOAK = 1000
 
 def get_ammonia_plant_demand(plant):
   ammonia_df = pd.read_excel('./h2_demand_ammonia_us_2022.xlsx', sheet_name='processed')
@@ -270,7 +264,8 @@ def compute_capex_breakeven(results_ref, be_ng_price_foak, ng_price):
   be_capex = (alpha*(ng_price - be_ng_price_foak) + foak_anr_capex)/(anr_crf*deployed_anr_cap)
   return be_capex
 
-def main(): 
+
+def main(learning_rate_anr_capex = 0, learning_rate_h2_capex =0): 
   # Go the present directory
   abspath = os.path.abspath(__file__)
   dname = os.path.dirname(abspath)
@@ -281,11 +276,11 @@ def main():
   plant_ids = list(ammonia_df['plant_id'])
 
   # Load ANR and H2 parameters
-  ANR_data, H2_data = load_data(NOAK=NOAK, N = N_NOAK)
+  ANR_data, H2_data = load_data(learning_rate_anr_capex, learning_rate_h2_capex)
 
   # Build results dataset one by one
   breakeven_df = pd.DataFrame(columns=['plant_id', 'H2 Dem (kg/day)', 'Aux Elec Dem (MWe)','Alkaline', 'HTSE', 'PEM', 'ANR type', '# ANR modules',\
-                                        'Breakeven NG price ($/MMBtu)', 'Ann. CO2 emissions (kgCO2eq/year)','Breakeven CAPEX ($)',\
+                                        'Breakeven NG price ($/MMBtu)', 'Ann. CO2 emissions (kgCO2eq/year)',\
                                             'ANR CAPEX ($/year)', 'H2 CAPEX ($/year)', 'ANR O&M ($/year)','H2 O&M ($/year)', 'Conversion costs ($/year)'])
   not_feasible = []
   for plant in plant_ids:
@@ -293,22 +288,13 @@ def main():
       model = build_ammonia_plant_deployment(plant, ANR_data, H2_data)
       result_plant = solve_ammonia_plant_deployment(model, plant)
       result_plant['Breakeven NG price ($/MMBtu)'] = [compute_ng_breakeven_price(result_plant)]
-      if not NOAK:
-        result_plant['Breakeven CAPEX ($)'] = [compute_capex_breakeven(result_plant, be_ng_price_foak = compute_ng_breakeven_price(result_plant),ng_price = NG_PRICE)]
       breakeven_df = pd.concat([breakeven_df, pd.DataFrame.from_dict(data=result_plant)])
     except ValueError: 
       not_feasible.append(plant)
   
   # Sort results by h2 demand 
-  breakeven_df.sort_values(by=['H2 Dem (kg/day)'], inplace=True)
-  if H2_PTC and NOAK:
-    csv_path = './results/results_ammonia_deployment_noak_'+str(N_NOAK)+'_h2_ptc.csv'
-  elif H2_PTC:
-    csv_path = './results/results_ammonia_deployment_foak_h2_ptc.csv'
-  elif NOAK:
-    csv_path = './results/results_ammonia_deployment_noak_'+str(N_NOAK)+'.csv'
-  else :
-    csv_path = './results/results_ammonia_deployment_foak.csv'
+  breakeven_df.sort_values(by=['Breakeven NG price ($/MMBtu)'], inplace=True)
+  csv_path = './results/ammonia_anr_lr_'+str(learning_rate_anr_capex)+'%_h2_lr_'+str(learning_rate_h2_capex)+'%.csv'
   breakeven_df.to_csv(csv_path, header = True, index=False)
 
   if len(not_feasible)>=1: 
@@ -318,6 +304,10 @@ def main():
       print('Demand NH3 ton per year : ', get_ammonia_plant_demand(plant)[0])
       print('Demand H2 kg per day: ', get_ammonia_plant_demand(plant)[1])
       print('Demand electricity MW: ', get_ammonia_plant_demand(plant)[2]/24)
+
+  # Median Breakeven price
+  med_be = breakeven_df['Breakeven NG price ($/MMBtu)'].median()
+  return med_be
 
 
 if __name__ == '__main__': 
