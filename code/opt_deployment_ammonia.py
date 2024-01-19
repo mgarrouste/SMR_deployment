@@ -193,11 +193,16 @@ def solve_ammonia_plant_deployment(model, plant):
   def compute_h2_om(model):
     return sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]*(model.pH2FC[h]+model.pH2VOM[h]*365*24) for h in model.H) for g in model.G) for n in model.N) 
 
+  def get_crf(model):
+    return sum(model.vS[g]*model.pANRCRF[g] for g in model.G)
   
   def compute_conv_costs(model):
     crf = model.pWACC / (1 - (1/(1+model.pWACC)**auxNucNH3LT) ) 
     costs =auxNucNH3CAPEX*crf
     return costs
+  
+  def get_deployed_cap(model):
+    return sum(sum (model.vM[n,g]*model.pANRCap[g] for g in model.G) for n in model.N)
 
   ############## SOLVE ###################
   solver = SolverFactory('cplex')
@@ -223,6 +228,8 @@ def solve_ammonia_plant_deployment(model, plant):
     results_dic['ANR O&M ($/year)'] = [value(compute_anr_om(model))]
     results_dic['H2 O&M ($/year)'] = [value(compute_h2_om(model))]
     results_dic['Conversion costs ($/year)'] = [value(compute_conv_costs(model))]
+    results_dic['ANR CRF'] = [value(get_crf(model))]
+    results_dic['Depl. ANR Cap. (MWe)'] = [value(get_deployed_cap(model))]
     print('\n\n\n\n',' ------------ SOLUTION  -------------')
     print('Plant : ', plant)
     print('Demand NH3 ton per year : ', get_ammonia_plant_demand(plant)[0])
@@ -255,6 +262,13 @@ def compute_ng_breakeven_price(results_ref):
   be_price = (-net_rev-elec_costs)/(ngNH3ConsRate*capacity)
   return be_price
 
+def compute_capex_breakeven(results_ref, be_ng_price_foak, ng_price):
+  alpha = results_ref['Ammonia capacity (tNH3/year)'][0]*ngNH3ConsRate
+  foak_anr_capex = results_ref['ANR CAPEX ($/year)'][0]
+  anr_crf = results_ref['ANR CRF'][0]
+  deployed_anr_cap = results_ref['Depl. ANR Cap. (MWe)'][0]
+  be_capex = (alpha*(ng_price - be_ng_price_foak) + foak_anr_capex)/(anr_crf*deployed_anr_cap)
+  return be_capex
 
 def main(): 
   # Go the present directory
@@ -271,7 +285,7 @@ def main():
 
   # Build results dataset one by one
   breakeven_df = pd.DataFrame(columns=['plant_id', 'H2 Dem (kg/day)', 'Aux Elec Dem (MWe)','Alkaline', 'HTSE', 'PEM', 'ANR type', '# ANR modules',\
-                                        'Breakeven NG price ($/MMBtu)', 'Ann. CO2 emissions (kgCO2eq/year)',\
+                                        'Breakeven NG price ($/MMBtu)', 'Ann. CO2 emissions (kgCO2eq/year)','Breakeven CAPEX ($)',\
                                             'ANR CAPEX ($/year)', 'H2 CAPEX ($/year)', 'ANR O&M ($/year)','H2 O&M ($/year)', 'Conversion costs ($/year)'])
   not_feasible = []
   for plant in plant_ids:
@@ -279,6 +293,8 @@ def main():
       model = build_ammonia_plant_deployment(plant, ANR_data, H2_data)
       result_plant = solve_ammonia_plant_deployment(model, plant)
       result_plant['Breakeven NG price ($/MMBtu)'] = [compute_ng_breakeven_price(result_plant)]
+      if not NOAK:
+        result_plant['Breakeven CAPEX ($)'] = [compute_capex_breakeven(result_plant, be_ng_price_foak = compute_ng_breakeven_price(result_plant),ng_price = NG_PRICE)]
       breakeven_df = pd.concat([breakeven_df, pd.DataFrame.from_dict(data=result_plant)])
     except ValueError: 
       not_feasible.append(plant)
