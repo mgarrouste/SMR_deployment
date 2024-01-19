@@ -24,7 +24,7 @@ GFLT = 12 # years
 H2_PTC = False
 H2_PTC_VALUE = 3 #$/kg
 
-NOAK = True
+NOAK = False
 LEARNING_rate = 7
 N_NOAK = 1000
 
@@ -270,7 +270,7 @@ def main():
   elif NOAK:
     csv_path = './results/results_heat_process_deployment_noak_'+str(N_NOAK)+'.csv'
   else :
-    csv_path = './results/results_heat_process_deployment_foak_h2_ptc.csv'
+    csv_path = './results/results_heat_process_deployment_foak.csv'
   results_df.to_csv(csv_path, header=True, index=False)
   if len(not_feasible) >= 1:
     print('\n\n\n\n\n Not feasible: ')
