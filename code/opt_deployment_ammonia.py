@@ -3,6 +3,9 @@ import pandas as pd
 import numpy as np
 import os
 from utils import load_data
+import utils
+
+wacc = utils.WACC
 
 MaxANRMod = 40
 NG_PRICE = 6.4 #$/MMBtu
@@ -46,7 +49,7 @@ def build_ammonia_plant_deployment(plant, ANR_data, H2_data):
   model.vQ = Var(model.N, model.H, model.G, within=NonNegativeIntegers, doc='Nb of H2 module of type H for an ANR module of type g')
 
   ############### PARAMETERS ##############
-  model.pWACC = Param(initialize = 0.08)
+  model.pWACC = Param(initialize = wacc)
 
   ### Nuc NH3 ###
   model.pAuxNH3CAPEX = Param(initialize = auxNucNH3CAPEX)
