@@ -2,6 +2,7 @@ from pyomo.environ import *
 import pandas as pd
 import numpy as np
 import csv, os
+import utils
 
 """version 0.2 Relaxed the heat balance constraint to be <= instead of ==, now the problem is feasible
   version 0.3, restructure code to save results of refinery deployment to csv file, 
@@ -15,6 +16,8 @@ MaxANRMod = 20
 NAT_GAS_PRICE = 6.45 #$/MMBTU
 CONV_MJ_TO_MMBTU = 1/1055.05585 #MMBTU/MJ
 EFF_H2_SMR = 159.6 #MJ/kgH2
+
+WACC = utils.WACC
 
 H2_PTC = False
 H2_PTC_VALUE = 3 #$/kg
@@ -66,7 +69,7 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data):
   model.vQ = Var(model.N, model.H, model.G, within=NonNegativeIntegers, doc='Nb of H2 module of type H for an ANR module of type g')
 
   #### Parameters ####
-  model.pWACC = Param(initialize = 0.08)
+  model.pWACC = Param(initialize = WACC)
 
   ### H2 ###
   data = H2_data.reset_index(level='ANR')[['H2Cap (kgh2/h)']]

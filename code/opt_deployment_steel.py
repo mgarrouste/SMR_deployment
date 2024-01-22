@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import os
 from opt_deployment_refining import load_data, compute_breakeven_price
+import utils
 
 """ Version 0"""
 
@@ -14,6 +15,8 @@ COAL_CONS_RATE = 0.663 #ton-coal/ton-steel for conventional BF/BOF plant
 iron_ore_cost = 100 #$/t_ironore
 bfbof_iron_cons = 1.226 #t_ironore/t_steel
 om_bfbof = 353.25 #$/t_steel
+
+WACC = utils.WACC
 
 H2_PTC = False
 H2_PTC_VALUE = 3 #$/kg
@@ -53,7 +56,7 @@ def build_steel_plant_deployment(plant, ANR_data, H2_data):
   model.vQ = Var(model.N, model.H, model.G, within=NonNegativeIntegers, doc='Nb of H2 module of type H for an ANR module of type g')
 
   ############### PARAMETERS ##############
-  model.pWACC = Param(initialize = 0.08)
+  model.pWACC = Param(initialize = WACC)
 
   ### Steel ###
   # Carbon emissions from DRI process at 95% H2 concentration

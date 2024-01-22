@@ -2,6 +2,7 @@ from pyomo.environ import *
 import pandas as pd
 import numpy as np
 import csv, os
+import utils
 
 """version 0.2 Relaxed the heat balance constraint to be <= instead of ==, now the problem is feasible
   version 0.3, restructure code to save results of refinery deployment to csv file, 
@@ -11,7 +12,7 @@ import csv, os
   version 2.1 Compute annual CO2 emissions from carbon intensity of nuclear energy"""
 
 MaxANRMod = 20
-WACC = 0.08
+WACC = utils.WACC
 #SCF_TO_KGH2 = 0.002408 #kgh2/scf
 NAT_GAS_PRICE = 6.45 #$/MMBTU
 CONV_MJ_TO_MMBTU = 1/1055.05585 #MMBTU/MJ
