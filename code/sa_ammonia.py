@@ -3,11 +3,15 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import os, sys
+import queue, threading
 from utils import load_data
 import utils
-from multiprocessing import Pool
+import multiprocessing.pool
+
 from SALib.sample import sobol as sobol_sample
 from SALib.analyze import sobol as sobol_analyze
+from SALib.sample import morris as morris_sample
+from SALib.analyze import morris as morris_analyze
 
 WACC = utils.WACC
 
@@ -174,7 +178,7 @@ def build_ammonia_plant_deployment(plant, ANR_data, H2_data):
   return model
 
 
-def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results):
+def solve_ammonia_plant_deployment(ANR_data, H2_data, plant):
   model = build_ammonia_plant_deployment(plant, ANR_data, H2_data)
   ammonia_capacity, h2_dem_kg_per_day, elec_dem_MWh_per_day = get_ammonia_plant_demand(plant)
   # for carbon accounting
@@ -210,7 +214,7 @@ def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results):
   solver.options['mip pool relgap'] = 0.02
   solver.options['mip tolerances absmipgap'] = 1e-4
   solver.options['mip tolerances mipgap'] = 5e-3
-  results = solver.solve(model, tee = print_results)
+  results = solver.solve(model, tee = False)
 
   results_dic = {}
   results_dic['plant_id'] = plant
@@ -265,11 +269,12 @@ def compute_capex_breakeven(results_ref, be_ng_price_foak, ng_price):
   return be_capex
 
 
-def main(learning_rate_anr_capex = 0, learning_rate_h2_capex =0, wacc=WACC, print_main_results=False, print_results=False): 
+def main(learning_rate_anr_capex = 0, learning_rate_h2_capex =0, wacc=WACC): 
   # Go the present directory
   abspath = os.path.abspath(__file__)
   dname = os.path.dirname(abspath)
   os.chdir(dname)
+
 
   # Load steel data
   ammonia_df = pd.read_excel('h2_demand_ammonia_us_2022.xlsx', sheet_name='processed')
@@ -284,20 +289,13 @@ def main(learning_rate_anr_capex = 0, learning_rate_h2_capex =0, wacc=WACC, prin
                                             'ANR CAPEX ($/year)', 'H2 CAPEX ($/year)', 'ANR O&M ($/year)','H2 O&M ($/year)', 'Conversion costs ($/year)'])
   not_feasible = []
   
-  with Pool() as pool:
-    results = pool.starmap(solve_ammonia_plant_deployment, [(ANR_data, H2_data, plant, print_results) for plant in plant_ids])
+  with multiprocessing.pool.ThreadPool(3) as pool:
+    results = pool.starmap(solve_ammonia_plant_deployment, [(ANR_data, H2_data, plant) for plant in plant_ids])
   pool.close()
 
   breakeven_df = pd.DataFrame(results)
-  print(breakeven_df)
 
   
-  # Sort results by h2 demand 
-  if print_main_results:
-    breakeven_df.sort_values(by=['Breakeven NG price ($/MMBtu)'], inplace=True)
-    csv_path = './results/ammonia_anr_lr_'+str(learning_rate_anr_capex)+'%_h2_lr_'+str(learning_rate_h2_capex)+'%.csv'
-    breakeven_df.to_csv(csv_path, header = True, index=False)
-
   if len(not_feasible)>=1: 
     print('\n\n NOT FEASIBLE: \n')
     for plant in not_feasible: 
@@ -312,7 +310,20 @@ def main(learning_rate_anr_capex = 0, learning_rate_h2_capex =0, wacc=WACC, prin
 
 
 
-def sa():
+def sa_morris():
+  problem = {
+      'num_vars': 3,
+      'names': ["LR ANR CAPEX", "LR H2 CAPEX", 'WACC'],
+      'bounds': [[0.03,0.10], [0.03,0.10], [0.05, 0.1]]
+  }
+  param_values = sobol_sample.sample(problem,1)
+  lr_anr_capex_list = param_values.T[0]
+  lr_h2_capex_list = param_values.T[1]
+  wacc_list = param_values.T[2]
+
+
+def sa_sobol():
+  # Set up the Sobol analysis
   problem = {
       'num_vars': 3,
       'names': ["LR ANR CAPEX", "LR H2 CAPEX", 'WACC'],
@@ -320,14 +331,22 @@ def sa():
   }
 
   param_values = sobol_sample.sample(problem,1)
-  Y = np.zeros([param_values.shape[0]])
+  lr_anr_capex_list = param_values.T[0]
+  lr_h2_capex_list = param_values.T[1]
+  wacc_list = param_values.T[2]
 
-  for i, X in enumerate(param_values): 
-    lr_anr_capex, lr_h2_capex, wacc = X.T 
-    mean_be_ng = main(learning_rate_anr_capex = lr_anr_capex, learning_rate_h2_capex =lr_h2_capex, wacc=wacc, print_results=False)
-    #mean_be_ng = np.random.normal(20,5)
-    Y[i] = mean_be_ng
 
+
+
+  # Issue top level tasks: optimal deployment for each tuple of the SA parameters
+  with multiprocessing.pool.Pool(3) as pool:
+    Y = pool.starmap(main, [(lr_anr_capex, lr_h2_capex, wacc) for lr_anr_capex, lr_h2_capex, wacc in zip(lr_anr_capex_list, lr_h2_capex_list, wacc_list )])
+
+    #results = pool.starmap(solve_ammonia_plant_deployment, [(ANR_data, H2_data, plant) for plant in plant_ids])
+
+    #mean_be_ng = main(learning_rate_anr_capex = lr_anr_capex, learning_rate_h2_capex =lr_h2_capex, wacc=wacc)
+    #Y[i] = mean_be_ng
+  Y = np.array(Y)
   sobol_indices = sobol_analyze.analyze(problem, Y)
   total_Si, first_Si, second_Si = sobol_indices.to_df()
 
@@ -347,8 +366,4 @@ def sa():
 
 
 if __name__ == '__main__': 
-  if len(sys.argv) >1:
-    if sys.argv[1] == 'SA':
-      sa()
-  else: 
-    main()
+  sa()
