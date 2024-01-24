@@ -5,7 +5,7 @@ import os
 from utils import load_data
 import utils
 
-wacc = utils.WACC
+WACC = utils.WACC
 
 MaxANRMod = 40
 NG_PRICE = 6.4 #$/MMBtu
@@ -49,7 +49,7 @@ def build_ammonia_plant_deployment(plant, ANR_data, H2_data):
   model.vQ = Var(model.N, model.H, model.G, within=NonNegativeIntegers, doc='Nb of H2 module of type H for an ANR module of type g')
 
   ############### PARAMETERS ##############
-  model.pWACC = Param(initialize = wacc)
+  model.pWACC = Param(initialize = WACC)
 
   ### Nuc NH3 ###
   model.pAuxNH3CAPEX = Param(initialize = auxNucNH3CAPEX)
@@ -171,7 +171,7 @@ def build_ammonia_plant_deployment(plant, ANR_data, H2_data):
   return model
 
 
-def solve_ammonia_plant_deployment(model, plant):
+def solve_ammonia_plant_deployment(model, plant, print_results):
   ammonia_capacity, h2_dem_kg_per_day, elec_dem_MWh_per_day = get_ammonia_plant_demand(plant)
   # for carbon accounting
   def compute_annual_carbon_emissions(model):
@@ -182,7 +182,6 @@ def solve_ammonia_plant_deployment(model, plant):
   
   def compute_anr_om(model):
     return sum(sum(model.pANRCap[g]*model.vM[n,g]*(model.pANRFC[g]+model.pANRVOM[g]*365*24) for g in model.G) for n in model.N) 
-    return costs
   
   def compute_h2_capex(model):
     return sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]*model.pH2CAPEX[h]*model.pH2CRF[h] for h in model.H) for g in model.G) for n in model.N) 
@@ -207,7 +206,7 @@ def solve_ammonia_plant_deployment(model, plant):
   solver.options['mip pool relgap'] = 0.02
   solver.options['mip tolerances absmipgap'] = 1e-4
   solver.options['mip tolerances mipgap'] = 5e-3
-  results = solver.solve(model, tee = True)
+  results = solver.solve(model, tee = print_results)
 
   results_dic = {}
   results_dic['plant_id'] = [plant]
@@ -227,6 +226,7 @@ def solve_ammonia_plant_deployment(model, plant):
     results_dic['Conversion costs ($/year)'] = [value(compute_conv_costs(model))]
     results_dic['ANR CRF'] = [value(get_crf(model))]
     results_dic['Depl. ANR Cap. (MWe)'] = [value(get_deployed_cap(model))]
+    """
     print('\n\n\n\n',' ------------ SOLUTION  -------------')
     print('Plant : ', plant)
     print('Demand NH3 ton per year : ', get_ammonia_plant_demand(plant)[0])
@@ -245,7 +245,7 @@ def solve_ammonia_plant_deployment(model, plant):
             for h in model.H:
               print(int(value(model.vQ[n,h,g])), ' Hydrogen production modules of type:',h )
               if value(model.vQ[n,h,g]) > 0:
-                results_dic[h][0] += value(model.vQ[n,h,g])
+                results_dic[h][0] += value(model.vQ[n,h,g])"""
     return results_dic
   else:
     print('Not feasible.')
@@ -268,7 +268,7 @@ def compute_capex_breakeven(results_ref, be_ng_price_foak, ng_price):
   return be_capex
 
 
-def main(learning_rate_anr_capex = 0, learning_rate_h2_capex =0): 
+def main(learning_rate_anr_capex = 0, learning_rate_h2_capex =0, wacc=WACC, print_results=True): 
   # Go the present directory
   abspath = os.path.abspath(__file__)
   dname = os.path.dirname(abspath)
@@ -289,16 +289,17 @@ def main(learning_rate_anr_capex = 0, learning_rate_h2_capex =0):
   for plant in plant_ids:
     try: 
       model = build_ammonia_plant_deployment(plant, ANR_data, H2_data)
-      result_plant = solve_ammonia_plant_deployment(model, plant)
+      result_plant = solve_ammonia_plant_deployment(model, plant, print_results)
       result_plant['Breakeven NG price ($/MMBtu)'] = [compute_ng_breakeven_price(result_plant)]
       breakeven_df = pd.concat([breakeven_df, pd.DataFrame.from_dict(data=result_plant)])
     except ValueError: 
       not_feasible.append(plant)
   
   # Sort results by h2 demand 
-  breakeven_df.sort_values(by=['Breakeven NG price ($/MMBtu)'], inplace=True)
-  csv_path = './results/ammonia_anr_lr_'+str(learning_rate_anr_capex)+'%_h2_lr_'+str(learning_rate_h2_capex)+'%.csv'
-  breakeven_df.to_csv(csv_path, header = True, index=False)
+  if print_results:
+    breakeven_df.sort_values(by=['Breakeven NG price ($/MMBtu)'], inplace=True)
+    csv_path = './results/ammonia_anr_lr_'+str(learning_rate_anr_capex)+'%_h2_lr_'+str(learning_rate_h2_capex)+'%.csv'
+    breakeven_df.to_csv(csv_path, header = True, index=False)
 
   if len(not_feasible)>=1: 
     print('\n\n NOT FEASIBLE: \n')
