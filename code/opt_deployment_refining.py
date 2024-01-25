@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import csv, os
 import utils
+from multiprocessing import Pool
 
 """version 0.2 Relaxed the heat balance constraint to be <= instead of ==, now the problem is feasible
   version 0.3, restructure code to save results of refinery deployment to csv file, 
@@ -19,37 +20,16 @@ EFF_H2_SMR = 159.6 #MJ/kgH2
 
 WACC = utils.WACC
 
-H2_PTC = False
-H2_PTC_VALUE = 3 #$/kg
-
-NOAK = False
-LEARNING_rate = 7
-N_NOAK = 1000
-
-def load_data(NOAK=False, N=100):
-  H2_data = pd.read_excel('./h2_tech.xlsx', sheet_name='Summary', index_col=[0,1])
-  if NOAK:
-    ANR_data = pd.read_excel('./ANRs.xlsx', sheet_name='FOAK', index_col=0)
-    ANR_data = ANR_data[ANR_data.columns.difference(['CAPEX $/MWe'])]
-    sheet_name= 'NOAK_'+str(LEARNING_rate)+'%'
-    capex_data = pd.read_excel('./ANRs.xlsx', sheet_name=sheet_name)
-    capex_data = capex_data[['Reactor', N]]
-    ANR_data = ANR_data.merge(capex_data, on='Reactor')
-    ANR_data.rename(columns={N:'CAPEX $/MWe'}, inplace=True)
-    ANR_data.set_index('Reactor', inplace=True)
-  else:
-    ANR_data = pd.read_excel('./ANRs.xlsx', sheet_name='FOAK', index_col=0)
-  return ANR_data, H2_data
 
 def get_refinery_demand(ref_id):
     ref_df = pd.read_excel('h2_demand_refineries.xlsx', sheet_name='processed')
     select_df = ref_df[ref_df['refinery_id']==ref_id]
-    demand_kg_day = float(select_df['Corrected 2022 demand (kg/day)'])
+    demand_kg_day = select_df['Corrected 2022 demand (kg/day)'].iloc[0]
     return demand_kg_day
 
 
 def solve_refinery_deployment(ref_id, ANR_data, H2_data):
-
+  print(f'Start solve for {ref_id}')
   model = ConcreteModel(ref_id)
 
   #### Data ####
@@ -138,8 +118,6 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data):
   def pANRThEff(model, g):
     return float(ANR_data.loc[g]['Power in MWe']/ANR_data.loc[g]['Power in MWt'])
 
-  print('Parameters established')
-
 
   #### Objective ####  
 
@@ -181,32 +159,27 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data):
   #### SOLVE with CPLEX ####
   opt = SolverFactory('cplex')
 
-  results = opt.solve(model, tee = True)
+  results = opt.solve(model, tee = False)
   results_ref = {}
-  results_ref['ref_id'] = [ref_id]
-  results_ref['Ref. Dem. (kg/day)'] = [value(model.pRefDem)]
-  results_ref['Net Revenues ($/year)'] = [value(model.NetRevenues)]
-  results_ref['Ann. carbon emissions (kgCO2eq/year)'] = [value(compute_annual_carbon_emissions(model))]
+  results_ref['ref_id'] = ref_id
+  results_ref['Ref. Dem. (kg/day)'] = value(model.pRefDem)
+  results_ref['Net Revenues ($/year)'] = value(model.NetRevenues)
+  results_ref['Ann. carbon emissions (kgCO2eq/year)'] = value(compute_annual_carbon_emissions(model))
   for h in model.H:
-    results_ref[h] = [0]
+    results_ref[h] = 0
   if results.solver.termination_condition == TerminationCondition.optimal: 
     model.solutions.load_from(results)
-    print('\n\n\n\n',' ------------ SOLUTION  -------------')
     for g in model.G: 
       if value(model.vS[g]) >=1: 
-        print('Chosen type of advanced nuclear reactor is ',g)
-        results_ref['ANR type'] = [g]
+        results_ref['ANR type'] = g
         total_nb_modules = int(np.sum([value(model.vM[n,g]) for n in model.N]))
-        print(total_nb_modules, ' modules are needed.')
-        results_ref['# ANR modules'] = [total_nb_modules]
+        results_ref['# ANR modules'] = total_nb_modules
         for n in model.N:
           if value(model.vM[n,g]) >=1:
-            print('ANR Module # ',int(value(model.vM[n,g])), 'of type ', g)
             for h in model.H:
-              print(int(value(model.vQ[n,h,g])), ' Hydrogen production modules of type:',h )
-              if value(model.vQ[n,h,g]) > 0:
-                results_ref[h][0] += value(model.vQ[n,h,g])
-    
+              results_ref[h] += value(model.vQ[n,h,g])
+    results_ref['Breakeven price ($/MMBtu)'] = compute_breakeven_price(results_ref)
+    print(f'Refning plant {ref_id} solved')
     return results_ref
   else:
     print('Not feasible.')
@@ -214,47 +187,38 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data):
 
 
 def compute_breakeven_price(results_ref):
-  revenues = results_ref['Net Revenues ($/year)'][0]
-  breakeven_price = -revenues/(EFF_H2_SMR * CONV_MJ_TO_MMBTU * results_ref['Ref. Dem. (kg/day)'][0]*365)
+  revenues = results_ref['Net Revenues ($/year)']
+  breakeven_price = -revenues/(EFF_H2_SMR * CONV_MJ_TO_MMBTU * results_ref['Ref. Dem. (kg/day)']*365)
   return breakeven_price
 
 
-def main():
+def main(learning_rate_anr_capex=0, learning_rate_h2_capex=0, wacc=WACC, print_main_results=True):
   abspath = os.path.abspath(__file__)
   dname = os.path.dirname(abspath)
   os.chdir(dname)
   ref_df = pd.read_excel('h2_demand_refineries.xlsx', sheet_name='processed')
   ref_ids = list(ref_df['refinery_id'])
-  ANR_data, H2_data = load_data(NOAK=NOAK, N = N_NOAK)
 
-  breakeven_df = pd.DataFrame(columns=['ref_id', 'Ref. Dem. (kg/day)','Alkaline', 'HTSE', 'PEM', 'ANR type', '# ANR modules',\
-                                        'Breakeven price ($/MMBtu)', 'Ann. carbon emissions (kgCO2eq/year)'])
-  not_feasible = []
-  for ref_id in ref_ids:
-    try:
-      result_ref = solve_refinery_deployment(ref_id, ANR_data, H2_data)
-      result_ref['Breakeven price ($/MMBtu)'] = [compute_breakeven_price(result_ref)]
-      breakeven_df = pd.concat([breakeven_df, pd.DataFrame.from_dict(data=result_ref)])
-    except ValueError:
-      not_feasible.append(ref_id)
+  ANR_data, H2_data = utils.load_data(learning_rate_anr_capex, learning_rate_h2_capex)
 
-  breakeven_df.sort_values(by=['Ref. Dem. (kg/day)'], inplace=True)
-  if H2_PTC and NOAK:
-    csv_path = './results/results_refining_deployment_noak_'+str(N_NOAK)+'_h2_ptc.csv'
-  elif H2_PTC:
-    csv_path = './results/results_refining_deployment_foak_h2_ptc.csv'
-  elif NOAK:
-    csv_path = './results/results_refining_deployment_noak_'+str(N_NOAK)+'.csv'
-  else :
-    csv_path = './results/results_refining_deployment_foak.csv'
-  breakeven_df.to_csv(csv_path, header=True, index=False)
+  breakeven_df = pd.DataFrame(columns=['ref_id', 'Ref. Dem. (kg/day)','Alkaline', 'HTSE', 'PEM', 'ANR type', \
+                                       '# ANR modules','Breakeven price ($/MMBtu)', 'Ann. carbon emissions (kgCO2eq/year)'])
 
-  if len(not_feasible) >= 1:
-    print('\n\n\n\n\n Not feasible: ')
-    for ref in not_feasible:
-      print('Refinery :', ref)
-      print('Demand :', get_refinery_demand(ref), ' kg/day')
+  with Pool(10) as pool: 
+    results = pool.starmap(solve_refinery_deployment, [(ref_id, ANR_data, H2_data) for ref_id in ref_ids])
+  pool.close()
 
+  breakeven_df = pd.DataFrame(results)
+
+
+  if print_main_results:
+    breakeven_df.sort_values(by=['Breakeven price ($/MMBtu)'], inplace=True)
+    csv_path = './results/refining_anr_lr_'+str(learning_rate_anr_capex)+'_h2_lr_'+str(learning_rate_h2_capex)+'_wacc_'+str(wacc)+'.csv'
+    breakeven_df.to_csv(csv_path, header = True, index=False)
+
+  # Median Breakeven price
+  med_be = breakeven_df['Breakeven price ($/MMBtu)'].median()
+  return med_be
 
 
 if __name__ == '__main__':

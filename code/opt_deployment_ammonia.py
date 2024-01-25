@@ -279,29 +279,19 @@ def main(learning_rate_anr_capex = 0, learning_rate_h2_capex =0, wacc=WACC, prin
   breakeven_df = pd.DataFrame(columns=['plant_id', 'H2 Dem (kg/day)', 'Aux Elec Dem (MWe)','Alkaline', 'HTSE', 'PEM', 'ANR type', '# ANR modules',\
                                         'Breakeven NG price ($/MMBtu)', 'Ann. CO2 emissions (kgCO2eq/year)',\
                                             'ANR CAPEX ($/year)', 'H2 CAPEX ($/year)', 'ANR O&M ($/year)','H2 O&M ($/year)', 'Conversion costs ($/year)'])
-  not_feasible = []
   
-  with Pool() as pool:
+  with Pool(10) as pool:
     results = pool.starmap(solve_ammonia_plant_deployment, [(ANR_data, H2_data, plant, print_results) for plant in plant_ids])
   pool.close()
 
   breakeven_df = pd.DataFrame(results)
-  print(breakeven_df)
 
   
   # Sort results by h2 demand 
   if print_main_results:
     breakeven_df.sort_values(by=['Breakeven NG price ($/MMBtu)'], inplace=True)
-    csv_path = './results/ammonia_anr_lr_'+str(learning_rate_anr_capex)+'%_h2_lr_'+str(learning_rate_h2_capex)+'%.csv'
+    csv_path = './results/ammonia_anr_lr_'+str(learning_rate_anr_capex)+'_h2_lr_'+str(learning_rate_h2_capex)+'_wacc_'+str(wacc)+'.csv'
     breakeven_df.to_csv(csv_path, header = True, index=False)
-
-  if len(not_feasible)>=1: 
-    print('\n\n NOT FEASIBLE: \n')
-    for plant in not_feasible: 
-      print('Plant : ', plant)
-      print('Demand NH3 ton per year : ', get_ammonia_plant_demand(plant)[0])
-      print('Demand H2 kg per day: ', get_ammonia_plant_demand(plant)[1])
-      print('Demand electricity MW: ', get_ammonia_plant_demand(plant)[2]/24)
 
   # Median Breakeven price
   med_be = breakeven_df['Breakeven NG price ($/MMBtu)'].median()
