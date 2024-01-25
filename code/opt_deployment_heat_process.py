@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import csv, os
 import utils
+from multiprocessing import Pool
 
 """version 0.2 Relaxed the heat balance constraint to be <= instead of ==, now the problem is feasible
   version 0.3, restructure code to save results of refinery deployment to csv file, 
@@ -22,42 +23,20 @@ GFCAPEX = 1340000 #$/MWth
 GFLT = 12 # years
 
 
-H2_PTC = False
-H2_PTC_VALUE = 3 #$/kg
-
-NOAK = False
-LEARNING_rate = 7
-N_NOAK = 1000
-
-def load_data(NOAK=False, N=100):
-  H2_data = pd.read_excel('./h2_tech.xlsx', sheet_name='Summary', index_col=[0,1])
-  if NOAK:
-    ANR_data = pd.read_excel('./ANRs.xlsx', sheet_name='FOAK', index_col=0)
-    ANR_data = ANR_data[ANR_data.columns.difference(['CAPEX $/MWe'])]
-    sheet_name= 'NOAK_'+str(LEARNING_rate)+'%'
-    capex_data = pd.read_excel('./ANRs.xlsx', sheet_name=sheet_name)
-    capex_data = capex_data[['Reactor', N]]
-    ANR_data = ANR_data.merge(capex_data, on='Reactor')
-    ANR_data.rename(columns={N:'CAPEX $/MWe'}, inplace=True)
-    ANR_data.set_index('Reactor', inplace=True)
-  else:
-    ANR_data = pd.read_excel('./ANRs.xlsx', sheet_name='FOAK', index_col=0)
-  return ANR_data, H2_data
-
 def get_plant_demand(plant_id):
     ref_df = pd.read_excel('h2_demand_industry_heat.xlsx', sheet_name='max')
     select_df = ref_df[ref_df['FACILITY_ID']==plant_id]
-    demand_kg_day = float(select_df['H2 demand (kg/year)']/365)
+    demand_kg_day = select_df['H2 demand (kg/year)'].iloc[0]/365
     return demand_kg_day
 
 def get_heat_demand(plant_id):
   ref_df = pd.read_excel('h2_demand_industry_heat.xlsx', sheet_name='max')
   select_df = ref_df[ref_df['FACILITY_ID']==plant_id]
-  yearly_heat_demand = float(select_df['Heat demand (MJ/year)'])
+  yearly_heat_demand = select_df['Heat demand (MJ/year)'].iloc[0]
   return yearly_heat_demand
 
-def solve_refinery_deployment(plant_id, ANR_data, H2_data, H2_PTC=False):
-
+def solve_process_heat_deployment(plant_id, ANR_data, H2_data):
+  print(f'Start solve for {plant_id}')
   model = ConcreteModel(plant_id)
 
   #### Data ####
@@ -152,7 +131,6 @@ def solve_refinery_deployment(plant_id, ANR_data, H2_data, H2_PTC=False):
   def pANRThEff(model, g):
     return float(ANR_data.loc[g]['Power in MWe']/ANR_data.loc[g]['Power in MWt'])
 
-  print('Parameters established')
 
 
   #### Objective ####  
@@ -170,11 +148,7 @@ def solve_refinery_deployment(plant_id, ANR_data, H2_data, H2_PTC=False):
     return costs
 
   def annualized_net_rev(model):
-    if H2_PTC:
-      ann_rev = model.pH2Dem*365*H2_PTC_VALUE
-    else:
-      ann_rev = 0
-    return ann_rev-annualized_costs_anr_h2(model) - annualized_costs_gf(model)
+    return -annualized_costs_anr_h2(model) - annualized_costs_gf(model)
   model.NetRevenues = Objective(expr=annualized_net_rev, sense=maximize)  
 
 
@@ -206,83 +180,71 @@ def solve_refinery_deployment(plant_id, ANR_data, H2_data, H2_PTC=False):
   #### SOLVE with CPLEX ####
   opt = SolverFactory('cplex')
 
-  results = opt.solve(model, tee = True)
+  results = opt.solve(model, tee = False)
   results_ref = {}
-  results_ref['FACILITY_ID'] = [plant_id]
-  results_ref['H2 Dem. (kg/day)'] = [value(model.pH2Dem)]
-  results_ref['Heat Dem. (MJ/year)'] = [value(model.pHeatDem)]
-  results_ref['Cost ($/year)'] = [value(model.NetRevenues)]
-  results_ref['Ann. carbon emissions (kgCO2eq/year)'] = [value(compute_annual_carbon_emissions(model))]
+  results_ref['FACILITY_ID'] = plant_id
+  results_ref['H2 Dem. (kg/day)'] = value(model.pH2Dem)
+  results_ref['Heat Dem. (MJ/year)'] = value(model.pHeatDem)
+  results_ref['Cost ($/year)'] = value(model.NetRevenues)
+  results_ref['Ann. carbon emissions (kgCO2eq/year)'] = value(compute_annual_carbon_emissions(model))
   for h in model.H:
-    results_ref[h] = [0]
+    results_ref[h] = 0
   if results.solver.termination_condition == TerminationCondition.optimal: 
     model.solutions.load_from(results)
-    print('\n\n\n\n',' ------------ SOLUTION  -------------')
     for g in model.G: 
       if value(model.vS[g]) >=1: 
-        print('Chosen type of advanced nuclear reactor is ',g)
-        results_ref['ANR type'] = [g]
+        results_ref['ANR type'] = g
         total_nb_modules = int(np.sum([value(model.vM[n,g]) for n in model.N]))
-        print(total_nb_modules, ' modules are needed.')
-        results_ref['# ANR modules'] = [total_nb_modules]
+        results_ref['# ANR modules'] = total_nb_modules
         for n in model.N:
           if value(model.vM[n,g]) >=1:
-            print('ANR Module # ',int(value(model.vM[n,g])), 'of type ', g)
             for h in model.H:
-              print(int(value(model.vQ[n,h,g])), ' Hydrogen production modules of type:',h )
-              if value(model.vQ[n,h,g]) > 0:
-                results_ref[h][0] += value(model.vQ[n,h,g])
-    
+              results_ref[h] += value(model.vQ[n,h,g])
+    results_ref['Breakeven NG price ($/MMBtu)'] = compute_breakeven_price(results_ref)
+    print(f'Process heat for plant {plant_id} solved')
     return results_ref
   else:
     print('Not feasible.')
     return None
 
 def compute_breakeven_price(results_ref):
-  anr_h2_rev = results_ref['Cost ($/year)'][0]
-  heat_demand = results_ref['Heat Dem. (MJ/year)'][0]*CONV_MJ_TO_MMBTU
+  anr_h2_rev = results_ref['Cost ($/year)']
+  heat_demand = results_ref['Heat Dem. (MJ/year)']*CONV_MJ_TO_MMBTU
   breakeven_price = -anr_h2_rev/heat_demand
   return breakeven_price
 
 
-def main():
+def main(learning_rate_anr_capex =0, learning_rate_h2_capex=0, wacc=WACC, print_main_results=True):
   abspath = os.path.abspath(__file__)
   dname = os.path.dirname(abspath)
   os.chdir(dname)
-  ref_df = pd.read_excel('h2_demand_industry_heat.xlsx', sheet_name='max')
-  ref_ids = list(ref_df['FACILITY_ID'])
-  ANR_data, H2_data = load_data(NOAK=NOAK, N = N_NOAK)
+  demand_df = pd.read_excel('h2_demand_industry_heat.xlsx', sheet_name='max')
+  plant_ids = list(demand_df['FACILITY_ID'])
+  ANR_data, H2_data = utils.load_data(learning_rate_anr_capex, learning_rate_h2_capex)
 
-  results_df = pd.DataFrame(columns=['FACILITY_ID', 'H2 Dem. (kg/day)', 'Heat Dem. (MJ/year)','Alkaline', 'HTSE', 'PEM', 'ANR type', '# ANR modules', 'Cost ($/year)','Ann. carbon emissions (kgCO2eq/year)', 'Breakeven NG price ($/MMBtu)'])
-  not_feasible = []
-  for ref_id in ref_ids:
-    try:
-      result_ref = solve_refinery_deployment(ref_id, ANR_data, H2_data, H2_PTC=H2_PTC)
-      result_ref['Breakeven NG price ($/MMBtu)'] = [compute_breakeven_price(result_ref)]
-      results_df = pd.concat([results_df, pd.DataFrame.from_dict(data=result_ref)])
-    except ValueError:
-      not_feasible.append(ref_id)
+  results_df = pd.DataFrame(columns=['FACILITY_ID', 'H2 Dem. (kg/day)', 'Heat Dem. (MJ/year)','Alkaline', 'HTSE', \
+                                     'PEM', 'ANR type', '# ANR modules', 'Cost ($/year)',\
+                                     'Ann. carbon emissions (kgCO2eq/year)', 'Breakeven NG price ($/MMBtu)'])
 
-  results_df.sort_values(by=['H2 Dem. (kg/day)'], inplace=True)
-  if H2_PTC and NOAK:
-    csv_path = './results/results_heat_process_deployment_noak_'+str(N_NOAK)+'_h2_ptc.csv'
-  elif H2_PTC:
-    csv_path = './results/results_heat_process_deployment_foak_h2_ptc.csv'
-  elif NOAK:
-    csv_path = './results/results_heat_process_deployment_noak_'+str(N_NOAK)+'.csv'
-  else :
-    csv_path = './results/results_heat_process_deployment_foak.csv'
-  results_df.to_csv(csv_path, header=True, index=False)
-  if len(not_feasible) >= 1:
-    print('\n\n\n\n\n Not feasible: ')
-    for ref in not_feasible:
-      print('Refinery :', ref)
-      print('Demand :', get_plant_demand(ref), ' kg/day')
+  with Pool() as pool: 
+    results = pool.starmap(solve_process_heat_deployment, [(plant, ANR_data, H2_data) for plant in plant_ids])
+  pool.close()
 
-def test():
-  anr_data, h2data = load_data(NOAK=True)
-  print(anr_data)
+  results_df = pd.DataFrame(results)
+
+
+  # Sort results by h2 demand 
+  if print_main_results:
+    results_df.sort_values(by=['Breakeven NG price ($/MMBtu)'], inplace=True)
+    csv_path = './results/process_heat_anr_lr_'+str(learning_rate_anr_capex)+'_h2_lr_'+str(learning_rate_h2_capex)\
+      +'_wacc_'+str(wacc)+'.csv'
+    results_df.to_csv(csv_path, header = True, index=False)
+  
+  
+  # Return median breakeven price
+  med_be = results_df['Breakeven NG price ($/MMBtu)'].median()
+  return med_be
+
 
 if __name__ == '__main__':
   main()
-  #test()
