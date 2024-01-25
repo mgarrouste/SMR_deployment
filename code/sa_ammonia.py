@@ -316,10 +316,17 @@ def sa_morris():
       'names': ["LR ANR CAPEX", "LR H2 CAPEX", 'WACC'],
       'bounds': [[0.03,0.10], [0.03,0.10], [0.05, 0.1]]
   }
-  param_values = sobol_sample.sample(problem,1)
+  param_values = morris_sample.sample(problem,N=100, optimal_trajectories=2)
   lr_anr_capex_list = param_values.T[0]
   lr_h2_capex_list = param_values.T[1]
   wacc_list = param_values.T[2]
+  # Issue top level tasks: optimal deployment for each tuple of the SA parameters
+  with multiprocessing.pool.Pool(3) as pool:
+    Y = pool.starmap(main, [(lr_anr_capex, lr_h2_capex, wacc) for lr_anr_capex, lr_h2_capex, wacc in zip(lr_anr_capex_list, lr_h2_capex_list, wacc_list )])
+  Y = np.array(Y)
+  morris_indices = morris_analyze.analyze(problem, param_values, Y, conf_level=0.95, print_to_console=True, scaled=True)
+  morris_indices.to_csv('./results/sa_ammonia_morris.csv')
+
 
 
 def sa_sobol():
@@ -351,6 +358,7 @@ def sa_sobol():
   total_Si, first_Si, second_Si = sobol_indices.to_df()
 
   si_df = total_Si.merge(first_Si, left_index=True, right_index=True)
+  si_df.to_csv('./results/sa_ammonia_sobol.csv')
   print(si_df)
 
 
@@ -366,4 +374,4 @@ def sa_sobol():
 
 
 if __name__ == '__main__': 
-  sa()
+  sa_morris()
