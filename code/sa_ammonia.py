@@ -8,8 +8,6 @@ import utils
 import multiprocessing.pool
 import SALib
 
-from SALib.sample import sobol as sobol_sample
-from SALib.analyze import sobol as sobol_analyze
 
 
 WACC = utils.WACC
