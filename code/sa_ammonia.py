@@ -322,7 +322,7 @@ def sa_morris():
   with multiprocessing.pool.Pool(3) as pool:
     Y = pool.starmap(main, [(lr_anr_capex, lr_h2_capex, wacc) for lr_anr_capex, lr_h2_capex, wacc in zip(lr_anr_capex_list, lr_h2_capex_list, wacc_list )])
   Y = np.array(Y)
-  morris_indices = morris_analyze.analyze(problem, param_values, Y, conf_level=0.95, print_to_console=True, scaled=True)
+  morris_indices = morris_analyze.analyze(problem, param_values, Y, conf_level=0.95, print_to_console=True)
   morris_indices.to_csv('./results/sa_ammonia_morris.csv')
 
 
