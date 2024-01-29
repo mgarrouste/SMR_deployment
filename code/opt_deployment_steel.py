@@ -2,8 +2,8 @@ from pyomo.environ import *
 import pandas as pd
 import numpy as np
 import os
-from opt_deployment_refining import load_data, compute_breakeven_price
 import utils
+from multiprocessing import Pool
 
 """ Version 0"""
 
@@ -18,12 +18,6 @@ om_bfbof = 353.25 #$/t_steel
 
 WACC = utils.WACC
 
-H2_PTC = False
-H2_PTC_VALUE = 3 #$/kg
-
-NOAK = False
-LEARNING_rate = 7
-N_NOAK = 1000
 
 def get_steel_plant_demand(plant):
   steel_df = pd.read_excel('./h2_demand_bfbof_steel_us_2022.xlsx', sheet_name='processed')
@@ -34,7 +28,7 @@ def get_steel_plant_demand(plant):
   return steel_cap_ton_per_annum, h2_demand_kg_per_day, elec_demand_MWe
 
 def build_steel_plant_deployment(plant, ANR_data, H2_data): 
-  
+  print(f'Start {plant}')
   model = ConcreteModel(plant)
 
   ############### DATA ####################
@@ -137,8 +131,6 @@ def build_steel_plant_deployment(plant, ANR_data, H2_data):
   def pANRThEff(model, g):
     return float(ANR_data.loc[g]['Power in MWe']/ANR_data.loc[g]['Power in MWt'])
 
-  print('Parameters established')
-
 
   ############### OBJECTIVE ##############
 
@@ -190,8 +182,10 @@ def build_steel_plant_deployment(plant, ANR_data, H2_data):
   return model
 
 
-def solve_steel_plant_deployment(model, plant):
+def solve_steel_plant_deployment(plant, ANR_data, H2_data):
   steel_cap_ton_per_annum, h2_dem_kg_per_day, elec_dem_MWh_per_day = get_steel_plant_demand(plant)
+
+  model = build_steel_plant_deployment(plant, ANR_data, H2_data)
   # for carbon accounting
   def compute_annual_carbon_emissions(model):
     return sum(sum(sum(model.pH2CarbonInt[h,g]*model.vQ[n,h,g]*model.pH2CapH2[h]*24*365 for g in model.G) for h in model.H) for n in model.N)+\
@@ -203,48 +197,44 @@ def solve_steel_plant_deployment(model, plant):
   solver.options['mip pool relgap'] = 0.02
   solver.options['mip tolerances absmipgap'] = 1e-4
   solver.options['mip tolerances mipgap'] = 5e-3
-  results = solver.solve(model, tee = True)
+  results = solver.solve(model, tee = False)
 
   results_dic = {}
-  results_dic['Plant'] = [plant]
-  results_dic['Steel prod. (ton/year)'] = [steel_cap_ton_per_annum]
-  results_dic['Steel sales ($/year)'] = [value(model.pSteel)*steel_cap_ton_per_annum]
-  results_dic['H2 Dem (kg/day)'] = [value(model.pH2Dem)]
-  results_dic['Aux Elec Dem (MWe)'] = [value(model.pElecDem)]
-  results_dic['Net Rev. ($/year)'] = [value(model.NetRevenues)]
-  results_dic['Ann. CO2 emissions (kgCO2eq/year)'] = [value(compute_annual_carbon_emissions(model))]
+  results_dic['Plant'] = plant
+  results_dic['Steel prod. (ton/year)'] = steel_cap_ton_per_annum
+  results_dic['Steel sales ($/year)'] = value(model.pSteel)*steel_cap_ton_per_annum
+  results_dic['H2 Dem (kg/day)'] = value(model.pH2Dem)
+  results_dic['Aux Elec Dem (MWe)'] = value(model.pElecDem)
+  results_dic['Net Rev. ($/year)'] = value(model.NetRevenues)
+  results_dic['Ann. CO2 emissions (kgCO2eq/year)'] = value(compute_annual_carbon_emissions(model))
   for h in model.H:
-    results_dic[h] = [0]
+    results_dic[h] = 0
   if results.solver.termination_condition == TerminationCondition.optimal: 
     model.solutions.load_from(results)
-    print('\n\n\n\n',' ------------ SOLUTION  -------------')
     for g in model.G: 
       if value(model.vS[g]) >=1: 
-        print('Chosen type of advanced nuclear reactor is ',g)
-        results_dic['ANR type'] = [g]
+        results_dic['ANR type'] = g
         total_nb_modules = int(np.sum([value(model.vM[n,g]) for n in model.N]))
-        print(total_nb_modules, ' modules are needed.')
-        results_dic['# ANR modules'] = [total_nb_modules]
+        results_dic['# ANR modules'] = total_nb_modules
         for n in model.N:
           if value(model.vM[n,g]) >=1:
-            print('ANR Module # ',int(value(model.vM[n,g])), 'of type ', g)
             for h in model.H:
-              print(int(value(model.vQ[n,h,g])), ' Hydrogen production modules of type:',h )
-              if value(model.vQ[n,h,g]) > 0:
-                results_dic[h][0] += value(model.vQ[n,h,g])
+              results_dic[h] += value(model.vQ[n,h,g])
+    results_dic['Breakeven coal price ($/ton)'] = compute_breakeven_price(results_dic)
+    print(f'Solved {plant}')
     return results_dic
   else:
     print('Not feasible.')
     return None
 
 def compute_breakeven_price(results_ref):
-  revenues = results_ref['Net Rev. ($/year)'][0]
-  steel_sales = results_ref['Steel sales ($/year)'][0]
-  plant_cap = results_ref['Steel prod. (ton/year)'][0]
+  revenues = results_ref['Net Rev. ($/year)']
+  steel_sales = results_ref['Steel sales ($/year)']
+  plant_cap = results_ref['Steel prod. (ton/year)']
   breakeven_price = (steel_sales - revenues - iron_ore_cost*bfbof_iron_cons*plant_cap - om_bfbof*plant_cap)/(COAL_CONS_RATE*plant_cap)
   return breakeven_price
 
-def main(): 
+def main(learning_rate_anr_capex = 0, learning_rate_h2_capex =0, wacc=WACC, print_main_results=True, print_results=False): 
   # Go the present directory
   abspath = os.path.abspath(__file__)
   dname = os.path.dirname(abspath)
@@ -255,41 +245,26 @@ def main():
   steel_ids = list(steel_df['Plant'])
 
   # Load ANR and H2 parameters
-  ANR_data, H2_data = load_data(NOAK=NOAK, N = N_NOAK)
+  ANR_data, H2_data = utils.load_data(learning_rate_anr_capex, learning_rate_h2_capex)
 
   # Build results dataset one by one
   breakeven_df = pd.DataFrame(columns=['Plant', 'H2 Dem (kg/day)', 'Aux Elec Dem (MWe)','Alkaline', 'HTSE', 'PEM', 'ANR type', '# ANR modules',\
                                         'Breakeven coal price ($/ton)', 'Ann. CO2 emissions (kgCO2eq/year)'])
-  not_feasible = []
-  for plant in steel_ids:
-    try: 
-      model = build_steel_plant_deployment(plant, ANR_data, H2_data)
-      result_plant = solve_steel_plant_deployment(model, plant)
-      result_plant['Breakeven coal price ($/ton)'] = [compute_breakeven_price(result_plant)]
-      breakeven_df = pd.concat([breakeven_df, pd.DataFrame.from_dict(data=result_plant)])
-    except ValueError: 
-      not_feasible.append(plant)
-  
-  # Sort results by h2 demand 
-  breakeven_df.sort_values(by=['H2 Dem (kg/day)'], inplace=True)
-  if H2_PTC and NOAK:
-    csv_path = './results/results_steel_deployment_noak_'+str(N_NOAK)+'_h2_ptc.csv'
-  elif H2_PTC:
-    csv_path = './results/results_steel_deployment_foak_h2_ptc.csv'
-  elif NOAK:
-    csv_path = './results/results_steel_deployment_noak_'+str(N_NOAK)+'.csv'
-  else :
-    csv_path = './results/results_steel_deployment_foak.csv'
-  breakeven_df.to_csv(csv_path, header = True, index=False)
 
-  if len(not_feasible)>=1: 
-    print('\n\n NOT FEASIBLE: \n')
-    for plant in not_feasible: 
-      print('Plant : ', plant)
-      print('Demand Steel ton per year : ', get_steel_plant_demand(plant)[0])
-      print('Demand H2 kg per day: ', get_steel_plant_demand(plant)[1])
-      print('Demand electricity MW: ', get_steel_plant_demand(plant)[2]/24)
+  with Pool(10) as pool:
+    results = pool.starmap(solve_steel_plant_deployment, [(plant, ANR_data, H2_data) for plant in steel_ids])
+  pool.close()
 
+  breakeven_df = pd.DataFrame(results)
+
+  if print_main_results:
+    breakeven_df.sort_values(by=['Breakeven coal price ($/ton)'], inplace=True)
+    csv_path = './results/steel_anr_lr_'+str(learning_rate_anr_capex)+'_h2_lr_'+str(learning_rate_h2_capex)+'_wacc_'+str(wacc)+'.csv'
+    breakeven_df.to_csv(csv_path, header = True, index=False)
+
+  # Median Breakeven price
+  med_be = breakeven_df['Breakeven coal price ($/ton)'].median()
+  return med_be
 
 def test():
   plant = 'U.S. Steel Granite City Works'

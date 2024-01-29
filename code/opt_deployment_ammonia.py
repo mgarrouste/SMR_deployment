@@ -262,7 +262,7 @@ def compute_capex_breakeven(results_ref, be_ng_price_foak, ng_price):
   return be_capex
 
 
-def main(learning_rate_anr_capex = 0, learning_rate_h2_capex =0, wacc=WACC, print_main_results=False, print_results=False): 
+def main(learning_rate_anr_capex = 0, learning_rate_h2_capex =0, wacc=WACC, print_main_results=True, print_results=False): 
   # Go the present directory
   abspath = os.path.abspath(__file__)
   dname = os.path.dirname(abspath)
@@ -286,8 +286,6 @@ def main(learning_rate_anr_capex = 0, learning_rate_h2_capex =0, wacc=WACC, prin
 
   breakeven_df = pd.DataFrame(results)
 
-  
-  # Sort results by h2 demand 
   if print_main_results:
     breakeven_df.sort_values(by=['Breakeven NG price ($/MMBtu)'], inplace=True)
     csv_path = './results/ammonia_anr_lr_'+str(learning_rate_anr_capex)+'_h2_lr_'+str(learning_rate_h2_capex)+'_wacc_'+str(wacc)+'.csv'
