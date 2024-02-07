@@ -27,6 +27,13 @@ def get_steel_plant_demand(plant):
   steel_cap_ton_per_annum = float(plant_df['Steel production capacity (ttpa)'].iloc[0]*1000)
   return steel_cap_ton_per_annum, h2_demand_kg_per_day, elec_demand_MWe
 
+
+def get_state(plant):
+  steel_df = pd.read_excel('./h2_demand_bfbof_steel_us_2022.xlsx', sheet_name='processed')
+  plant_df = steel_df[steel_df['Plant'] == plant]
+  state = plant_df['STATE'].iloc[0]
+  return state
+
 def build_steel_plant_deployment(plant, ANR_data, H2_data): 
   print(f'Start {plant}')
   model = ConcreteModel(plant)
@@ -36,6 +43,8 @@ def build_steel_plant_deployment(plant, ANR_data, H2_data):
   steel_cap_ton_per_annum, h2_dem_kg_per_day, elec_dem_MWe = get_steel_plant_demand(plant)
   model.pH2Dem = Param(initialize = h2_dem_kg_per_day) # kg/day
   model.pElecDem = Param(initialize = elec_dem_MWe) #MW-e
+  state = get_state(plant)
+  model.pState = Param(initialize = state, within=Any)
 
   ############### SETS ####################
   #### Sets ####
@@ -201,6 +210,7 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
 
   results_dic = {}
   results_dic['Plant'] = plant
+  results_dic['state'] = value(model.pState)
   results_dic['Steel prod. (ton/year)'] = steel_cap_ton_per_annum
   results_dic['Steel sales ($/year)'] = value(model.pSteel)*steel_cap_ton_per_annum
   results_dic['H2 Dem (kg/day)'] = value(model.pH2Dem)
@@ -248,7 +258,7 @@ def main(learning_rate_anr_capex = 0, learning_rate_h2_capex =0, wacc=WACC, prin
   ANR_data, H2_data = utils.load_data(learning_rate_anr_capex, learning_rate_h2_capex)
 
   # Build results dataset one by one
-  breakeven_df = pd.DataFrame(columns=['Plant', 'H2 Dem (kg/day)', 'Aux Elec Dem (MWe)','Alkaline', 'HTSE', 'PEM', 'ANR type', '# ANR modules',\
+  breakeven_df = pd.DataFrame(columns=['Plant', 'state', 'H2 Dem (kg/day)', 'Aux Elec Dem (MWe)','Alkaline', 'HTSE', 'PEM', 'ANR type', '# ANR modules',\
                                         'Breakeven coal price ($/ton)', 'Ann. CO2 emissions (kgCO2eq/year)'])
 
   with Pool(10) as pool:

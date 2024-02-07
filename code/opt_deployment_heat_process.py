@@ -22,12 +22,17 @@ CONV_MWh_to_MJ = 3600 #MJ/MWh
 GFCAPEX = 1340000 #$/MWth
 GFLT = 12 # years
 
+def get_state(plant_id):
+  ref_df = pd.read_excel('h2_demand_industry_heat.xlsx', sheet_name='max')
+  select_df = ref_df[ref_df['FACILITY_ID']==plant_id]
+  state = select_df['STATE'].iloc[0]
+  return state
 
 def get_plant_demand(plant_id):
-    ref_df = pd.read_excel('h2_demand_industry_heat.xlsx', sheet_name='max')
-    select_df = ref_df[ref_df['FACILITY_ID']==plant_id]
-    demand_kg_day = select_df['H2 demand (kg/year)'].iloc[0]/365
-    return demand_kg_day
+  ref_df = pd.read_excel('h2_demand_industry_heat.xlsx', sheet_name='max')
+  select_df = ref_df[ref_df['FACILITY_ID']==plant_id]
+  demand_kg_day = select_df['H2 demand (kg/year)'].iloc[0]/365
+  return demand_kg_day
 
 def get_heat_demand(plant_id):
   ref_df = pd.read_excel('h2_demand_industry_heat.xlsx', sheet_name='max')
@@ -44,6 +49,8 @@ def solve_process_heat_deployment(plant_id, ANR_data, H2_data):
   model.pH2Dem = Param(initialize=demand_daily) # kg/day
   yearly_heat_demand = get_heat_demand(plant_id)
   model.pHeatDem = Param(initialize = yearly_heat_demand) #MJ/year
+  state = get_state(plant_id)
+  model.pState = Param(initialize = state, within=Any)
 
 
   #### Sets ####
@@ -183,6 +190,7 @@ def solve_process_heat_deployment(plant_id, ANR_data, H2_data):
   results = opt.solve(model, tee = False)
   results_ref = {}
   results_ref['FACILITY_ID'] = plant_id
+  results_ref['state'] = value(model.pState)
   results_ref['H2 Dem. (kg/day)'] = value(model.pH2Dem)
   results_ref['Heat Dem. (MJ/year)'] = value(model.pHeatDem)
   results_ref['Cost ($/year)'] = value(model.NetRevenues)
@@ -222,7 +230,7 @@ def main(learning_rate_anr_capex =0, learning_rate_h2_capex=0, wacc=WACC, print_
   plant_ids = list(demand_df['FACILITY_ID'])
   ANR_data, H2_data = utils.load_data(learning_rate_anr_capex, learning_rate_h2_capex)
 
-  results_df = pd.DataFrame(columns=['FACILITY_ID', 'H2 Dem. (kg/day)', 'Heat Dem. (MJ/year)','Alkaline', 'HTSE', \
+  results_df = pd.DataFrame(columns=['FACILITY_ID', 'state', 'H2 Dem. (kg/day)', 'Heat Dem. (MJ/year)','Alkaline', 'HTSE', \
                                      'PEM', 'ANR type', '# ANR modules', 'Cost ($/year)',\
                                      'Ann. carbon emissions (kgCO2eq/year)', 'Breakeven NG price ($/MMBtu)'])
 

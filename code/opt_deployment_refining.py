@@ -22,10 +22,16 @@ WACC = utils.WACC
 
 
 def get_refinery_demand(ref_id):
-    ref_df = pd.read_excel('h2_demand_refineries.xlsx', sheet_name='processed')
-    select_df = ref_df[ref_df['refinery_id']==ref_id]
-    demand_kg_day = select_df['Corrected 2022 demand (kg/day)'].iloc[0]
-    return demand_kg_day
+  ref_df = pd.read_excel('h2_demand_refineries.xlsx', sheet_name='processed')
+  select_df = ref_df[ref_df['refinery_id']==ref_id]
+  demand_kg_day = select_df['Corrected 2022 demand (kg/day)'].iloc[0]
+  return demand_kg_day
+
+def get_state(ref_id):
+  ref_df = pd.read_excel('h2_demand_refineries.xlsx', sheet_name='processed')
+  select_df = ref_df[ref_df['refinery_id']==ref_id]
+  state= select_df['State'].iloc[0]
+  return state
 
 
 def solve_refinery_deployment(ref_id, ANR_data, H2_data):
@@ -35,6 +41,8 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data):
   #### Data ####
   demand_daily = get_refinery_demand(ref_id)
   model.pRefDem = Param(initialize=demand_daily) # kg/day
+  state = get_state(ref_id)
+  model.pState = Param(initialize = state, within=Any)
 
 
   #### Sets ####
@@ -162,6 +170,7 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data):
   results = opt.solve(model, tee = False)
   results_ref = {}
   results_ref['ref_id'] = ref_id
+  results_ref['state'] = value(model.pState)
   results_ref['Ref. Dem. (kg/day)'] = value(model.pRefDem)
   results_ref['Net Revenues ($/year)'] = value(model.NetRevenues)
   results_ref['Ann. carbon emissions (kgCO2eq/year)'] = value(compute_annual_carbon_emissions(model))
@@ -201,7 +210,7 @@ def main(learning_rate_anr_capex=0, learning_rate_h2_capex=0, wacc=WACC, print_m
 
   ANR_data, H2_data = utils.load_data(learning_rate_anr_capex, learning_rate_h2_capex)
 
-  breakeven_df = pd.DataFrame(columns=['ref_id', 'Ref. Dem. (kg/day)','Alkaline', 'HTSE', 'PEM', 'ANR type', \
+  breakeven_df = pd.DataFrame(columns=['ref_id', 'state', 'Ref. Dem. (kg/day)','Alkaline', 'HTSE', 'PEM', 'ANR type', \
                                        '# ANR modules','Breakeven price ($/MMBtu)', 'Ann. carbon emissions (kgCO2eq/year)'])
 
   with Pool(10) as pool: 

@@ -40,7 +40,7 @@ merged = merged[['Plant name (English)', 'FACILITY NAME_x', 'FACILITY NAME_y', '
                  'Location address', 'REPORTED ADDRESS', 'CITY NAME', 'COUNTY NAME', 'STATE', 'Subnational unit (province/state)','ZIP CODE',
                  'Status','Main production process', 'Main production equipment','GHG QUANTITY (METRIC TONS CO2e)','Steel production capacity (ttpa)']]
 # Select relevant columns for final dataset
-clean_df = merged[['Plant name (English)', 'Coordinates', 'REPORTED ADDRESS', 'CITY NAME', 'COUNTY NAME', 'ZIP CODE',
+clean_df = merged[['Plant name (English)', 'Coordinates', 'REPORTED ADDRESS', 'CITY NAME', 'COUNTY NAME', 'ZIP CODE', 'STATE',
                     'Status', 'Main production process', 'GHG QUANTITY (METRIC TONS CO2e)', 
                    'Steel production capacity (ttpa)']]
 
