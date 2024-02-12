@@ -164,6 +164,24 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data):
   def compute_annual_carbon_emissions(model):
     return sum(sum(sum(model.pH2CarbonInt[h,g]*model.vQ[n,h,g]*model.pH2CapH2[h]*24*365 for g in model.G) for h in model.H) for n in model.N)
 
+  def compute_anr_capex(model):
+    return sum(sum(model.pANRCap[g]*model.vM[n,g]*model.pANRCAPEX[g]*model.pANRCRF[g]for g in model.G) for n in model.N) 
+  
+  def compute_anr_om(model):
+    return sum(sum(model.pANRCap[g]*model.vM[n,g]*(model.pANRFC[g]+model.pANRVOM[g]*365*24) for g in model.G) for n in model.N) 
+  
+  def compute_h2_capex(model):
+    return sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]*model.pH2CAPEX[h]*model.pH2CRF[h] for h in model.H) for g in model.G) for n in model.N) 
+  
+  def compute_h2_om(model):
+    return sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]*(model.pH2FC[h]+model.pH2VOM[h]*365*24) for h in model.H) for g in model.G) for n in model.N) 
+
+  def get_crf(model):
+    return sum(model.vS[g]*model.pANRCRF[g] for g in model.G)
+  
+  def get_deployed_cap(model):
+    return sum(sum (model.vM[n,g]*model.pANRCap[g] for g in model.G) for n in model.N)
+
   #### SOLVE with CPLEX ####
   opt = SolverFactory('cplex')
 
@@ -178,6 +196,14 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data):
     results_ref[h] = 0
   if results.solver.termination_condition == TerminationCondition.optimal: 
     model.solutions.load_from(results)
+    results_ref['Ann. CO2 emissions (kgCO2eq/year)'] = value(compute_annual_carbon_emissions(model))
+    results_ref['ANR CAPEX ($/year)'] = value(compute_anr_capex(model))
+    results_ref['H2 CAPEX ($/year)'] = value(compute_h2_capex(model))
+    results_ref['ANR O&M ($/year)'] = value(compute_anr_om(model))
+    results_ref['H2 O&M ($/year)'] = value(compute_h2_om(model))
+    results_ref['ANR CRF'] = value(get_crf(model))
+    results_ref['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
+    
     for g in model.G: 
       if value(model.vS[g]) >=1: 
         results_ref['ANR type'] = g
