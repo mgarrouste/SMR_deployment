@@ -68,7 +68,6 @@ def build_steel_plant_deployment(plant, ANR_data, H2_data):
   model.pEAFCAPEX = 160 # $/tsteel/year
   model.pEAFOM  = 24.89 # $/tsteel (EAF and casting)
   model.pIronOre = iron_ore_cost # $/tironore
-  model.pSteel = 800 # $/tsteel
   model.pRatioSteelDRI = 0.9311 # tsteel/tDRI
   model.pRatioIronOreDRI = 1.391 # tironore/tDRI
 
@@ -154,11 +153,8 @@ def build_steel_plant_deployment(plant, ANR_data, H2_data):
             model.pIronOre*model.pRatioIronOreDRI/model.pRatioSteelDRI)
     return costs
 
-  def annualized_revenues(model):
-    return model.pSteel*steel_cap_ton_per_annum
-
   def annualized_net_rev(model):
-    return annualized_revenues(model)-annualized_costs_anr_h2(model)-annualized_costs_dri_eaf(model)
+    return -annualized_costs_anr_h2(model)-annualized_costs_dri_eaf(model)
   model.NetRevenues = Objective(expr=annualized_net_rev, sense=maximize)  
 
 
@@ -272,9 +268,8 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
 
 def compute_breakeven_price(results_ref):
   revenues = results_ref['Net Rev. ($/year)']
-  steel_sales = results_ref['Steel sales ($/year)']
   plant_cap = results_ref['Steel prod. (ton/year)']
-  breakeven_price = (steel_sales - revenues - iron_ore_cost*bfbof_iron_cons*plant_cap - om_bfbof*plant_cap)/(COAL_CONS_RATE*plant_cap)
+  breakeven_price = ( revenues + iron_ore_cost*bfbof_iron_cons*plant_cap + om_bfbof*plant_cap)/(COAL_CONS_RATE*plant_cap)
   return breakeven_price
 
 def main(learning_rate_anr_capex = 0, learning_rate_h2_capex =0, wacc=WACC, print_main_results=True, print_results=False): 
