@@ -149,7 +149,8 @@ def build_steel_plant_deployment(plant, ANR_data, H2_data):
     return costs
   
   def annualized_costs_dri_eaf(model):
-    costs = steel_cap_ton_per_annum*(model.pEAFCAPEX + model.pShaftFCAPEX/model.pRatioSteelDRI + model.pEAFOM +\
+    crf = model.pWACC / (1 - (1/(1+model.pWACC)**20) )# assumes 20 years lifetime for shaft and eaf
+    costs = steel_cap_ton_per_annum*(model.pEAFCAPEX*crf + model.pShaftFCAPEX*crf/model.pRatioSteelDRI + model.pEAFOM +\
             model.pIronOre*model.pRatioIronOreDRI/model.pRatioSteelDRI)
     return costs
 
@@ -199,6 +200,29 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
   def compute_annual_carbon_emissions(model):
     return sum(sum(sum(model.pH2CarbonInt[h,g]*model.vQ[n,h,g]*model.pH2CapH2[h]*24*365 for g in model.G) for h in model.H) for n in model.N)+\
           model.pDRICO2Intensity*steel_cap_ton_per_annum
+  
+  def compute_anr_capex(model):
+    return sum(sum(model.pANRCap[g]*model.vM[n,g]*model.pANRCAPEX[g]*model.pANRCRF[g]for g in model.G) for n in model.N) 
+  
+  def compute_anr_om(model):
+    return sum(sum(model.pANRCap[g]*model.vM[n,g]*(model.pANRFC[g]+model.pANRVOM[g]*365*24) for g in model.G) for n in model.N) 
+  
+  def compute_h2_capex(model):
+    return sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]*model.pH2CAPEX[h]*model.pH2CRF[h] for h in model.H) for g in model.G) for n in model.N) 
+  
+  def compute_h2_om(model):
+    return sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]*(model.pH2FC[h]+model.pH2VOM[h]*365*24) for h in model.H) for g in model.G) for n in model.N) 
+
+  def get_crf(model):
+    return sum(model.vS[g]*model.pANRCRF[g] for g in model.G)
+  
+  def compute_conv_costs(model):
+    crf = model.pWACC / (1 - (1/(1+model.pWACC)**20) )# assumes 20 years lifetime for shaft and eaf
+    costs = steel_cap_ton_per_annum*(model.pEAFCAPEX*crf + model.pShaftFCAPEX*crf/model.pRatioSteelDRI )
+    return costs
+  
+  def get_deployed_cap(model):
+    return sum(sum (model.vM[n,g]*model.pANRCap[g] for g in model.G) for n in model.N)
 
   ############## SOLVE ###################
   solver = SolverFactory('cplex')
@@ -221,6 +245,15 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
     results_dic[h] = 0
   if results.solver.termination_condition == TerminationCondition.optimal: 
     model.solutions.load_from(results)
+    results_dic['Ann. CO2 emissions (kgCO2eq/year)'] = value(compute_annual_carbon_emissions(model))
+    results_dic['ANR CAPEX ($/year)'] = value(compute_anr_capex(model))
+    results_dic['H2 CAPEX ($/year)'] = value(compute_h2_capex(model))
+    results_dic['ANR O&M ($/year)'] = value(compute_anr_om(model))
+    results_dic['H2 O&M ($/year)'] = value(compute_h2_om(model))
+    results_dic['Conversion costs ($/year)'] = value(compute_conv_costs(model))
+    results_dic['ANR CRF'] = value(get_crf(model))
+    results_dic['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
+    
     for g in model.G: 
       if value(model.vS[g]) >=1: 
         results_dic['ANR type'] = g
