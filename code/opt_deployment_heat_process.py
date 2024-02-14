@@ -188,13 +188,13 @@ def solve_process_heat_deployment(plant_id, ANR_data, H2_data):
     return sum(sum(sum(model.pH2CarbonInt[h,g]*model.vQ[n,h,g]*model.pH2CapH2[h]*24*365 for g in model.G) for h in model.H) for n in model.N)
   
   def compute_anr_capex(model):
-    return sum(sum(model.pANRCap[g]*model.vM[n,g]*model.pANRCAPEX[g]*model.pANRCRF[g]for g in model.G) for n in model.N) 
+    return sum(sum(model.pANRCap[g]*model.vM[n,g]*model.pANRCAPEX[g]*(1-model.pITC_ANR)*model.pANRCRF[g]for g in model.G) for n in model.N) 
   
   def compute_anr_om(model):
     return sum(sum(model.pANRCap[g]*model.vM[n,g]*(model.pANRFC[g]+model.pANRVOM[g]*365*24) for g in model.G) for n in model.N) 
   
   def compute_h2_capex(model):
-    return sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]*model.pH2CAPEX[h]*model.pH2CRF[h] for h in model.H) for g in model.G) for n in model.N) 
+    return sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]*model.pH2CAPEX[h]*(1-model.pITC_H2)*model.pH2CRF[h] for h in model.H) for g in model.G) for n in model.N) 
   
   def compute_h2_om(model):
     return sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]*(model.pH2FC[h]+model.pH2VOM[h]*365*24) for h in model.H) for g in model.G) for n in model.N) 
@@ -205,7 +205,7 @@ def solve_process_heat_deployment(plant_id, ANR_data, H2_data):
   def compute_conv_costs(model):
     gf_crf = model.pWACC / (1 - (1/(1+model.pWACC)**model.pGFLT) ) 
     heat_power_dem = model.pHeatDem/(CONV_MWh_to_MJ*365*24) #MWth
-    costs = heat_power_dem*model.pGFCAPEX*gf_crf
+    costs = heat_power_dem*model.pGFCAPEX*gf_crf*(1-model.pITC_H2)
     return costs
   
   def get_deployed_cap(model):
