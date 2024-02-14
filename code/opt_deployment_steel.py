@@ -59,7 +59,10 @@ def build_steel_plant_deployment(plant, ANR_data, H2_data):
   model.vQ = Var(model.N, model.H, model.G, within=NonNegativeIntegers, doc='Nb of H2 module of type H for an ANR module of type g')
 
   ############### PARAMETERS ##############
+  # Financial 
   model.pWACC = Param(initialize = WACC)
+  model.pITC_ANR = Param(initialize = utils.ITC_ANR)
+  model.pITC_H2 = Param(initialize = utils.ITC_H2)
 
   ### Steel ###
   # Carbon emissions from DRI process at 95% H2 concentration
@@ -143,13 +146,13 @@ def build_steel_plant_deployment(plant, ANR_data, H2_data):
   ############### OBJECTIVE ##############
 
   def annualized_costs_anr_h2(model):
-    costs =  sum(sum(model.pANRCap[g]*model.vM[n,g]*((model.pANRCAPEX[g]*model.pANRCRF[g]+model.pANRFC[g])+model.pANRVOM[g]*365*24) \
-      + sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]*(model.pH2CAPEX[h]*model.pH2CRF[h]+model.pH2FC[h]+model.pH2VOM[h]*365*24) for h in model.H) for g in model.G) for n in model.N) 
+    costs =  sum(sum(model.pANRCap[g]*model.vM[n,g]*((model.pANRCAPEX[g]*(1-model.pITC_ANR)*model.pANRCRF[g]+model.pANRFC[g])+model.pANRVOM[g]*365*24) \
+      + sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]*(model.pH2CAPEX[h]*(1-model.pITC_H2)*model.pH2CRF[h]+model.pH2FC[h]+model.pH2VOM[h]*365*24) for h in model.H) for g in model.G) for n in model.N) 
     return costs
   
   def annualized_costs_dri_eaf(model):
     crf = model.pWACC / (1 - (1/(1+model.pWACC)**20) )# assumes 20 years lifetime for shaft and eaf
-    costs = steel_cap_ton_per_annum*(model.pEAFCAPEX*crf + model.pShaftFCAPEX*crf/model.pRatioSteelDRI + model.pEAFOM +\
+    costs = steel_cap_ton_per_annum*(model.pEAFCAPEX*crf*(1-model.pITC_H2) + model.pShaftFCAPEX*(1-model.pITC_H2)*crf/model.pRatioSteelDRI + model.pEAFOM +\
             model.pIronOre*model.pRatioIronOreDRI/model.pRatioSteelDRI)
     return costs
 

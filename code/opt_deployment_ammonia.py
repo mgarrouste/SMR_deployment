@@ -7,6 +7,8 @@ import utils
 from multiprocessing import Pool
 
 WACC = utils.WACC
+ITC_ANR = utils.ITC_ANR
+ITC_H2 = utils.ITC_H2
 
 MaxANRMod = 40
 NG_PRICE = 6.4 #$/MMBtu
@@ -52,7 +54,10 @@ def build_ammonia_plant_deployment(plant, ANR_data, H2_data):
   model.vQ = Var(model.N, model.H, model.G, within=NonNegativeIntegers, doc='Nb of H2 module of type H for an ANR module of type g')
 
   ############### PARAMETERS ##############
+  # Financial
   model.pWACC = Param(initialize = WACC)
+  model.pITC_H2 = Param(initialize = ITC_H2)
+  model.pITC_ANR = Param(initialize = ITC_ANR)
 
   ### Nuc NH3 ###
   model.pAuxNH3CAPEX = Param(initialize = auxNucNH3CAPEX)
@@ -129,13 +134,13 @@ def build_ammonia_plant_deployment(plant, ANR_data, H2_data):
   ############### OBJECTIVE ##############
 
   def annualized_costs_anr_h2(model):
-    costs =  sum(sum(model.pANRCap[g]*model.vM[n,g]*((model.pANRCAPEX[g]*model.pANRCRF[g]+model.pANRFC[g])+model.pANRVOM[g]*365*24) \
-      + sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]*(model.pH2CAPEX[h]*model.pH2CRF[h]+model.pH2FC[h]+model.pH2VOM[h]*365*24) for h in model.H) for g in model.G) for n in model.N) 
+    costs =  sum(sum(model.pANRCap[g]*model.vM[n,g]*((model.pANRCAPEX[g]*(1-model.pITC_ANR)*model.pANRCRF[g]+model.pANRFC[g])+model.pANRVOM[g]*365*24) \
+      + sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]*(model.pH2CAPEX[h]*(1-model.pITC_H2)*model.pH2CRF[h]+model.pH2FC[h]+model.pH2VOM[h]*365*24) for h in model.H) for g in model.G) for n in model.N) 
     return costs
   
   def annualized_nuc_NH3_costs(model):
     crf = model.pWACC / (1 - (1/(1+model.pWACC)**auxNucNH3LT) ) 
-    costs =auxNucNH3CAPEX*crf
+    costs =auxNucNH3CAPEX*crf*(1-model.pITC_H2)
     return costs
 
   def annualized_net_rev(model):
