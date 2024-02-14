@@ -3,6 +3,8 @@ import numpy as np
 
 N=1000
 WACC = 0.077
+ITC_ANR = 0.3
+ITC_H2 = 0.3
 
 def update_capex_costs(ANR_data, learning_rate_anr_capex, H2_data, learning_rate_h2_capex):
   ANR_data['CAPEX $/MWe'] = ANR_data.apply(lambda x: x['CAPEX $/MWe']*np.power(N, np.log2(1-learning_rate_anr_capex)), axis=1)
