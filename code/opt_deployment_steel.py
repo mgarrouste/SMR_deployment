@@ -14,7 +14,7 @@ COAL_CONS_RATE = 0.663 #ton-coal/ton-steel for conventional BF/BOF plant
 
 iron_ore_cost = 100 #$/t_ironore
 bfbof_iron_cons = 1.226 #t_ironore/t_steel
-om_bfbof = 353.25 #$/t_steel
+om_bfbof = 178.12 #$/t_steel
 
 WACC = utils.WACC
 
@@ -201,13 +201,13 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
           model.pDRICO2Intensity*steel_cap_ton_per_annum
   
   def compute_anr_capex(model):
-    return sum(sum(model.pANRCap[g]*model.vM[n,g]*model.pANRCAPEX[g]*model.pANRCRF[g]for g in model.G) for n in model.N) 
+    return sum(sum(model.pANRCap[g]*model.vM[n,g]*model.pANRCAPEX[g]*(1-model.pITC_ANR)*model.pANRCRF[g]for g in model.G) for n in model.N) 
   
   def compute_anr_om(model):
     return sum(sum(model.pANRCap[g]*model.vM[n,g]*(model.pANRFC[g]+model.pANRVOM[g]*365*24) for g in model.G) for n in model.N) 
   
   def compute_h2_capex(model):
-    return sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]*model.pH2CAPEX[h]*model.pH2CRF[h] for h in model.H) for g in model.G) for n in model.N) 
+    return sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]*model.pH2CAPEX[h]*(1-model.pITC_H2)*model.pH2CRF[h] for h in model.H) for g in model.G) for n in model.N) 
   
   def compute_h2_om(model):
     return sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]*(model.pH2FC[h]+model.pH2VOM[h]*365*24) for h in model.H) for g in model.G) for n in model.N) 
@@ -217,7 +217,7 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
   
   def compute_conv_costs(model):
     crf = model.pWACC / (1 - (1/(1+model.pWACC)**20) )# assumes 20 years lifetime for shaft and eaf
-    costs = steel_cap_ton_per_annum*(model.pEAFCAPEX*crf + model.pShaftFCAPEX*crf/model.pRatioSteelDRI )
+    costs = steel_cap_ton_per_annum*(model.pEAFCAPEX*(1-model.pITC_H2)*crf + model.pShaftFCAPEX*(1-model.pITC_H2)*crf/model.pRatioSteelDRI )
     return costs
   
   def get_deployed_cap(model):
@@ -235,7 +235,6 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
   results_dic['Plant'] = plant
   results_dic['state'] = value(model.pState)
   results_dic['Steel prod. (ton/year)'] = steel_cap_ton_per_annum
-  results_dic['Steel sales ($/year)'] = value(model.pSteel)*steel_cap_ton_per_annum
   results_dic['H2 Dem (kg/day)'] = value(model.pH2Dem)
   results_dic['Aux Elec Dem (MWe)'] = value(model.pElecDem)
   results_dic['Net Rev. ($/year)'] = value(model.NetRevenues)
@@ -272,7 +271,7 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
 def compute_breakeven_price(results_ref):
   revenues = results_ref['Net Rev. ($/year)']
   plant_cap = results_ref['Steel prod. (ton/year)']
-  breakeven_price = ( revenues + iron_ore_cost*bfbof_iron_cons*plant_cap + om_bfbof*plant_cap)/(COAL_CONS_RATE*plant_cap)
+  breakeven_price = ( -revenues - iron_ore_cost*bfbof_iron_cons*plant_cap - om_bfbof*plant_cap)/(COAL_CONS_RATE*plant_cap)
   return breakeven_price
 
 def main(learning_rate_anr_capex = 0, learning_rate_h2_capex =0, wacc=WACC, print_main_results=True, print_results=False): 
