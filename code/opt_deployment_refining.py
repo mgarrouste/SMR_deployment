@@ -190,11 +190,10 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data):
 
   results = opt.solve(model, tee = False)
   results_ref = {}
-  results_ref['ref_id'] = ref_id
+  results_ref['id'] = ref_id
   results_ref['state'] = value(model.pState)
-  results_ref['Ref. Dem. (kg/day)'] = value(model.pRefDem)
+  results_ref['H2 Dem. (kg/day)'] = value(model.pRefDem)
   results_ref['Net Revenues ($/year)'] = value(model.NetRevenues)
-  results_ref['Ann. carbon emissions (kgCO2eq/year)'] = value(compute_annual_carbon_emissions(model))
   for h in model.H:
     results_ref[h] = 0
   if results.solver.termination_condition == TerminationCondition.optimal: 
@@ -216,8 +215,8 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data):
           if value(model.vM[n,g]) >=1:
             for h in model.H:
               results_ref[h] += value(model.vQ[n,h,g])
-    results_ref['Breakeven price ($/MMBtu)'] = compute_breakeven_price(results_ref)
-    print(f'Refning plant {ref_id} solved')
+    results_ref['Breakeven NG price ($/MMBtu)'] = compute_breakeven_price(results_ref)
+    print(f'Refining plant {ref_id} solved')
     return results_ref
   else:
     print('Not feasible.')
@@ -226,7 +225,7 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data):
 
 def compute_breakeven_price(results_ref):
   revenues = results_ref['Net Revenues ($/year)']
-  breakeven_price = -revenues/(EFF_H2_SMR * CONV_MJ_TO_MMBTU * results_ref['Ref. Dem. (kg/day)']*365)
+  breakeven_price = -revenues/(EFF_H2_SMR * CONV_MJ_TO_MMBTU * results_ref['H2 Dem. (kg/day)']*365)
   return breakeven_price
 
 
@@ -239,23 +238,34 @@ def main(learning_rate_anr_capex=0, learning_rate_h2_capex=0, wacc=WACC, print_m
 
   ANR_data, H2_data = utils.load_data(learning_rate_anr_capex, learning_rate_h2_capex)
 
-  breakeven_df = pd.DataFrame(columns=['ref_id', 'state', 'Ref. Dem. (kg/day)','Alkaline', 'HTSE', 'PEM', 'ANR type', \
-                                       '# ANR modules','Breakeven price ($/MMBtu)', 'Ann. carbon emissions (kgCO2eq/year)'])
-
   with Pool(10) as pool: 
     results = pool.starmap(solve_refinery_deployment, [(ref_id, ANR_data, H2_data) for ref_id in ref_ids])
   pool.close()
 
-  breakeven_df = pd.DataFrame(results)
-
-
+  df = pd.DataFrame(results)
+  excel_file = './results/raw_results_anr_lr_'+str(learning_rate_anr_capex)+'_h2_lr_'+str(learning_rate_h2_capex)+'_wacc_'+str(wacc)+'.xlsx'
+  sheet_name = 'refining'
   if print_main_results:
-    breakeven_df.sort_values(by=['Breakeven price ($/MMBtu)'], inplace=True)
-    csv_path = './results/refining_anr_lr_'+str(learning_rate_anr_capex)+'_h2_lr_'+str(learning_rate_h2_capex)+'_wacc_'+str(wacc)+'.csv'
-    breakeven_df.to_csv(csv_path, header = True, index=False)
+    # Try to read the existing Excel file
+    
+    try:
+    # Load the existing Excel file
+      with pd.ExcelFile(excel_file, engine='openpyxl') as xls:
+          # Check if the sheet exists
+          if sheet_name in xls.sheet_names:
+              # If the sheet exists, replace the data
+              with pd.ExcelWriter(excel_file, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
+                  df.to_excel(writer, sheet_name=sheet_name, index=False)
+          else:
+              # If the sheet doesn't exist, create a new sheet
+              with pd.ExcelWriter(excel_file, engine='openpyxl', mode='a') as writer:
+                  df.to_excel(writer, sheet_name=sheet_name, index=False)
+    except FileNotFoundError:
+        # If the file doesn't exist, create a new one and write the DataFrame to it
+        df.to_excel(excel_file, sheet_name=sheet_name, index=False)
 
   # Median Breakeven price
-  med_be = breakeven_df['Breakeven price ($/MMBtu)'].median()
+  med_be = df['Breakeven NG price ($/MMBtu)'].median()
   return med_be
 
 

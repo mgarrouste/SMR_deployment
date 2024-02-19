@@ -232,13 +232,12 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
   results = solver.solve(model, tee = False)
 
   results_dic = {}
-  results_dic['Plant'] = plant
+  results_dic['id'] = plant
   results_dic['state'] = value(model.pState)
   results_dic['Steel prod. (ton/year)'] = steel_cap_ton_per_annum
-  results_dic['H2 Dem (kg/day)'] = value(model.pH2Dem)
-  results_dic['Aux Elec Dem (MWe)'] = value(model.pElecDem)
-  results_dic['Net Rev. ($/year)'] = value(model.NetRevenues)
-  results_dic['Ann. CO2 emissions (kgCO2eq/year)'] = value(compute_annual_carbon_emissions(model))
+  results_dic['H2 Dem. (kg/day)'] = value(model.pH2Dem)
+  results_dic['Aux Elec Dem. (MWe)'] = value(model.pElecDem)
+  results_dic['Net Revenues ($/year)'] = value(model.NetRevenues)
   for h in model.H:
     results_dic[h] = 0
   if results.solver.termination_condition == TerminationCondition.optimal: 
@@ -269,7 +268,7 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
     return None
 
 def compute_breakeven_price(results_ref):
-  revenues = results_ref['Net Rev. ($/year)']
+  revenues = results_ref['Net Revenues ($/year)']
   plant_cap = results_ref['Steel prod. (ton/year)']
   breakeven_price = ( -revenues - iron_ore_cost*bfbof_iron_cons*plant_cap - om_bfbof*plant_cap)/(COAL_CONS_RATE*plant_cap)
   return breakeven_price
@@ -295,12 +294,33 @@ def main(learning_rate_anr_capex = 0, learning_rate_h2_capex =0, wacc=WACC, prin
     results = pool.starmap(solve_steel_plant_deployment, [(plant, ANR_data, H2_data) for plant in steel_ids])
   pool.close()
 
-  breakeven_df = pd.DataFrame(results)
+  df = pd.DataFrame(results)
 
+  excel_file = './results/raw_results_anr_lr_'+str(learning_rate_anr_capex)+'_h2_lr_'+str(learning_rate_h2_capex)+'_wacc_'+str(wacc)+'.xlsx'
+  sheet_name = 'steel'
   if print_main_results:
+    # Try to read the existing Excel file
+    
+    try:
+    # Load the existing Excel file
+      with pd.ExcelFile(excel_file, engine='openpyxl') as xls:
+          # Check if the sheet exists
+          if sheet_name in xls.sheet_names:
+              # If the sheet exists, replace the data
+              with pd.ExcelWriter(excel_file, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
+                  df.to_excel(writer, sheet_name=sheet_name, index=False)
+          else:
+              # If the sheet doesn't exist, create a new sheet
+              with pd.ExcelWriter(excel_file, engine='openpyxl', mode='a') as writer:
+                  df.to_excel(writer, sheet_name=sheet_name, index=False)
+    except FileNotFoundError:
+        # If the file doesn't exist, create a new one and write the DataFrame to it
+        df.to_excel(excel_file, sheet_name=sheet_name, index=False)
+
+  """if print_main_results:
     breakeven_df.sort_values(by=['Breakeven coal price ($/ton)'], inplace=True)
     csv_path = './results/steel_anr_lr_'+str(learning_rate_anr_capex)+'_h2_lr_'+str(learning_rate_h2_capex)+'_wacc_'+str(wacc)+'.csv'
-    breakeven_df.to_csv(csv_path, header = True, index=False)
+    breakeven_df.to_csv(csv_path, header = True, index=False)"""
 
   # Median Breakeven price
   med_be = breakeven_df['Breakeven coal price ($/ton)'].median()

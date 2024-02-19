@@ -216,24 +216,22 @@ def solve_process_heat_deployment(plant_id, ANR_data, H2_data):
 
   results = opt.solve(model, tee = False)
   results_ref = {}
-  results_ref['FACILITY_ID'] = plant_id
+  results_ref['id'] = plant_id
   results_ref['state'] = value(model.pState)
   results_ref['H2 Dem. (kg/day)'] = value(model.pH2Dem)
   results_ref['Heat Dem. (MJ/year)'] = value(model.pHeatDem)
-  results_ref['Cost ($/year)'] = value(model.NetRevenues)
-  results_ref['Ann. CO2 emissions (kgCO2eq/year)'] = value(compute_annual_carbon_emissions(model))
-  results_ref['ANR CAPEX ($/year)'] = value(compute_anr_capex(model))
-  results_ref['H2 CAPEX ($/year)'] = value(compute_h2_capex(model))
-  results_ref['ANR O&M ($/year)'] = value(compute_anr_om(model))
-  results_ref['H2 O&M ($/year)'] = value(compute_h2_om(model))
-  results_ref['Conversion costs ($/year)'] = value(compute_conv_costs(model))
-  results_ref['ANR CRF'] = value(get_crf(model))
-  results_ref['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
-    
+  results_ref['Net Revenues ($/year)'] = value(model.NetRevenues)
   for h in model.H:
     results_ref[h] = 0
   if results.solver.termination_condition == TerminationCondition.optimal: 
     model.solutions.load_from(results)
+    results_ref['Ann. CO2 emissions (kgCO2eq/year)'] = value(compute_annual_carbon_emissions(model))
+    results_ref['ANR CAPEX ($/year)'] = value(compute_anr_capex(model))
+    results_ref['H2 CAPEX ($/year)'] = value(compute_h2_capex(model))
+    results_ref['ANR O&M ($/year)'] = value(compute_anr_om(model))
+    results_ref['H2 O&M ($/year)'] = value(compute_h2_om(model))
+    results_ref['ANR CRF'] = value(get_crf(model))
+    results_ref['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
     for g in model.G: 
       if value(model.vS[g]) >=1: 
         results_ref['ANR type'] = g
@@ -251,7 +249,7 @@ def solve_process_heat_deployment(plant_id, ANR_data, H2_data):
     return None
 
 def compute_breakeven_price(results_ref):
-  anr_h2_rev = results_ref['Cost ($/year)']
+  anr_h2_rev = results_ref['Net Revenues ($/year)']
   heat_demand = results_ref['Heat Dem. (MJ/year)']*CONV_MJ_TO_MMBTU
   breakeven_price = -anr_h2_rev/heat_demand
   return breakeven_price
@@ -265,27 +263,36 @@ def main(learning_rate_anr_capex =0, learning_rate_h2_capex=0, wacc=WACC, print_
   plant_ids = list(demand_df['FACILITY_ID'])
   ANR_data, H2_data = utils.load_data(learning_rate_anr_capex, learning_rate_h2_capex)
 
-  results_df = pd.DataFrame(columns=['FACILITY_ID', 'state', 'H2 Dem. (kg/day)', 'Heat Dem. (MJ/year)','Alkaline', 'HTSE', \
-                                     'PEM', 'ANR type', '# ANR modules', 'Cost ($/year)',\
-                                     'Ann. carbon emissions (kgCO2eq/year)', 'Breakeven NG price ($/MMBtu)'])
-
   with Pool() as pool: 
     results = pool.starmap(solve_process_heat_deployment, [(plant, ANR_data, H2_data) for plant in plant_ids])
   pool.close()
 
-  results_df = pd.DataFrame(results)
+  df = pd.DataFrame(results)
 
-
-  # Sort results by h2 demand 
+  excel_file = './results/raw_results_anr_lr_'+str(learning_rate_anr_capex)+'_h2_lr_'+str(learning_rate_h2_capex)+'_wacc_'+str(wacc)+'.xlsx'
+  sheet_name = 'process_heat'
   if print_main_results:
-    results_df.sort_values(by=['Breakeven NG price ($/MMBtu)'], inplace=True)
-    csv_path = './results/process_heat_anr_lr_'+str(learning_rate_anr_capex)+'_h2_lr_'+str(learning_rate_h2_capex)\
-      +'_wacc_'+str(wacc)+'.csv'
-    results_df.to_csv(csv_path, header = True, index=False)
+    # Try to read the existing Excel file
+    
+    try:
+    # Load the existing Excel file
+      with pd.ExcelFile(excel_file, engine='openpyxl') as xls:
+          # Check if the sheet exists
+          if sheet_name in xls.sheet_names:
+              # If the sheet exists, replace the data
+              with pd.ExcelWriter(excel_file, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
+                  df.to_excel(writer, sheet_name=sheet_name, index=False)
+          else:
+              # If the sheet doesn't exist, create a new sheet
+              with pd.ExcelWriter(excel_file, engine='openpyxl', mode='a') as writer:
+                  df.to_excel(writer, sheet_name=sheet_name, index=False)
+    except FileNotFoundError:
+        # If the file doesn't exist, create a new one and write the DataFrame to it
+        df.to_excel(excel_file, sheet_name=sheet_name, index=False)
   
   
   # Return median breakeven price
-  med_be = results_df['Breakeven NG price ($/MMBtu)'].median()
+  med_be = df['Breakeven NG price ($/MMBtu)'].median()
   return med_be
 
 
