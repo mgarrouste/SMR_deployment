@@ -260,7 +260,7 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
           if value(model.vM[n,g]) >=1:
             for h in model.H:
               results_dic[h] += value(model.vQ[n,h,g])
-    results_dic['Breakeven coal price ($/ton)'] = compute_breakeven_price(results_dic)
+    results_dic['Breakeven price ($/MMBtu)'] = compute_breakeven_price(results_dic)
     print(f'Solved {plant}')
     return results_dic
   else:
@@ -270,7 +270,8 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
 def compute_breakeven_price(results_ref):
   revenues = results_ref['Net Revenues ($/year)']
   plant_cap = results_ref['Steel prod. (ton/year)']
-  breakeven_price = ( -revenues - iron_ore_cost*bfbof_iron_cons*plant_cap - om_bfbof*plant_cap)/(COAL_CONS_RATE*plant_cap)
+  breakeven_price_per_ton = ( -revenues - iron_ore_cost*bfbof_iron_cons*plant_cap - om_bfbof*plant_cap)/(COAL_CONS_RATE*plant_cap)
+  breakeven_price = breakeven_price_per_ton/utils.coal_heat_content
   return breakeven_price
 
 def main(learning_rate_anr_capex = 0, learning_rate_h2_capex =0, wacc=WACC, print_main_results=True, print_results=False): 
@@ -287,8 +288,6 @@ def main(learning_rate_anr_capex = 0, learning_rate_h2_capex =0, wacc=WACC, prin
   ANR_data, H2_data = utils.load_data(learning_rate_anr_capex, learning_rate_h2_capex)
 
   # Build results dataset one by one
-  breakeven_df = pd.DataFrame(columns=['Plant', 'state', 'H2 Dem (kg/day)', 'Aux Elec Dem (MWe)','Alkaline', 'HTSE', 'PEM', 'ANR type', '# ANR modules',\
-                                        'Breakeven coal price ($/ton)', 'Ann. CO2 emissions (kgCO2eq/year)'])
 
   with Pool(10) as pool:
     results = pool.starmap(solve_steel_plant_deployment, [(plant, ANR_data, H2_data) for plant in steel_ids])
@@ -323,7 +322,7 @@ def main(learning_rate_anr_capex = 0, learning_rate_h2_capex =0, wacc=WACC, prin
     breakeven_df.to_csv(csv_path, header = True, index=False)"""
 
   # Median Breakeven price
-  med_be = breakeven_df['Breakeven coal price ($/ton)'].median()
+  med_be = df['Breakeven price ($/MMBtu)'].median()
   return med_be
 
 def test():

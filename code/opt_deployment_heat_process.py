@@ -241,7 +241,7 @@ def solve_process_heat_deployment(plant_id, ANR_data, H2_data):
           if value(model.vM[n,g]) >=1:
             for h in model.H:
               results_ref[h] += value(model.vQ[n,h,g])
-    results_ref['Breakeven NG price ($/MMBtu)'] = compute_breakeven_price(results_ref)
+    results_ref['Breakeven price ($/MMBtu)'] = compute_breakeven_price(results_ref)
     print(f'Process heat for plant {plant_id} solved')
     return results_ref
   else:
@@ -292,7 +292,7 @@ def main(learning_rate_anr_capex =0, learning_rate_h2_capex=0, wacc=WACC, print_
   
   
   # Return median breakeven price
-  med_be = df['Breakeven NG price ($/MMBtu)'].median()
+  med_be = df['Breakeven price ($/MMBtu)'].median()
   return med_be
 
 

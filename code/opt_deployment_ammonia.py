@@ -22,7 +22,7 @@ ngNH3ElecCons = 0.061 # MWh/tNH3
 
 def get_ammonia_plant_demand(plant):
   ammonia_df = pd.read_excel('./h2_demand_ammonia_us_2022.xlsx', sheet_name='processed')
-  plant_df = ammonia_df[ammonia_df['plant_id'] == plant]
+  plant_df = ammonia_df[ammonia_df['id'] == plant]
   h2_demand_kg_per_day = float(plant_df['H2 Dem. (kg/year)'].iloc[0])/365
   elec_demand_MWe = float(plant_df['Electricity demand (MWe)'].iloc[0])
   ammonia_capacity = float(plant_df['Capacity (tNH3/year)'].iloc[0])
@@ -244,7 +244,7 @@ def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results):
             for h in model.H:
               if value(model.vQ[n,h,g]) > 0:
                 results_ref[h] += value(model.vQ[n,h,g])
-    results_ref['Breakeven NG price ($/MMBtu)'] = compute_ng_breakeven_price(results_ref)
+    results_ref['Breakeven price ($/MMBtu)'] = compute_ng_breakeven_price(results_ref)
     print(f'Ammonia plant {plant} solved')
     return results_ref
   else:
@@ -259,7 +259,7 @@ def compute_ng_breakeven_price(results_ref):
   be_price = (-net_rev-elec_costs)/(ngNH3ConsRate*capacity)
   return be_price
 
-def compute_capex_breakeven(results_ref, be_ng_price_foak, ng_price):
+def compute_ammonia_capex_breakeven(results_ref, be_ng_price_foak, ng_price):
   alpha = results_ref['Ammonia capacity (tNH3/year)'][0]*ngNH3ConsRate
   foak_anr_capex = results_ref['ANR CAPEX ($/year)'][0]
   anr_crf = results_ref['ANR CRF'][0]
@@ -276,15 +276,12 @@ def main(learning_rate_anr_capex = 0, learning_rate_h2_capex =0, wacc=WACC, prin
 
   # Load steel data
   ammonia_df = pd.read_excel('h2_demand_ammonia_us_2022.xlsx', sheet_name='processed')
-  plant_ids = list(ammonia_df['plant_id'])
+  plant_ids = list(ammonia_df['id'])
 
   # Load ANR and H2 parameters
   ANR_data, H2_data = load_data(learning_rate_anr_capex, learning_rate_h2_capex)
 
   # Build results dataset one by one
-  breakeven_df = pd.DataFrame(columns=['plant_id', 'state','H2 Dem (kg/day)', 'Aux Elec Dem (MWe)','Alkaline', 'HTSE', 'PEM', 'ANR type', '# ANR modules',\
-                                        'Breakeven NG price ($/MMBtu)', 'Ann. CO2 emissions (kgCO2eq/year)',\
-                                            'ANR CAPEX ($/year)', 'H2 CAPEX ($/year)', 'ANR O&M ($/year)','H2 O&M ($/year)', 'Conversion costs ($/year)'])
   
   with Pool(10) as pool:
     results = pool.starmap(solve_ammonia_plant_deployment, [(ANR_data, H2_data, plant, print_results) for plant in plant_ids])
@@ -317,7 +314,7 @@ def main(learning_rate_anr_capex = 0, learning_rate_h2_capex =0, wacc=WACC, prin
     #df.to_csv(csv_path, header = True, index=False)
 
   # Median Breakeven price
-  med_be = breakeven_df['Breakeven NG price ($/MMBtu)'].median()
+  med_be = df['Breakeven price ($/MMBtu)'].median()
   return med_be
 
 

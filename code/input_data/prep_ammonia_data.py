@@ -9,7 +9,7 @@ ammonia_df['Plant'] = ammonia_df.apply(lambda x:x['Plant'].split('(')[0][:-1], a
 ammonia_df['Capacity (tNH3/year)'] = ammonia_df['Capacity']*1e3 # Original data in thousands MT
 ammonia_df.drop(columns=['Capacity'], inplace=True)
 # Create id with plant name and city
-ammonia_df['plant_id'] = ammonia_df.apply(lambda x: x['Plant'][:2]+'_'+x['City'][:2], axis=1)
+ammonia_df['id'] = ammonia_df.apply(lambda x: x['Plant'][:2]+'_'+x['City'][:2], axis=1)
 
 
 
