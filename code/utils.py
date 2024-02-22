@@ -2,10 +2,9 @@ import pandas as pd
 import numpy as np
 
 N=1000
+
+#cost of capitcal
 WACC = 0.077
-
-
-
 # Credits
 ITC_ANR = 0.3 #%
 ITC_H2 = 0.3 #%
@@ -13,7 +12,6 @@ h2_ptc = 3 #$/kgH2 clean
 elec_ptc = 25 #$/MWhe
 # ANR-H2
 avg_elec_cons_h2 = 0.022 #MWhe/kgh2, calculated from avg thermal efficiency (micro, PBR-HTGR, iMSR) and coupling efficiency with HTSE
-
 # Ammonia process modelling parameters
 nh3_carbon_intensity = 2.30 # tcO2/tNH3
 nh3_nrj_intensity = 30.82 #MMBtu/tNH3
