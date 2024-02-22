@@ -3,11 +3,16 @@ import numpy as np
 
 N=1000
 WACC = 0.077
-ITC_ANR = 0.3
-ITC_H2 = 0.3
 
-coal_heat_content = 28.97 #MMBtu/Mton
 
+
+# Credits
+ITC_ANR = 0.3 #%
+ITC_H2 = 0.3 #%
+h2_ptc = 3 #$/kgH2 clean
+elec_ptc = 25 #$/MWhe
+# ANR-H2
+avg_elec_cons_h2 = 0.022 #MWhe/kgh2, calculated from avg thermal efficiency (micro, PBR-HTGR, iMSR) and coupling efficiency with HTSE
 
 # Ammonia process modelling parameters
 nh3_carbon_intensity = 2.30 # tcO2/tNH3
@@ -27,6 +32,7 @@ h2_to_dri_ratio = 67.095 #kgh2/tdri
 steel_to_dri_ratio = 0.9311 # tsteel/tdri
 aux_elec_dri = 0.1025 # MWhe/tdri
 eaf_elec = 0.461 # MWhe/tsteel
+coal_heat_content = 28.97 #MMBtu/Mton
 
 def update_capex_costs(ANR_data, learning_rate_anr_capex, H2_data, learning_rate_h2_capex, N=N):
   ANR_data['CAPEX $/MWe'] = ANR_data.apply(lambda x: x['CAPEX $/MWe']*np.power(N, np.log2(1-learning_rate_anr_capex)), axis=1)
