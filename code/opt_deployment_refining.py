@@ -30,7 +30,7 @@ def get_refinery_demand(ref_id):
 def get_state(ref_id):
   ref_df = pd.read_excel('h2_demand_refineries.xlsx', sheet_name='processed')
   select_df = ref_df[ref_df['refinery_id']==ref_id]
-  state= select_df['State'].iloc[0]
+  state= select_df['state'].iloc[0]
   return state
 
 
