@@ -5,12 +5,15 @@ import os
 from utils import load_data
 import utils
 from multiprocessing import Pool
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 WACC = utils.WACC
 ITC_ANR = utils.ITC_ANR
 INDUSTRIES = ['ammonia', 'process_heat', 'refining','steel']
+learning = False
 
-
+electricity_prices_partial_path = './input_data/cambium_midcase_state_hourly_electricity_prices/Cambium22_MidCase_hourly_'
 
 def load_industry_results(industry):
   """Load and returns the results of the deployment optimization for an industry
@@ -44,7 +47,7 @@ def compute_avoided_ff_costs(industry_df, industry):
       *industry_df['Breakeven price ($/MMBtu)']/1e9
   elif industry == 'steel':
     industry_df['Avoided fossil fuel cost (bn$/year)'] = industry_df['Steel prod. (ton/year)']*utils.coal_to_steel_ratio_bau\
-      *industry_df['Breakeven price ($/MMBtu)']/1e9
+      *utils.coal_heat_content*industry_df['Breakeven price ($/MMBtu)']/1e9
   return industry_df
 
 
@@ -71,12 +74,23 @@ def get_electricity_prices(industry_df, id):
     prices (DataFrame): with columns t, 0 to 8760, and price, electricity price in $/MWhe for year %TODO
   """
   state = industry_df.loc[id, 'state']
-  random_prices_data = {'t':[t for t in range(8760)], 
-                        'price':list(30*np.random.rand(8760))}
-  random_prices = pd.DataFrame(data=random_prices_data)
-  random_prices.set_index('t', inplace=True)
-  #TODO
-  return random_prices
+  if state =='AK': state ='AR' # Arkansas abbreviation
+  if state =='OA': state = 'IA' # Iowa abbreviation fix
+  if state =='HI': state = 'CA' # Hawai as California: high prices
+
+  elec_prices_path = electricity_prices_partial_path +state +'_2024.csv'
+  electricity_prices = pd.read_csv(elec_prices_path, skiprows=5)
+  electricity_prices = electricity_prices[['energy_cost_enduse']]
+  # Convert to USD2020
+  from utils import conversion_2021usd_to_2020usd
+  electricity_prices['energy_cost_enduse'] = electricity_prices['energy_cost_enduse']*conversion_2021usd_to_2020usd
+  # Index
+  electricity_prices.set_index([pd.Index([t for t in range(8760)])])
+  electricity_prices.reset_index(inplace=True)
+  electricity_prices.rename(columns={'index':'t', 'energy_cost_enduse':'price'}, inplace=True)
+  electricity_prices.set_index('t', inplace=True)
+
+  return electricity_prices
 
 
 def build_ED_electricity(industry_df, id, ANR_data):
@@ -160,7 +174,7 @@ def solve_ED_electricity(industry, industry_df, id, ANR_data):
   #solver.options['mip pool relgap'] = 0.02
   #solver.options['mip tolerances absmipgap'] = 1e-4
   #solver.options['mip tolerances mipgap'] = 5e-3
-  results = solver.solve(model, tee=True)
+  results = solver.solve(model, tee=False)
 
   if results.solver.termination_condition == TerminationCondition.optimal: 
     model.solutions.load_from(results)
@@ -172,25 +186,87 @@ def solve_ED_electricity(industry, industry_df, id, ANR_data):
   results_dic['Industry'] = industry
   results_dic['id'] = id 
   def compute_elec_sales(model):
-    return sum(model.vG[t]*model.pEPrice[t] for t in model.t)
+    return sum(model.vG[t]*model.pEPrice[t] for t in model.t)/1e9
   results_dic['Electricity sales (bn$/year)'] = value(compute_elec_sales(model))
-
+  def compute_avg_elec_price(model):
+    return sum(model.pEPrice[t] for t in model.t)/8760
+  results_dic['Avg price ($/MWhe)'] = value(compute_avg_elec_price(model))
   return results_dic
 
 
+def save_electricity_results(industry_df, excel_file, industry):
+  """Save electricity results
+  Args: 
+    industry_df (DataFrame): result of one industry with dedicated electricity production results 
+    excel_file (str): path to excel file for electricity results
+    industry (str): industrial sector
+  Returns: 
+    None 
+  """
+  try:
+  # Load the existing Excel file
+    with pd.ExcelFile(excel_file, engine='openpyxl') as xls:
+        # Check if the sheet exists
+        if industry in xls.sheet_names:
+            # If the sheet exists, replace the data
+            with pd.ExcelWriter(excel_file, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
+                industry_df.to_excel(writer, sheet_name=industry)
+        else:
+            # If the sheet doesn't exist, create a new sheet
+            with pd.ExcelWriter(excel_file, engine='openpyxl', mode='a') as writer:
+                industry_df.to_excel(writer, sheet_name=industry)
+  except FileNotFoundError:
+      # If the file doesn't exist, create a new one and write the DataFrame to it
+      industry_df.to_excel(excel_file, sheet_name=industry)
+
+def plot_electricity_vs_h2_revenues(excel_file):
+  ammonia = pd.read_excel(excel_file, sheet_name='ammonia')
+  heat = pd.read_excel(excel_file, sheet_name='process_heat')
+  refining = pd.read_excel(excel_file, sheet_name='refining')
+  steel = pd.read_excel(excel_file, sheet_name='steel')
+  total_elec = pd.concat([ammonia, heat, refining, steel], ignore_index=True)
+  
+  ax = sns.scatterplot(data=total_elec, x='Electricity sales (bn$/year)', y='Avoided fossil fuel cost (bn$/year)', size='Avg price ($/MWhe)',palette='bright', hue='Industry', style='ANR type')
+  med_x = np.arange(0,4,0.05)
+  ax.plot(med_x, med_x, 'k--', linewidth=0.5)
+  ax.spines[['right', 'top']].set_visible(False)
+  ax.legend(bbox_to_anchor=(1.05, 1),loc='upper left', borderaxespad=0.)
+  #ax.set_xlim(-.1,3.1)
+  #ax.set_ylim(-.1,3.1)
+  ax.set_xlabel('Electricity sales (bn$/year)')
+  #plt.savefig('./results/steel_be_state_with_carbon_prices.png')
+
+  # this is an inset axes over the main axes
+  sub_ax = plt.axes([.4, .2, .3, .3]) 
+  sns.scatterplot(ax = sub_ax, data=total_elec, x='Electricity sales (bn$/year)', y='Avoided fossil fuel cost (bn$/year)', palette='bright', style='ANR type', hue='Industry')
+  sub_ax.plot(med_x, med_x, 'k--', linewidth=0.5)
+  sub_ax.set_xlim(-.01, 0.2)
+  sub_ax.set_ylim(-.01, 0.2)
+  sub_ax.get_legend().set_visible(False)
+  sub_ax.set_xlabel('')
+  sub_ax.set_ylabel('')
+  fig = ax.get_figure()
+  fig.set_size_inches((8,5))
+  fig.tight_layout()
+  if learning:
+    elec_save_path = './results/avoided_fossil_vs_elec_sales_with_learning.png'
+  else:
+    elec_save_path = './results/avoided_fossil_vs_elec_sales_without_learning.png'
+  plt.savefig(elec_save_path)
+
+
 def test():
-  industry = 'steel'
-  id = 'U.S. Steel Gary Works'
-  industry_df = load_industry_results(industry)
-  industry_df = compute_avoided_ff_costs(industry_df, industry)
-  rp = get_electricity_prices(industry_df,id)
-  print(rp)
+  excel_file = './results/electricity_prod_results_no_learning.xlsx'
+  plot_electricity_vs_h2_revenues(excel_file)
 
 def main():
   # TODO also run with CAPEX after reduction from learning from industrial deployment
+
+
   ANR_data = pd.read_excel('./ANRs.xlsx', sheet_name='FOAK', index_col=0)
   excel_file = './results/electricity_prod_results_no_learning.xlsx'
 
+  industry_dfs = []
   for industry in INDUSTRIES: 
     print(f'Industrial sector: {industry}')
     # Load results and compute avoided fossil fuel costs
@@ -199,34 +275,37 @@ def main():
 
     # Optimization for dedicated electricity production 
     ids = list(industry_df.index)
-    results ={}
-    for id in ids:
-      results[id] = solve_ED_electricity(industry, industry_df, id, ANR_data)
-      
-    #with Pool(5) as pool:
-     # results = pool.starmap(solve_ED_electricity, [(industry, industry_df, id, ANR_data) for id in ids])
-    #pool.close()
 
-    elec_industry_df = pd.DataFrame(results).transpose()
+    # Sequential solving
+    #results ={}
+    #for id in ids:
+     # results[id] = solve_ED_electricity(industry, industry_df, id, ANR_data)
+    # elec_industry_df = pd.DataFrame(results).transpose()
+    
+    # Parallel solving
+    with Pool(5) as pool:
+      results = pool.starmap(solve_ED_electricity, [(industry, industry_df, id, ANR_data) for id in ids])
+    pool.close()
+
+    elec_industry_df = pd.DataFrame(results)
+    elec_industry_df.set_index('id', inplace=True)
+
+    industry_df = industry_df.merge(elec_industry_df,left_index=True, right_index=True)
+    industry_dfs.append(industry_df)
+
+    #Save results
+    save_electricity_results(industry_df, excel_file, industry)
+
+  # Plot results
+  plot_electricity_vs_h2_revenues(excel_file)
   
-    try:
-    # Load the existing Excel file
-      with pd.ExcelFile(excel_file, engine='openpyxl') as xls:
-          # Check if the sheet exists
-          if industry in xls.sheet_names:
-              # If the sheet exists, replace the data
-              with pd.ExcelWriter(excel_file, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
-                  elec_industry_df.to_excel(writer, sheet_name=industry)
-          else:
-              # If the sheet doesn't exist, create a new sheet
-              with pd.ExcelWriter(excel_file, engine='openpyxl', mode='a') as writer:
-                  elec_industry_df.to_excel(writer, sheet_name=industry)
-    except FileNotFoundError:
-        # If the file doesn't exist, create a new one and write the DataFrame to it
-        elec_industry_df.to_excel(excel_file, sheet_name=industry)
+    
+    
 
 
 
 if __name__ == '__main__':
+  os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
   #test()
   main()
