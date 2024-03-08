@@ -3,7 +3,10 @@ import numpy as np
 
 N=1000
 
-#cost of capitcal
+#INflation
+conversion_2021usd_to_2020usd = 0.99 #2020$/2021$ source: data.bls.gov
+
+#cost of captial
 WACC = 0.077
 # Credits
 ITC_ANR = 0.3 #%
