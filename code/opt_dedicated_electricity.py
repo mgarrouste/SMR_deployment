@@ -187,9 +187,11 @@ def solve_ED_electricity(industry, industry_df, id, ANR_data, year):
   results_dic = {}
   results_dic['Industry'] = industry
   results_dic['id'] = id 
+
   def compute_elec_sales(model):
-    return sum(model.vG[t]*model.pEPrice[t] for t in model.t)/1e9
-  results_dic['Electricity sales (bn$/year)'] = value(compute_elec_sales(model))
+    return sum(model.vG[t]*model.pEPrice[t] for t in model.t)/(1e6*model.pANRCap)
+  results_dic['Electricity sales (M$/year/MWe)'] = value(compute_elec_sales(model))
+
   def compute_avg_elec_price(model):
     return sum(model.pEPrice[t] for t in model.t)/8760
   results_dic['Avg price ($/MWhe)'] = value(compute_avg_elec_price(model))
@@ -228,19 +230,19 @@ def plot_electricity_vs_h2_revenues(excel_file, year):
   steel = pd.read_excel(excel_file, sheet_name='steel')
   total_elec = pd.concat([ammonia, heat, refining, steel], ignore_index=True)
   
-  ax = sns.scatterplot(data=total_elec, x='Electricity sales (bn$/year)', y='Avoided fossil fuel cost (M$/year/MWe)', size='Avg price ($/MWhe)',palette='bright', hue='Industry', style='ANR type')
+  ax = sns.scatterplot(data=total_elec, x='Electricity sales (M$/year/MWe)', y='Avoided fossil fuel cost (M$/year/MWe)', size='Avg price ($/MWhe)',palette='bright', hue='Industry', style='ANR type')
   med_x = np.arange(0,4,0.05)
   ax.plot(med_x, med_x, 'k--', linewidth=0.5)
   ax.spines[['right', 'top']].set_visible(False)
   ax.legend(bbox_to_anchor=(1.05, 1),loc='upper left', borderaxespad=0.)
   #ax.set_xlim(-.1,3.1)
   #ax.set_ylim(-.1,3.1)
-  ax.set_xlabel('Electricity sales (bn$/year)')
+  ax.set_xlabel('Electricity sales (M$/year/MWe)')
   #plt.savefig('./results/steel_be_state_with_carbon_prices.png')
 
   # this is an inset axes over the main axes
   sub_ax = plt.axes([.4, .2, .3, .3]) 
-  sns.scatterplot(ax = sub_ax, data=total_elec, x='Electricity sales (bn$/year)', y='Avoided fossil fuel cost (M$/year/MWe)', palette='bright', style='ANR type', hue='Industry')
+  sns.scatterplot(ax = sub_ax, data=total_elec, x='Electricity sales (M$/year/MWe)', y='Avoided fossil fuel cost (M$/year/MWe)', palette='bright', style='ANR type', hue='Industry')
   sub_ax.plot(med_x, med_x, 'k--', linewidth=0.5)
   sub_ax.set_xlim(-.01, 0.2)
   sub_ax.set_ylim(-.01, 0.2)
