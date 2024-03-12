@@ -13,8 +13,9 @@ ITC_ANR = utils.ITC_ANR
 INDUSTRIES = ['ammonia', 'process_heat', 'refining','steel']
 learning = False
 year = 2024
+cambium_scenario = 'MidCase'
 
-electricity_prices_partial_path = './input_data/cambium_midcase_state_hourly_electricity_prices/Cambium22_MidCase_hourly_'
+electricity_prices_partial_path = './input_data/cambium_'+cambium_scenario.lower()+'_state_hourly_electricity_prices/Cambium22_'+cambium_scenario+'_hourly_'
 
 def load_industry_results(industry):
   """Load and returns the results of the deployment optimization for an industry
@@ -229,46 +230,54 @@ def plot_electricity_vs_h2_revenues(excel_file, year):
   refining = pd.read_excel(excel_file, sheet_name='refining')
   steel = pd.read_excel(excel_file, sheet_name='steel')
   total_elec = pd.concat([ammonia, heat, refining, steel], ignore_index=True)
+  total_elec.replace({'Industry': 'ammonia'}, {'Industry': 'Ammonia'}, inplace=True)
+  total_elec.replace({'Industry': 'process_heat'}, {'Industry': 'HT Process Heat'}, inplace=True)
+  total_elec.replace({'Industry': 'refining'}, {'Industry': 'Refining'}, inplace=True)
+  total_elec.replace({'Industry': 'steel'}, {'Industry': 'Steel'}, inplace=True)
   
   ax = sns.scatterplot(data=total_elec, x='Electricity sales (M$/year/MWe)', y='Avoided fossil fuel cost (M$/year/MWe)', size='Avg price ($/MWhe)',palette='bright', hue='Industry', style='ANR type')
   med_x = np.arange(0,4,0.05)
   ax.plot(med_x, med_x, 'k--', linewidth=0.5)
   ax.spines[['right', 'top']].set_visible(False)
   ax.legend(bbox_to_anchor=(1.05, 1),loc='upper left', borderaxespad=0.)
-  #ax.set_xlim(-.1,3.1)
-  #ax.set_ylim(-.1,3.1)
+  ax.set_xlim(-.01,0.5)
+  ax.set_ylim(-.01,1.5)
   ax.set_xlabel('Electricity sales (M$/year/MWe)')
   #plt.savefig('./results/steel_be_state_with_carbon_prices.png')
 
   # this is an inset axes over the main axes
-  sub_ax = plt.axes([.4, .2, .3, .3]) 
-  sns.scatterplot(ax = sub_ax, data=total_elec, x='Electricity sales (M$/year/MWe)', y='Avoided fossil fuel cost (M$/year/MWe)', palette='bright', style='ANR type', hue='Industry')
-  sub_ax.plot(med_x, med_x, 'k--', linewidth=0.5)
-  sub_ax.set_xlim(-.01, 0.2)
-  sub_ax.set_ylim(-.01, 0.2)
-  sub_ax.get_legend().set_visible(False)
-  sub_ax.set_xlabel('')
-  sub_ax.set_ylabel('')
+  sub_ax_plot = False
+  if sub_ax_plot:
+    sub_ax = plt.axes([.4, .2, .3, .3]) 
+    sns.scatterplot(ax = sub_ax, data=total_elec, x='Electricity sales (M$/year/MWe)', y='Avoided fossil fuel cost (M$/year/MWe)', palette='bright', style='ANR type', hue='Industry')
+    sub_ax.plot(med_x, med_x, 'k--', linewidth=0.5)
+    sub_ax.set_xlim(-.01, 0.7)
+    sub_ax.set_ylim(-.01, 0.7)
+    sub_ax.get_legend().set_visible(False)
+    sub_ax.set_xlabel('')
+    sub_ax.set_ylabel('')
+
   fig = ax.get_figure()
   fig.set_size_inches((8,5))
   fig.tight_layout()
   if learning:
-    elec_save_path = './results/avoided_fossil_vs_elec_sales_with_learning_'+str(year)+'.png'
+    elec_save_path = './results/avoided_fossil_vs_elec_sales_with_learning_'+cambium_scenario+'_'+str(year)+'.png'
   else:
-    elec_save_path = './results/avoided_fossil_vs_elec_sales_without_learning_'+str(year)+'.png'
+    elec_save_path = './results/avoided_fossil_vs_elec_sales_without_learning_'+cambium_scenario+'_'+str(year)+'.png'
   plt.savefig(elec_save_path)
 
 
 def test():
-  excel_file = './results/electricity_prod_results_no_learning.xlsx'
-  plot_electricity_vs_h2_revenues(excel_file)
+  excel_file = './results/electricity_prod_results_no_learning_'+cambium_scenario+'_'+str(year)+'.xlsx' # save path
+
+  plot_electricity_vs_h2_revenues(excel_file, year)
 
 def main():
   # TODO also run with CAPEX after reduction from learning from industrial deployment
 
   ANR_data = pd.read_excel('./ANRs.xlsx', sheet_name='FOAK', index_col=0)
   
-  excel_file = './results/electricity_prod_results_no_learning_'+str(year)+'.xlsx'
+  excel_file = './results/electricity_prod_results_no_learning_'+cambium_scenario+'_'+str(year)+'.xlsx' # save path
 
   industry_dfs = []
   for industry in INDUSTRIES: 
@@ -311,5 +320,5 @@ def main():
 if __name__ == '__main__':
   os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-  #test()
-  main()
+  test()
+  #main()
