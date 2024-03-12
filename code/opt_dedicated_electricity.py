@@ -53,17 +53,15 @@ def compute_avoided_ff_costs(industry_df, industry):
 
 
 def get_opt_anr(industry_df, id):
-  """Get the type and number of ANR for a site
+  """Get the type of ANR for a site from ANR-H2 optimization for h2 industrial demand
   Args: 
     industry_df (DataFrame): Results of optimization of ANR depl.
     id (str): site id
   Returns: 
     reactor (str): type of reactor deployed
-    number (int): number of reactors deployed
   """
   reactor = industry_df.loc[id, 'ANR type']
-  number = industry_df.loc[id, '# ANR modules']
-  return reactor, number
+  return reactor
 
 
 def get_electricity_prices(industry_df, id, year):
@@ -111,8 +109,7 @@ def build_ED_electricity(industry_df, id, ANR_data, year):
   ### Sets ###
   
   model.t = Set(initialize = np.arange(8760), doc='Time') # hours in one year
-  ANRtype, ANRnb = get_opt_anr(industry_df, id)
-  #model.N = Set(initialize = list(range(ANRnb)))
+  ANRtype = get_opt_anr(industry_df, id)
 
   ### Variables ###
   model.vG = Var(model.t, within=NonNegativeReals)
@@ -122,13 +119,15 @@ def build_ED_electricity(industry_df, id, ANR_data, year):
   model.pWACC = Param(initialize = WACC)
   model.pITC_ANR = Param(initialize = ITC_ANR)
   # ANR
-  model.pANRCap =  Param(initialize = ANRnb*float(ANR_data.loc[ANRtype]['Power in MWe'])\
+  model.pNbMod = Param(initialize = int(ANR_data.loc[ANRtype]['Max Modules']), \
+                       doc='Number of modules deployed chosen as max modules')
+  model.pANRCap =  Param(initialize = model.pNbMod*float(ANR_data.loc[ANRtype]['Power in MWe'])\
                          , doc='Total capacity deployed (MWe)')
   model.pANRCAPEX = Param(initialize = float(ANR_data.loc[ANRtype]['CAPEX $/MWe']))
   model.pANRVOM = Param(initialize = float(ANR_data.loc[ANRtype]['VOM in $/MWh-e']))
   model.pANRFOM = Param(initialize = float(ANR_data.loc[ANRtype]['FOPEX $/MWe-y']))
   model.pANRRampRate = Param(initialize = float(ANR_data.loc[ANRtype]['Ramp Rate (fraction of capacity/hr)']))
-  model.pANRMSL = Param(initialize = ANRnb*float(ANR_data.loc[ANRtype]['MSL in MWe']))
+  model.pANRMSL = Param(initialize = model.pNbMod*float(ANR_data.loc[ANRtype]['MSL in MWe']))
   @model.Param()
   def pANRCRF(model):
     return model.pWACC / (1 - (1/(1+model.pWACC)**float(ANR_data.loc[ANRtype,'Life (y)'])))
