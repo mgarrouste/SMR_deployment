@@ -12,6 +12,7 @@ WACC = utils.WACC
 ITC_ANR = utils.ITC_ANR
 INDUSTRIES = ['ammonia', 'process_heat', 'refining','steel']
 learning = False
+year = 2024
 
 electricity_prices_partial_path = './input_data/cambium_midcase_state_hourly_electricity_prices/Cambium22_MidCase_hourly_'
 
@@ -37,17 +38,17 @@ def compute_avoided_ff_costs(industry_df, industry):
     industry_df (DataFrame): Results with added column 'Avoided fossil fuel cost (bn$/year)'
   """
   if industry == 'ammonia': 
-    industry_df['Avoided fossil fuel cost (bn$/year)'] = utils.nh3_nrj_intensity*industry_df['Ammonia capacity (tNH3/year)']\
-      *industry_df['Breakeven price ($/MMBtu)']/1e9
+    industry_df['Avoided fossil fuel cost (M$/year/MWe)'] = utils.nh3_nrj_intensity*industry_df['Ammonia capacity (tNH3/year)']\
+      *industry_df['Breakeven price ($/MMBtu)']/(1e6*industry_df['Depl. ANR Cap. (MWe)'])
   elif industry == 'process_heat':
-    industry_df['Avoided fossil fuel cost (bn$/year)'] = industry_df['Heat Dem. (MJ/year)']*industry_df['Breakeven price ($/MMBtu)']\
-    /(1e9*utils.mmbtu_to_mj)
+    industry_df['Avoided fossil fuel cost (M$/year/MWe)'] = industry_df['Heat Dem. (MJ/year)']*industry_df['Breakeven price ($/MMBtu)']\
+    /(1e6*industry_df['Depl. ANR Cap. (MWe)']*utils.mmbtu_to_mj)
   elif industry == 'refining': 
-    industry_df['Avoided fossil fuel cost (bn$/year)'] = industry_df['H2 Dem. (kg/day)']*365*utils.smr_nrj_intensity\
-      *industry_df['Breakeven price ($/MMBtu)']/1e9
+    industry_df['Avoided fossil fuel cost (M$/year/MWe)'] = industry_df['H2 Dem. (kg/day)']*365*utils.smr_nrj_intensity\
+      *industry_df['Breakeven price ($/MMBtu)']/(1e6*industry_df['Depl. ANR Cap. (MWe)'])
   elif industry == 'steel':
-    industry_df['Avoided fossil fuel cost (bn$/year)'] = industry_df['Steel prod. (ton/year)']*utils.coal_to_steel_ratio_bau\
-      *utils.coal_heat_content*industry_df['Breakeven price ($/MMBtu)']/1e9
+    industry_df['Avoided fossil fuel cost (M$/year/MWe)'] = industry_df['Steel prod. (ton/year)']*utils.coal_to_steel_ratio_bau\
+      *utils.coal_heat_content*industry_df['Breakeven price ($/MMBtu)']/(1e6*industry_df['Depl. ANR Cap. (MWe)'])
   return industry_df
 
 
@@ -65,20 +66,21 @@ def get_opt_anr(industry_df, id):
   return reactor, number
 
 
-def get_electricity_prices(industry_df, id):
+def get_electricity_prices(industry_df, id, year):
   """Get the type and number of ANR for a site
   Args: 
     industry_df (DataFrame): Results of optimization of ANR depl.
     id (str): site id
+    year (int): Year
   Returns: 
-    prices (DataFrame): with columns t, 0 to 8760, and price, electricity price in $/MWhe for year %TODO
+    prices (DataFrame): with columns t, 0 to 8760, and price, electricity price in $/MWhe for year 
   """
   state = industry_df.loc[id, 'state']
   if state =='AK': state ='AR' # Arkansas abbreviation
   if state =='OA': state = 'IA' # Iowa abbreviation fix
   if state =='HI': state = 'CA' # Hawai as California: high prices
 
-  elec_prices_path = electricity_prices_partial_path +state +'_2024.csv'
+  elec_prices_path = electricity_prices_partial_path +state +'_'+str(year)+'.csv'
   electricity_prices = pd.read_csv(elec_prices_path, skiprows=5)
   electricity_prices = electricity_prices[['energy_cost_enduse']]
   # Convert to USD2020
@@ -93,13 +95,14 @@ def get_electricity_prices(industry_df, id):
   return electricity_prices
 
 
-def build_ED_electricity(industry_df, id, ANR_data):
+def build_ED_electricity(industry_df, id, ANR_data, year):
   """
   Performs economic dispatch of reactors at industrial site for type and capacity determined by opt industrial deployment
   Args: 
     industry_df (DataFrame): Results of optimization of ANR depl.
     id (str): site id
     ANR_data (DataFrame): ANR techno-economic parameter data
+    year (int): Year for electricity prices
   Returns: 
 
   """
@@ -130,7 +133,7 @@ def build_ED_electricity(industry_df, id, ANR_data):
   def pANRCRF(model):
     return model.pWACC / (1 - (1/(1+model.pWACC)**float(ANR_data.loc[ANRtype,'Life (y)'])))
 
-  electricity_prices = get_electricity_prices(industry_df=industry_df, id=id)
+  electricity_prices = get_electricity_prices(industry_df=industry_df, id=id, year=year)
   @model.Param(model.t)
   def pEPrice(model, t):
     return electricity_prices.loc[t,'price']
@@ -165,9 +168,9 @@ def build_ED_electricity(industry_df, id, ANR_data):
   return model
 
 
-def solve_ED_electricity(industry, industry_df, id, ANR_data):
+def solve_ED_electricity(industry, industry_df, id, ANR_data, year):
   print(f'Plant {id}, {industry} : start solving')
-  model = build_ED_electricity(industry_df, id, ANR_data)
+  model = build_ED_electricity(industry_df, id, ANR_data, year)
 
   solver = SolverFactory('glpk')
   #solver.options['timelimit'] = 240
@@ -219,14 +222,14 @@ def save_electricity_results(industry_df, excel_file, industry):
       # If the file doesn't exist, create a new one and write the DataFrame to it
       industry_df.to_excel(excel_file, sheet_name=industry)
 
-def plot_electricity_vs_h2_revenues(excel_file):
+def plot_electricity_vs_h2_revenues(excel_file, year):
   ammonia = pd.read_excel(excel_file, sheet_name='ammonia')
   heat = pd.read_excel(excel_file, sheet_name='process_heat')
   refining = pd.read_excel(excel_file, sheet_name='refining')
   steel = pd.read_excel(excel_file, sheet_name='steel')
   total_elec = pd.concat([ammonia, heat, refining, steel], ignore_index=True)
   
-  ax = sns.scatterplot(data=total_elec, x='Electricity sales (bn$/year)', y='Avoided fossil fuel cost (bn$/year)', size='Avg price ($/MWhe)',palette='bright', hue='Industry', style='ANR type')
+  ax = sns.scatterplot(data=total_elec, x='Electricity sales (bn$/year)', y='Avoided fossil fuel cost (M$/year/MWe)', size='Avg price ($/MWhe)',palette='bright', hue='Industry', style='ANR type')
   med_x = np.arange(0,4,0.05)
   ax.plot(med_x, med_x, 'k--', linewidth=0.5)
   ax.spines[['right', 'top']].set_visible(False)
@@ -238,7 +241,7 @@ def plot_electricity_vs_h2_revenues(excel_file):
 
   # this is an inset axes over the main axes
   sub_ax = plt.axes([.4, .2, .3, .3]) 
-  sns.scatterplot(ax = sub_ax, data=total_elec, x='Electricity sales (bn$/year)', y='Avoided fossil fuel cost (bn$/year)', palette='bright', style='ANR type', hue='Industry')
+  sns.scatterplot(ax = sub_ax, data=total_elec, x='Electricity sales (bn$/year)', y='Avoided fossil fuel cost (M$/year/MWe)', palette='bright', style='ANR type', hue='Industry')
   sub_ax.plot(med_x, med_x, 'k--', linewidth=0.5)
   sub_ax.set_xlim(-.01, 0.2)
   sub_ax.set_ylim(-.01, 0.2)
@@ -249,9 +252,9 @@ def plot_electricity_vs_h2_revenues(excel_file):
   fig.set_size_inches((8,5))
   fig.tight_layout()
   if learning:
-    elec_save_path = './results/avoided_fossil_vs_elec_sales_with_learning.png'
+    elec_save_path = './results/avoided_fossil_vs_elec_sales_with_learning_'+str(year)+'.png'
   else:
-    elec_save_path = './results/avoided_fossil_vs_elec_sales_without_learning.png'
+    elec_save_path = './results/avoided_fossil_vs_elec_sales_without_learning_'+str(year)+'.png'
   plt.savefig(elec_save_path)
 
 
@@ -262,9 +265,9 @@ def test():
 def main():
   # TODO also run with CAPEX after reduction from learning from industrial deployment
 
-
   ANR_data = pd.read_excel('./ANRs.xlsx', sheet_name='FOAK', index_col=0)
-  excel_file = './results/electricity_prod_results_no_learning.xlsx'
+  
+  excel_file = './results/electricity_prod_results_no_learning_'+str(year)+'.xlsx'
 
   industry_dfs = []
   for industry in INDUSTRIES: 
@@ -284,7 +287,7 @@ def main():
     
     # Parallel solving
     with Pool(5) as pool:
-      results = pool.starmap(solve_ED_electricity, [(industry, industry_df, id, ANR_data) for id in ids])
+      results = pool.starmap(solve_ED_electricity, [(industry, industry_df, id, ANR_data, year) for id in ids])
     pool.close()
 
     elec_industry_df = pd.DataFrame(results)
@@ -297,7 +300,7 @@ def main():
     save_electricity_results(industry_df, excel_file, industry)
 
   # Plot results
-  plot_electricity_vs_h2_revenues(excel_file)
+  plot_electricity_vs_h2_revenues(excel_file, year)
   
     
     
