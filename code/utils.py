@@ -34,6 +34,14 @@ steel_to_dri_ratio = 0.9311 # tsteel/tdri
 aux_elec_dri = 0.1025 # MWhe/tdri
 eaf_elec = 0.461 # MWhe/tsteel
 coal_heat_content = 28.97 #MMBtu/Mton
+dri_co2_intensity = 40 # kgCO2/ton-DRI
+shaft_CAPEX = 250 # $/tDRI/year
+eaf_CAPEX = 160 # $/tsteel/year
+eaf_OM  = 24.89 # $/tsteel (EAF and casting)
+iron_ore_cost = 100 #$/t_ironore # $/tironore
+ratio_ironore_DRI = 1.391 # tironore/tDRI
+bfbof_iron_cons = 1.226 #t_ironore/t_steel
+om_bfbof = 178.12 #$/t_steel
 
 def update_capex_costs(ANR_data, learning_rate_anr_capex, H2_data, learning_rate_h2_capex, N=N):
   ANR_data['CAPEX $/MWe'] = ANR_data.apply(lambda x: x['CAPEX $/MWe']*np.power(N, np.log2(1-learning_rate_anr_capex)), axis=1)
