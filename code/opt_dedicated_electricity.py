@@ -2,18 +2,26 @@ from pyomo.environ import *
 import pandas as pd
 import numpy as np
 import os
-from utils import load_data
 import utils
 from multiprocessing import Pool
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+
 WACC = utils.WACC
 ITC_ANR = utils.ITC_ANR
 INDUSTRIES = ['ammonia', 'process_heat', 'refining','steel']
+
 learning = False
-year = 2024
-cambium_scenario = 'MidCase'
+year = 2024 # 2024, 2030, 2040
+cambium_scenario = 'MidCase' # 'LowRECostTCExpire','MidCaseTCExpire', 'MidCase', 'LowRECost', 'HighRECost', 'HighNGPrice', 'LowNGPrice'
+
+eia_aeo_2022_ng_prices_path  = './input_data/ng_prices_industrial_sector_eia_aeo_2022.csv'
+scenario_map ={'HighNGPrice': 'Low oil and gas supply', 
+               'LowNGPrice': 'High oil and gas supply', 
+               'MidCase': 'Reference case', 
+               'LowRECost': 'Reference case',
+               'HighRECost': 'Reference case'}
 
 electricity_prices_partial_path = './input_data/cambium_'+cambium_scenario.lower()+'_state_hourly_electricity_prices/Cambium22_'+cambium_scenario+'_hourly_'
 
@@ -30,28 +38,49 @@ def load_industry_results(industry):
   return industry_df
 
 
-def compute_avoided_ff_costs(industry_df, industry):
+def get_ng_price(scenario, year):
+  eia_aeo_2022_ng_prices = pd.read_csv(eia_aeo_2022_ng_prices_path, skiprows=5)
+  eia_scenario = scenario_map[scenario]
+  eia_aeo_2022_ng_prices.set_index('scenario', inplace=True)
+  price = eia_aeo_2022_ng_prices.loc[eia_scenario, str(year)]
+  price /= utils.mcf_to_mmbtu
+  price *= utils.conversion_2021usd_to_2020usd
+  return price
+
+def compute_avoided_ff_costs(industry_df, industry, scenario, year):
   """Compute the avoided fossil fuel costs for each industry
   Args: 
     industry_df (DataFrame): Results of optimization of ANR depl. 
     industry (str): Name of the industry
   Returns: 
-    industry_df (DataFrame): Results with added column 'Avoided fossil fuel cost (bn$/year)'
+    industry_df (DataFrame): Results with added column 'Avoided fossil fuel cost (M$/year/MWe)'
   """
+  ng_price = get_ng_price(scenario, year)
   if industry == 'ammonia': 
     industry_df['Avoided fossil fuel cost (M$/year/MWe)'] = utils.nh3_nrj_intensity*industry_df['Ammonia capacity (tNH3/year)']\
-      *industry_df['Breakeven price ($/MMBtu)']/(1e6*industry_df['Depl. ANR Cap. (MWe)'])
+      *ng_price/(1e6*industry_df['Depl. ANR Cap. (MWe)'])
   elif industry == 'process_heat':
-    industry_df['Avoided fossil fuel cost (M$/year/MWe)'] = industry_df['Heat Dem. (MJ/year)']*industry_df['Breakeven price ($/MMBtu)']\
+    industry_df['Avoided fossil fuel cost (M$/year/MWe)'] = industry_df['Heat Dem. (MJ/year)']*ng_price\
     /(1e6*industry_df['Depl. ANR Cap. (MWe)']*utils.mmbtu_to_mj)
   elif industry == 'refining': 
     industry_df['Avoided fossil fuel cost (M$/year/MWe)'] = industry_df['H2 Dem. (kg/day)']*365*utils.smr_nrj_intensity\
-      *industry_df['Breakeven price ($/MMBtu)']/(1e6*industry_df['Depl. ANR Cap. (MWe)'])
+      *ng_price/(1e6*industry_df['Depl. ANR Cap. (MWe)'])
   elif industry == 'steel':
     industry_df['Avoided fossil fuel cost (M$/year/MWe)'] = industry_df['Steel prod. (ton/year)']*utils.coal_to_steel_ratio_bau\
-      *utils.coal_heat_content*industry_df['Breakeven price ($/MMBtu)']/(1e6*industry_df['Depl. ANR Cap. (MWe)'])
+      *utils.coal_heat_content*ng_price/(1e6*industry_df['Depl. ANR Cap. (MWe)'])
   return industry_df
 
+
+def compute_h2_revenues(industry_df):
+  """Compute the revenues from the hydrogen ptc 
+  Args: 
+    industry_df (DataFrame): Results of the optimization of ANR deployment
+  Returns: 
+    industry_df (DataFrame): Results with added column 'H2 PTC revenues (M$/year/MWe)'
+  """
+  industry_df['H2 PTC revenues (M$/year/MWe)'] = industry_df['H2 Dem. (kg/day)']*365\
+    *utils.h2_ptc/(1e6*industry_df['Depl. ANR Cap. (MWe)'])
+  return industry_df
 
 def get_opt_anr(industry_df, id):
   """Get the type of ANR for a site from ANR-H2 optimization for h2 industrial demand
@@ -224,7 +253,7 @@ def save_electricity_results(industry_df, excel_file, industry):
       # If the file doesn't exist, create a new one and write the DataFrame to it
       industry_df.to_excel(excel_file, sheet_name=industry)
 
-def plot_electricity_vs_h2_revenues(excel_file, year):
+def plot_electricity_vs_h2_revenues(excel_file, year, with_H2_PTC):
   ammonia = pd.read_excel(excel_file, sheet_name='ammonia')
   heat = pd.read_excel(excel_file, sheet_name='process_heat')
   refining = pd.read_excel(excel_file, sheet_name='refining')
@@ -234,14 +263,19 @@ def plot_electricity_vs_h2_revenues(excel_file, year):
   total_elec.replace({'Industry': 'process_heat'}, {'Industry': 'HT Process Heat'}, inplace=True)
   total_elec.replace({'Industry': 'refining'}, {'Industry': 'Refining'}, inplace=True)
   total_elec.replace({'Industry': 'steel'}, {'Industry': 'Steel'}, inplace=True)
-  
-  ax = sns.scatterplot(data=total_elec, x='Electricity sales (M$/year/MWe)', y='Avoided fossil fuel cost (M$/year/MWe)', size='Avg price ($/MWhe)',palette='bright', hue='Industry', style='ANR type')
+  if with_H2_PTC:
+    total_elec['ANR-H2 revenues (M$/year/MWe)'] = total_elec['Avoided fossil fuel cost (M$/year/MWe)']+total_elec['H2 PTC revenues (M$/year/MWe)']
+    y = 'ANR-H2 revenues (M$/year/MWe)'
+  else: 
+    y = 'Avoided fossil fuel cost (M$/year/MWe)'
+
+  ax = sns.scatterplot(data=total_elec, x='Electricity sales (M$/year/MWe)', y=y, size='Avg price ($/MWhe)',palette='bright', hue='Industry', style='ANR type')
   med_x = np.arange(0,4,0.05)
   ax.plot(med_x, med_x, 'k--', linewidth=0.5)
   ax.spines[['right', 'top']].set_visible(False)
   ax.legend(bbox_to_anchor=(1.05, 1),loc='upper left', borderaxespad=0.)
   ax.set_xlim(-.01,0.5)
-  ax.set_ylim(-.01,1.5)
+  ax.set_ylim(-.01,2)
   ax.set_xlabel('Electricity sales (M$/year/MWe)')
   #plt.savefig('./results/steel_be_state_with_carbon_prices.png')
 
@@ -261,16 +295,20 @@ def plot_electricity_vs_h2_revenues(excel_file, year):
   fig.set_size_inches((8,5))
   fig.tight_layout()
   if learning:
-    elec_save_path = './results/avoided_fossil_vs_elec_sales_with_learning_'+cambium_scenario+'_'+str(year)+'.png'
+    elec_save_path = './results/avoided_fossil_vs_elec_sales_with_learning_'+cambium_scenario+'_H2PTC'+str(with_H2_PTC)+'_'+str(year)+'.png'
   else:
-    elec_save_path = './results/avoided_fossil_vs_elec_sales_without_learning_'+cambium_scenario+'_'+str(year)+'.png'
+    elec_save_path = './results/avoided_fossil_vs_elec_sales_without_learning_'+cambium_scenario+'_H2PTC'+str(with_H2_PTC)+'_'+str(year)+'.png'
   plt.savefig(elec_save_path)
+  plt.close()
 
 
 def test():
-  excel_file = './results/electricity_prod_results_no_learning_'+cambium_scenario+'_'+str(year)+'.xlsx' # save path
+  print(get_ng_price('HighNGPrice', 2021))
 
-  plot_electricity_vs_h2_revenues(excel_file, year)
+def plot_after():
+  excel_file = './results/electricity_prod_results_no_learning_'+cambium_scenario+'_'+str(year)+'.xlsx' # save path
+  plot_electricity_vs_h2_revenues(excel_file, year, with_H2_PTC=False)
+  plot_electricity_vs_h2_revenues(excel_file, year, with_H2_PTC=True)
 
 def main():
   # TODO also run with CAPEX after reduction from learning from industrial deployment
@@ -284,8 +322,8 @@ def main():
     print(f'Industrial sector: {industry}')
     # Load results and compute avoided fossil fuel costs
     industry_df = load_industry_results(industry=industry)
-    industry_df = compute_avoided_ff_costs(industry_df=industry_df, industry=industry)
-
+    industry_df = compute_avoided_ff_costs(industry_df=industry_df, industry=industry, scenario=cambium_scenario, year=year)
+    industry_df = compute_h2_revenues(industry_df=industry_df)
     # Optimization for dedicated electricity production 
     ids = list(industry_df.index)
 
@@ -310,7 +348,8 @@ def main():
     save_electricity_results(industry_df, excel_file, industry)
 
   # Plot results
-  plot_electricity_vs_h2_revenues(excel_file, year)
+  plot_electricity_vs_h2_revenues(excel_file, year, with_H2_PTC=True)
+  plot_electricity_vs_h2_revenues(excel_file, year, with_H2_PTC=False)
   
     
     
@@ -320,5 +359,5 @@ def main():
 if __name__ == '__main__':
   os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-  test()
+  plot_after()
   #main()
