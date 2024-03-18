@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import os
 from itertools import product
+import seaborn as sns
+import numpy as np
 
 INDUSTRIES = ['ammonia', 'process_heat', 'refining','steel']
 years = [2024, 2030, 2040]
@@ -35,6 +37,68 @@ def get_average_revenues(year, industry, scenario):
   return avg_h2, avg_elec
 
 
+
+def plot_sa_elec_revenues(sa_df, year):
+  """Plot average revenues for anr-h2 vs dedicated electricity anr for a designated year
+  Args:
+    sa_df (DataFrame) : results of the SA runs, with index ('Year', 'Industry', 'Scenario')
+  Returns: 
+    None
+  """
+
+  year_data = sa_df.loc[year]
+
+  fig, ax = plt.subplots()
+
+  industry_colors = {
+      'ammonia': 'blue',
+      'process_heat': 'orange',
+      'refining':'green',
+      'steel':'red'
+  }
+
+  scenarios_markers = {
+    'HighRECost': 'x',
+    'LowRECostTCExpire': 'o',
+    'MidCaseTCExpire': 'v', 
+    'MidCase': 's', 
+    'LowRECost': 'D',
+    'HighNGPrice': '^', 
+    'LowNGPrice':'+'
+  }
+
+
+  for industry, industry_data in year_data.groupby(level='Industry'):
+      for scenario, scenario_data in industry_data.groupby(level='Scenario'):
+          ax.scatter(scenario_data['Avg electricity revenues (M$/year/MWe)'], scenario_data['Avg H2 revenues (M$/year/MWe)'], 
+                     label=f'{industry}-{scenario}',
+                     color = industry_colors[industry],
+                    marker=scenarios_markers[scenario])
+  # Plot dashed gray line for the median (y = x)
+  ax.plot([0, 1.5], [0, 1.5], color='gray', linestyle='--', label='Median (y = x)')
+  ax.set_xlabel('Average electricity revenues\n(M$/year/MWe)')
+  ax.set_ylabel(R'Average $H_2$ revenues' '\n(M$/year/MWe)')
+  if year == 2024:
+    ax.set_xlim(.2, 0.4)
+    ax.set_ylim(.2, 1.5)
+    ax.set_xticks(np.arange(0.2, 0.41, 0.05))
+  elif year == 2030:
+    ax.set_xlim(.1, 0.3)
+    ax.set_ylim(.1, 1.5)
+    ax.set_xticks(np.arange(0.1, 0.31, 0.05))
+  elif year == 2040:
+    ax.set_xlim(.0, 0.3)
+    ax.set_ylim(.0, 1.5)
+    ax.set_xticks(np.arange(0, 0.31, 0.05))
+  ax.set_title(f'Year {year}')
+  ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+
+  plt.savefig(f'./results/electricity_prod_results_no_learning_total_{year}', bbox_inches='tight')  
+
+  plt.close()
+
+
+
 def main():
   os.chdir(os.path.dirname(os.path.abspath(__file__)))
   print(get_average_revenues(2024,'ammonia', 'MidCase'))
@@ -48,9 +112,10 @@ def main():
     avg_h2, avg_elec = get_average_revenues(year, industry, scenario)
     df.loc[(year, industry, scenario), 'Avg H2 revenues (M$/year/MWe)'] = avg_h2
     df.loc[(year, industry, scenario), 'Avg electricity revenues (M$/year/MWe)'] = avg_elec
-  print(df)
   df.dropna(inplace=True)
   df.to_excel('./results/electricity_prod_results_no_learning_total.xlsx')
+  for year in years:
+    plot_sa_elec_revenues(df, year)
 
 if __name__ == '__main__':
   main()

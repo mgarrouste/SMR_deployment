@@ -13,15 +13,17 @@ ITC_ANR = utils.ITC_ANR
 INDUSTRIES = ['ammonia', 'process_heat', 'refining','steel']
 
 learning = False
-year = 2024 # 2024, 2030, 2040
-cambium_scenario = 'MidCase' # 'LowRECostTCExpire','MidCaseTCExpire', 'MidCase', 'LowRECost', 'HighRECost', 'HighNGPrice', 'LowNGPrice'
+year = 2040 # 2024, 2030, 2040
+cambium_scenario = 'MidCaseTCExpire' # 'LowRECostTCExpire','MidCaseTCExpire', 'MidCase', 'LowRECost', 'HighRECost', 'HighNGPrice', 'LowNGPrice'
 
 eia_aeo_2022_ng_prices_path  = './input_data/ng_prices_industrial_sector_eia_aeo_2022.csv'
 scenario_map ={'HighNGPrice': 'Low oil and gas supply', 
                'LowNGPrice': 'High oil and gas supply', 
                'MidCase': 'Reference case', 
                'LowRECost': 'Reference case',
-               'HighRECost': 'Reference case'}
+               'HighRECost': 'Reference case',
+               'LowRECostTCExpire': 'Reference case', 
+               'MidCaseTCExpire': 'Reference case'}
 
 electricity_prices_partial_path = './input_data/cambium_'+cambium_scenario.lower()+'_state_hourly_electricity_prices/Cambium22_'+cambium_scenario+'_hourly_'
 
@@ -359,5 +361,5 @@ def main():
 if __name__ == '__main__':
   os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-  plot_after()
-  #main()
+  #plot_after()
+  main()
