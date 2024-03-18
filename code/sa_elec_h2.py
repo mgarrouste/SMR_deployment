@@ -2,8 +2,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import os
 from itertools import product
-import seaborn as sns
 import numpy as np
+from matplotlib.lines import Line2D
 
 INDUSTRIES = ['ammonia', 'process_heat', 'refining','steel']
 years = [2024, 2030, 2040]
@@ -47,14 +47,15 @@ def plot_sa_elec_revenues(sa_df, year):
   """
 
   year_data = sa_df.loc[year]
+  year_data = year_data.rename(index={'ammonia':'Ammonia', 'process_heat':'HT Process Heat', 'refining':'Refining', 'steel':'Steel'})
 
   fig, ax = plt.subplots()
 
   industry_colors = {
-      'ammonia': 'blue',
-      'process_heat': 'orange',
-      'refining':'green',
-      'steel':'red'
+      'Ammonia': 'blue',
+      'HT Process Heat': 'orange',
+      'Refining':'green',
+      'Steel':'red'
   }
 
   scenarios_markers = {
@@ -66,6 +67,18 @@ def plot_sa_elec_revenues(sa_df, year):
     'HighNGPrice': '^', 
     'LowNGPrice':'+'
   }
+  legend_handles = []
+  legend_labels = []
+
+  # Add legend handles and labels for industries
+  for industry, color in industry_colors.items():
+      legend_handles.append(Line2D([0], [0], marker='o', color='w', markerfacecolor=color, label=f'{industry}'))
+      legend_labels.append(industry)
+
+  # Add legend handles and labels for scenarios
+  for scenario, marker in scenarios_markers.items():
+      legend_handles.append(Line2D([0], [0], marker=marker, color='black', linestyle='None', label=f'{scenario}'))
+      legend_labels.append(scenario)
 
 
   for industry, industry_data in year_data.groupby(level='Industry'):
@@ -91,7 +104,10 @@ def plot_sa_elec_revenues(sa_df, year):
     ax.set_ylim(.0, 1.5)
     ax.set_xticks(np.arange(0, 0.31, 0.05))
   ax.set_title(f'Year {year}')
-  ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+  # Add custom legend
+  ax.legend(handles=legend_handles, labels=legend_labels, loc='center left', bbox_to_anchor=(1, 0.5))
+
+  #ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
   plt.savefig(f'./results/electricity_prod_results_no_learning_total_{year}', bbox_inches='tight')  
 
