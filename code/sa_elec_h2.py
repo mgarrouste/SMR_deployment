@@ -38,7 +38,7 @@ def get_average_revenues(year, industry, scenario):
 
 
 
-def plot_sa_elec_revenues(sa_df, year):
+def plot_sa_elec_revenues(sa_df):
   """Plot average revenues for anr-h2 vs dedicated electricity anr for a designated year
   Args:
     sa_df (DataFrame) : results of the SA runs, with index ('Year', 'Industry', 'Scenario')
@@ -46,10 +46,13 @@ def plot_sa_elec_revenues(sa_df, year):
     None
   """
 
-  year_data = sa_df.loc[year]
-  year_data = year_data.rename(index={'ammonia':'Ammonia', 'process_heat':'HT Process Heat', 'refining':'Refining', 'steel':'Steel'})
+  #year_data = sa_df.loc[year]
+  sa_df = sa_df.rename(index={'ammonia':'Ammonia', 
+                              'process_heat':'HT Process Heat', 
+                              'refining':'Refining', 
+                              'steel':'Steel'})
 
-  fig, ax = plt.subplots()
+  fig, axes = plt.subplots(nrows=3, ncols=1, figsize=(4, 10), sharex=True, sharey=True)
 
   industry_colors = {
       'Ammonia': 'blue',
@@ -67,49 +70,49 @@ def plot_sa_elec_revenues(sa_df, year):
     'HighNGPrice': '^', 
     'LowNGPrice':'+'
   }
-  legend_handles = []
-  legend_labels = []
 
-  # Add legend handles and labels for industries
-  for industry, color in industry_colors.items():
-      legend_handles.append(Line2D([0], [0], marker='o', color='w', markerfacecolor=color, label=f'{industry}'))
-      legend_labels.append(industry)
+  for idx, year in enumerate([2024, 2030, 2040]):
+    ax = axes[idx]
+    year_data = sa_df.loc[year]
+    legend_handles = []
+    legend_labels = []
 
-  # Add legend handles and labels for scenarios
-  for scenario, marker in scenarios_markers.items():
-      legend_handles.append(Line2D([0], [0], marker=marker, color='black', linestyle='None', label=f'{scenario}'))
-      legend_labels.append(scenario)
+    # Add legend handles and labels for industries
+    for industry, color in industry_colors.items():
+        legend_handles.append(Line2D([0], [0], marker='o', color='w', markerfacecolor=color, label=f'{industry}'))
+        legend_labels.append(industry)
+
+    # Add legend handles and labels for scenarios
+    for scenario, marker in scenarios_markers.items():
+        if year != 2040 and not (scenario in ['LowRECostTCExpire', 'MidCaseTCExpire']):
+          legend_handles.append(Line2D([0], [0], marker=marker, color='black', linestyle='None', label=f'{scenario}'))
+          legend_labels.append(scenario)
+        if year ==2040:
+          legend_handles.append(Line2D([0], [0], marker=marker, color='black', linestyle='None', label=f'{scenario}'))
+          legend_labels.append(scenario)
 
 
-  for industry, industry_data in year_data.groupby(level='Industry'):
-      for scenario, scenario_data in industry_data.groupby(level='Scenario'):
-          ax.scatter(scenario_data['Avg electricity revenues (M$/year/MWe)'], scenario_data['Avg H2 revenues (M$/year/MWe)'], 
-                     label=f'{industry}-{scenario}',
-                     color = industry_colors[industry],
-                    marker=scenarios_markers[scenario])
-  # Plot dashed gray line for the median (y = x)
-  ax.plot([0, 1.5], [0, 1.5], color='gray', linestyle='--', label='Median (y = x)')
-  ax.set_xlabel('Average electricity revenues\n(M$/year/MWe)')
-  ax.set_ylabel(R'Average $H_2$ revenues' '\n(M$/year/MWe)')
-  if year == 2024:
-    ax.set_xlim(.2, 0.4)
+    for industry, industry_data in year_data.groupby(level='Industry'):
+        for scenario, scenario_data in industry_data.groupby(level='Scenario'):
+            ax.scatter(scenario_data['Avg electricity revenues (M$/year/MWe)'], scenario_data['Avg H2 revenues (M$/year/MWe)'], 
+                      label=f'{industry}-{scenario}',
+                      color = industry_colors[industry],
+                      marker=scenarios_markers[scenario])
+    # Plot dashed gray line for the median (y = x)
+    ax.plot([0, 1.5], [0, 1.5], color='gray', linestyle='--', label='Median (y = x)')
+    ax.set_xlabel('Average electricity revenues\n(M$/year/MWe)')
+    ax.set_ylabel(R'Average $H_2$ revenues' '\n(M$/year/MWe)')
+    ax.set_xlim(.0, 0.4)
     ax.set_ylim(.2, 1.5)
-    ax.set_xticks(np.arange(0.2, 0.41, 0.05))
-  elif year == 2030:
-    ax.set_xlim(.1, 0.3)
-    ax.set_ylim(.1, 1.5)
-    ax.set_xticks(np.arange(0.1, 0.31, 0.05))
-  elif year == 2040:
-    ax.set_xlim(.0, 0.3)
-    ax.set_ylim(.0, 1.5)
-    ax.set_xticks(np.arange(0, 0.31, 0.05))
-  ax.set_title(f'Year {year}')
+    ax.set_xticks(np.arange(0., 0.41, 0.05))
+    ax.set_title(f'Year {year}')
   # Add custom legend
-  ax.legend(handles=legend_handles, labels=legend_labels, loc='center left', bbox_to_anchor=(1, 0.5))
+  fig.legend(handles=legend_handles, labels=legend_labels, loc='center left', bbox_to_anchor=(1, 0.5))
 
   #ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-
-  plt.savefig(f'./results/electricity_prod_results_no_learning_total_{year}', bbox_inches='tight')  
+  # Adjust layout to prevent overlapping
+  plt.tight_layout()
+  plt.savefig(f'./results/electricity_prod_results_no_learning_total', bbox_inches='tight')  
 
   plt.close()
 
@@ -130,8 +133,7 @@ def main():
     df.loc[(year, industry, scenario), 'Avg electricity revenues (M$/year/MWe)'] = avg_elec
   df.dropna(inplace=True)
   df.to_excel('./results/electricity_prod_results_no_learning_total.xlsx')
-  for year in years:
-    plot_sa_elec_revenues(df, year)
+  plot_sa_elec_revenues(df)
 
 if __name__ == '__main__':
   main()
