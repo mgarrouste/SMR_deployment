@@ -36,7 +36,7 @@ def load_industry_results(industry):
   """
   assert industry in INDUSTRIES, f'{industry} not recognized ({INDUSTRIES})'
   os.chdir(os.path.dirname(os.path.abspath(__file__)))
-  industry_df = pd.read_excel('./results/clean_results_anr_lr_0_h2_lr_0_wacc_0.077.xlsx', sheet_name=industry, index_col=0)
+  industry_df = pd.read_excel('./results/clean_results_anr_0_h2_0_wacc_0.077.xlsx', sheet_name=industry, index_col=0)
   return industry_df
 
 
@@ -219,6 +219,7 @@ def solve_ED_electricity(industry, industry_df, id, ANR_data, year):
   results_dic = {}
   results_dic['Industry'] = industry
   results_dic['id'] = id 
+  results_dic['Annual Net Revenues (M$/year/MWe)'] = value(model.NetRevenues/(1e6*model.pANRCap))
 
   def compute_elec_sales(model):
     return sum(model.vG[t]*model.pEPrice[t] for t in model.t)/(1e6*model.pANRCap)
