@@ -6,6 +6,15 @@ N=1000
 #INflation
 conversion_2021usd_to_2020usd = 0.99 #2020$/2021$ source: data.bls.gov
 
+# CCUS costs
+ccus_cost = 100#$/ton CO2
+
+# Energy conversion
+mmbtu_to_mwh = 0.293071 # MWh/MMBtu
+
+# Natural gas
+mcf_to_mmbtu = 1.038 #mmbtu/mcf
+
 #cost of captial
 WACC = 0.077
 # Credits
