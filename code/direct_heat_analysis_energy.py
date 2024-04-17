@@ -58,15 +58,20 @@ def plot_anr_vs_ng_npv(df, cost_tag='foak', cogen=False):
   df[y] = df[npv]/1e6
   df['NPV NG (M$/MWt)'] = df['NPV_NG_noCCUS ($/MWt)']/1e6
   df['NPV NG with CCUS (M$/MWt)'] = df['NPV_NG_CCUS ($/MWt)']/1e6
+  df.rename(columns={'GEN_Opt':'ANR design'}, inplace=True)
   fig, ax = plt.subplots(2,1,figsize=(6,6))
-  sns.scatterplot(ax=ax[0], data=df, y=y, x='NPV NG (M$/MWt)', color='red', style='GEN_Opt')
+  sns.scatterplot(ax=ax[0], data=df, y=y, x='NPV NG (M$/MWt)', hue= 'NG price ($/MMBtu)', style='ANR design')
   med_x = np.arange(0,6, 0.1)
   ax[0].plot(med_x, med_x, color='grey', linestyle='--', linewidth=0.8)
   ax[0].spines[['right', 'top']].set_visible(False)
-  sns.scatterplot(ax=ax[1], data=df, y=y, x='NPV NG with CCUS (M$/MWt)', color='green',style='GEN_Opt')
+  h, l = ax[0].get_legend_handles_labels()
+  sns.scatterplot(ax=ax[1], data=df, y=y, x='NPV NG with CCUS (M$/MWt)', hue =  'NG price ($/MMBtu)',style='ANR design')
   ax[1].plot(med_x, med_x, color='grey', linestyle='--', linewidth=0.8)
   ax[1].spines[['right', 'top']].set_visible(False)
-  plt.show()
+  ax[0].legend().set_visible(False)
+  ax[1].legend().set_visible(False)
+  fig.legend(h, l, loc='outside right upper')
+  fig.savefig(f'./results/direct_heat_maxv_energy_npv_comparison_{cost_tag}_{cogen}.png')
 
 
 
