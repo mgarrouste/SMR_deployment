@@ -6,24 +6,16 @@ import utils
 from multiprocessing import Pool
 import matplotlib.pyplot as plt
 import seaborn as sns
-
+import argparse
 
 WACC = utils.WACC
 ITC_ANR = utils.ITC_ANR
-INDUSTRIES = ['ammonia', 'process_heat', 'refining','steel']
 
 learning = False
 
 cambium_scenario = 'MidCase'#'MidCaseTCExpire' # 'LowRECostTCExpire','MidCaseTCExpire', 'MidCase', 'LowRECost', 'HighRECost', 'HighNGPrice', 'LowNGPrice'
 
-eia_aeo_2022_ng_prices_path  = './input_data/ng_prices_industrial_sector_eia_aeo_2022.csv'
-scenario_map ={'HighNGPrice': 'Low oil and gas supply', 
-               'LowNGPrice': 'High oil and gas supply', 
-               'MidCase': 'Reference case', 
-               'LowRECost': 'Reference case',
-               'HighRECost': 'Reference case',
-               'LowRECostTCExpire': 'Reference case', 
-               'MidCaseTCExpire': 'Reference case'}
+excel_file = './results/price_taker_foak_'+cambium_scenario+'.xlsx' 
 
 electricity_prices_partial_path = './input_data/cambium_'+cambium_scenario.lower()+'_state_hourly_electricity_prices/Cambium22_'+cambium_scenario+'_hourly_'
 
@@ -167,9 +159,26 @@ def save_electricity_results(results_df, excel_file):
   except FileNotFoundError:
     results_df.to_excel(excel_file)
 
+
+def plot_results(excel_file):
+  """ Plot Net Annual Revenues for each ANR design"""
+  fig, ax = plt.subplots(figsize=(6,3))
+  df = pd.read_excel(excel_file, header=0, index_col=0)
+  df['Annual Net Revenues (M$/year/MWe)'] = df['Annual Net Revenues ($/year/MWe)']/1e6
+  print(df.columns)
+  df.replace({'Micro':'Microreactor'}, inplace=True)
+  palette={'HTGR':'blue', 'iMSR':'orange', 'iPWR':'green', 'PBR-HTGR':'darkorchid', 'Microreactor':'darkgrey'}
+  sns.stripplot(ax=ax, data=df, x='Annual Net Revenues (M$/year/MWe)', y='ANR type', palette=palette, \
+                hue='ANR type', marker='*', size=7)
+  ax.axvline(x=0, color='grey', linestyle='--', linewidth=1)
+  ax.set_ylabel('')
+  fig.tight_layout()
+  fig.savefig(f'./results/electricity_price_taker_net_annual_revenues_foak_{cambium_scenario}.png')
+
+
 def main():
   ANR_data = pd.read_excel('./ANRs.xlsx', sheet_name='FOAK', index_col=0)
-  excel_file = './results/price_taker_foak_'+cambium_scenario+'.xlsx' # save path
+  # save path
 
   states = ['AL', 'AR', 'AZ', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'IA', 'ID', 'IL', 'IN', 'KS', 'KY', 'LA', 'MA', 'MD', \
             'ME', 'MI', 'MN', 'MO', 'MS', 'MT', 'NC', 'ND', 'NE', 'NH', 'NJ', 'NM', 'NV', 'NY', 'OH', 'OK', 'OR', 'PA', \
@@ -196,6 +205,10 @@ def main():
 
 if __name__ == '__main__':
   os.chdir(os.path.dirname(os.path.abspath(__file__)))
-
-  #plot_after()
-  main()
+  parser = argparse.ArgumentParser()
+  parser.add_argument('-p','--plot', required=False, type=bool, help='Only plot results')
+  args = parser.parse_args()
+  if args.plot:
+    plot_results(excel_file)
+  else:
+    main()
