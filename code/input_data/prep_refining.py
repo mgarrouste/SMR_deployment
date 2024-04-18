@@ -46,5 +46,72 @@ def create_id(company, city):
   return company[:2]+'_'+city[:3]
 ref_ratio['refinery_id'] = ref_ratio.apply(lambda x: create_id(x['Company'], x['City']), axis=1)
 
+
+# Abbreviation for state name
+us_state_to_abbrev = {
+    "Alabama": "AL",
+    "Alaska": "AK",
+    "Arizona": "AZ",
+    "Arkansas": "AR",
+    "California": "CA",
+    "Colorado": "CO",
+    "Connecticut": "CT",
+    "Delaware": "DE",
+    "Florida": "FL",
+    "Georgia": "GA",
+    "Hawaii": "HI",
+    "Idaho": "ID",
+    "Illinois": "IL",
+    "Indiana": "IN",
+    "Iowa": "IA",
+    "Kansas": "KS",
+    "Kentucky": "KY",
+    "Louisiana": "LA",
+    "Maine": "ME",
+    "Maryland": "MD",
+    "Massachusetts": "MA",
+    "Michigan": "MI",
+    "Minnesota": "MN",
+    "Mississippi": "MS",
+    "Missouri": "MO",
+    "Montana": "MT",
+    "Nebraska": "NE",
+    "Nevada": "NV",
+    "New Hampshire": "NH",
+    "New Jersey": "NJ",
+    "New Mexico": "NM",
+    "New York": "NY",
+    "North Carolina": "NC",
+    "North Dakota": "ND",
+    "Ohio": "OH",
+    "Oklahoma": "OK",
+    "Oregon": "OR",
+    "Pennsylvania": "PA",
+    "Rhode Island": "RI",
+    "South Carolina": "SC",
+    "South Dakota": "SD",
+    "Tennessee": "TN",
+    "Texas": "TX",
+    "Utah": "UT",
+    "Vermont": "VT",
+    "Virginia": "VA",
+    "Washington": "WA",
+    "West Virginia": "WV",
+    "Wisconsin": "WI",
+    "Wyoming": "WY",
+    "District of Columbia": "DC",
+    "American Samoa": "AS",
+    "Guam": "GU",
+    "Northern Mariana Islands": "MP",
+    "Puerto Rico": "PR",
+    "United States Minor Outlying Islands": "UM",
+    "U.S. Virgin Islands": "VI",
+}
+abbrev_states = pd.DataFrame(us_state_to_abbrev.items(), columns=['state', 'abbrev'])
+abbrev_states['state'] = abbrev_states.apply(lambda x:x['state'].upper(), axis=1)
+ref_ratio = ref_ratio.merge(abbrev_states,left_on='State', right_on='state')
+ref_ratio.drop(columns=['State', 'state'], inplace=True)
+ref_ratio.rename(columns={'abbrev':'state'}, inplace=True)
+
 # SAve results
 ref_ratio.to_excel('../h2_demand_refineries.xlsx', sheet_name='processed', index=False)
