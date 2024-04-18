@@ -268,7 +268,7 @@ def compute_ammonia_capex_breakeven(results_ref, be_ng_price_foak, ng_price):
   return be_capex
 
 
-def main(learning_rate_anr_capex = 0, learning_rate_h2_capex =0, wacc=WACC, print_main_results=True, print_results=False): 
+def main(anr_tag=anr_tag, wacc=WACC, print_main_results=True, print_results=False): 
   # Go the present directory
   abspath = os.path.abspath(__file__)
   dname = os.path.dirname(abspath)
@@ -279,7 +279,7 @@ def main(learning_rate_anr_capex = 0, learning_rate_h2_capex =0, wacc=WACC, prin
   plant_ids = list(ammonia_df['id'])
 
   # Load ANR and H2 parameters
-  ANR_data, H2_data = load_data(learning_rate_anr_capex, learning_rate_h2_capex)
+  ANR_data, H2_data = load_data(anr_tag=anr_tag)
 
   # Build results dataset one by one
   
@@ -289,7 +289,7 @@ def main(learning_rate_anr_capex = 0, learning_rate_h2_capex =0, wacc=WACC, prin
 
   df = pd.DataFrame(results)
 
-  excel_file = './results/raw_results_anr_lr_'+str(learning_rate_anr_capex)+'_h2_lr_'+str(learning_rate_h2_capex)+'_wacc_'+str(wacc)+'.xlsx'
+  excel_file = f'./results/raw_results_anr_{anr_tag}_h2_wacc_{str(wacc)}.xlsx'
   sheet_name = 'ammonia'
   if print_main_results:
     # Try to read the existing Excel file
@@ -319,4 +319,4 @@ def main(learning_rate_anr_capex = 0, learning_rate_h2_capex =0, wacc=WACC, prin
 
 
 if __name__ == '__main__': 
-  main()
+  main(anr_tag=utils.LEARNING)

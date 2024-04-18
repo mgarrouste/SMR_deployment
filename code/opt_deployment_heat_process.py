@@ -255,13 +255,13 @@ def compute_breakeven_price(results_ref):
   return breakeven_price
 
 
-def main(learning_rate_anr_capex =0, learning_rate_h2_capex=0, wacc=WACC, print_main_results=True):
+def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False):
   abspath = os.path.abspath(__file__)
   dname = os.path.dirname(abspath)
   os.chdir(dname)
   demand_df = pd.read_excel('h2_demand_industry_heat.xlsx', sheet_name='max')
   plant_ids = list(demand_df['FACILITY_ID'])
-  ANR_data, H2_data = utils.load_data(learning_rate_anr_capex, learning_rate_h2_capex)
+  ANR_data, H2_data = utils.load_data(anr_tag=anr_tag)
 
   with Pool() as pool: 
     results = pool.starmap(solve_process_heat_deployment, [(plant, ANR_data, H2_data) for plant in plant_ids])
@@ -269,7 +269,7 @@ def main(learning_rate_anr_capex =0, learning_rate_h2_capex=0, wacc=WACC, print_
 
   df = pd.DataFrame(results)
 
-  excel_file = './results/raw_results_anr_lr_'+str(learning_rate_anr_capex)+'_h2_lr_'+str(learning_rate_h2_capex)+'_wacc_'+str(wacc)+'.xlsx'
+  excel_file = f'./results/raw_results_anr_{anr_tag}_h2_wacc_{str(wacc)}.xlsx'
   sheet_name = 'process_heat'
   if print_main_results:
     # Try to read the existing Excel file
@@ -297,4 +297,4 @@ def main(learning_rate_anr_capex =0, learning_rate_h2_capex=0, wacc=WACC, print_
 
 
 if __name__ == '__main__':
-  main()
+  main(anr_tag=utils.LEARNING)

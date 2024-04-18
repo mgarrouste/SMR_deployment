@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 N=1000
-
+LEARNING = 'NOAK'
 #INflation
 conversion_2021usd_to_2020usd = 0.99 #2020$/2021$ source: data.bls.gov
 
@@ -58,10 +58,10 @@ def update_capex_costs(ANR_data, learning_rate_anr_capex, H2_data, learning_rate
   return ANR_data, H2_data
 
 
-def load_data(learning_rate_anr_capex, learning_rate_h2_capex):
+def load_data(anr_tag='FOAK'):
   H2_data = pd.read_excel('./h2_tech.xlsx', sheet_name='Summary', index_col=[0,1])
-  ANR_data = pd.read_excel('./ANRs.xlsx', sheet_name='FOAK', index_col=0)
-  ANR_data, H2_data = update_capex_costs(ANR_data, learning_rate_anr_capex, H2_data, learning_rate_h2_capex)
+  ANR_data = pd.read_excel('./ANRs.xlsx', sheet_name=anr_tag, index_col=0)
+  #ANR_data, H2_data = update_capex_costs(ANR_data, learning_rate_anr_capex, H2_data, learning_rate_h2_capex)
   return ANR_data, H2_data
 
 

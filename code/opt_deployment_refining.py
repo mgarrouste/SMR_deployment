@@ -229,21 +229,21 @@ def compute_breakeven_price(results_ref):
   return breakeven_price
 
 
-def main(learning_rate_anr_capex=0, learning_rate_h2_capex=0, wacc=WACC, print_main_results=True):
+def main(anr_tag='FOAK', wacc=WACC, print_main_results=True):
   abspath = os.path.abspath(__file__)
   dname = os.path.dirname(abspath)
   os.chdir(dname)
   ref_df = pd.read_excel('h2_demand_refineries.xlsx', sheet_name='processed')
   ref_ids = list(ref_df['refinery_id'])
 
-  ANR_data, H2_data = utils.load_data(learning_rate_anr_capex, learning_rate_h2_capex)
+  ANR_data, H2_data = utils.load_data(anr_tag=anr_tag)
 
   with Pool(10) as pool: 
     results = pool.starmap(solve_refinery_deployment, [(ref_id, ANR_data, H2_data) for ref_id in ref_ids])
   pool.close()
 
   df = pd.DataFrame(results)
-  excel_file = './results/raw_results_anr_lr_'+str(learning_rate_anr_capex)+'_h2_lr_'+str(learning_rate_h2_capex)+'_wacc_'+str(wacc)+'.xlsx'
+  excel_file = f'./results/raw_results_anr_{anr_tag}_h2_wacc_{str(wacc)}.xlsx'
   sheet_name = 'refining'
   if print_main_results:
     # Try to read the existing Excel file
@@ -270,4 +270,4 @@ def main(learning_rate_anr_capex=0, learning_rate_h2_capex=0, wacc=WACC, print_m
 
 
 if __name__ == '__main__':
-  main()
+  main(anr_tag=utils.LEARNING)

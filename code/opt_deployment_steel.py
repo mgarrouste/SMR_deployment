@@ -274,7 +274,7 @@ def compute_breakeven_price(results_ref):
   breakeven_price = breakeven_price_per_ton/utils.coal_heat_content
   return breakeven_price
 
-def main(learning_rate_anr_capex = 0, learning_rate_h2_capex =0, wacc=WACC, print_main_results=True, print_results=False): 
+def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False): 
   # Go the present directory
   abspath = os.path.abspath(__file__)
   dname = os.path.dirname(abspath)
@@ -285,7 +285,7 @@ def main(learning_rate_anr_capex = 0, learning_rate_h2_capex =0, wacc=WACC, prin
   steel_ids = list(steel_df['Plant'])
 
   # Load ANR and H2 parameters
-  ANR_data, H2_data = utils.load_data(learning_rate_anr_capex, learning_rate_h2_capex)
+  ANR_data, H2_data = utils.load_data(anr_tag=anr_tag)
 
   # Build results dataset one by one
 
@@ -295,7 +295,7 @@ def main(learning_rate_anr_capex = 0, learning_rate_h2_capex =0, wacc=WACC, prin
 
   df = pd.DataFrame(results)
 
-  excel_file = './results/raw_results_anr_lr_'+str(learning_rate_anr_capex)+'_h2_lr_'+str(learning_rate_h2_capex)+'_wacc_'+str(wacc)+'.xlsx'
+  excel_file = f'./results/raw_results_anr_{anr_tag}_h2_wacc_{str(wacc)}.xlsx'
   sheet_name = 'steel'
   if print_main_results:
     # Try to read the existing Excel file
@@ -325,16 +325,9 @@ def main(learning_rate_anr_capex = 0, learning_rate_h2_capex =0, wacc=WACC, prin
   med_be = df['Breakeven price ($/MMBtu)'].median()
   return med_be
 
-def test():
-  plant = 'U.S. Steel Granite City Works'
-  print('Plant : ', plant)
-  print('Demand Steel ton per year : ', get_steel_plant_demand(plant)[0])
-  print('Demand H2 kg per day: ', get_steel_plant_demand(plant)[1])
-  print('Demand electricity MW: ', get_steel_plant_demand(plant)[2]/24)
-
 
 if __name__ == '__main__': 
-  main()
+  main(anr_tag=utils.LEARNING)
   #test()
 
 
