@@ -160,7 +160,7 @@ def save_electricity_results(results_df, excel_file):
     results_df.to_excel(excel_file)
 
 
-def plot_results(excel_file):
+def plot_results(excel_file, boxplot=True):
   """ Plot Net Annual Revenues for each ANR design"""
   fig, ax = plt.subplots(figsize=(6,3))
   df = pd.read_excel(excel_file, header=0, index_col=0)
@@ -168,7 +168,10 @@ def plot_results(excel_file):
   print(df.columns)
   df.replace({'Micro':'Microreactor'}, inplace=True)
   palette={'HTGR':'blue', 'iMSR':'orange', 'iPWR':'green', 'PBR-HTGR':'darkorchid', 'Microreactor':'darkgrey'}
-  sns.stripplot(ax=ax, data=df, x='Annual Net Revenues (M$/year/MWe)', y='ANR type', palette=palette, \
+  if boxplot:
+    sns.boxplot(ax=ax, data=df, x='Annual Net Revenues (M$/year/MWe)', y='ANR type', palette=palette, hue='ANR type')
+  else:
+    sns.stripplot(ax=ax, data=df, x='Annual Net Revenues (M$/year/MWe)', y='ANR type', palette=palette, \
                 hue='ANR type', marker='*', size=7)
   ax.axvline(x=0, color='grey', linestyle='--', linewidth=1)
   ax.set_ylabel('')
@@ -206,7 +209,7 @@ def main():
 if __name__ == '__main__':
   os.chdir(os.path.dirname(os.path.abspath(__file__)))
   parser = argparse.ArgumentParser()
-  parser.add_argument('-p','--plot', required=False, type=bool, help='Only plot results')
+  parser.add_argument('-p','--plot', required=False, help='Only plot results, does not run model')
   args = parser.parse_args()
   if args.plot:
     plot_results(excel_file)
