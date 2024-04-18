@@ -2,11 +2,14 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-import os
+import os, glob
 import utils
 
 lifetime = 34 # years
 foak = True
+
+cambium_scenario = 'MidCase'
+year = 2024
 
 def get_data(foak=True):
   heat_df = pd.read_csv('./input_data/max_vanatta_direct_heat_anrs/maxvanatta_energy_paper_data.csv')
@@ -24,9 +27,34 @@ def get_data(foak=True):
   return heat_df
 
 
+def compute_average_electricity_prices(cambium_scenario, year):
+  folder = f'./input_data/cambium_{cambium_scenario.lower()}_state_hourly_electricity_prices'
+  list_csv_files = glob.glob(folder+'/Cambium*.csv')
+  state_prices = pd.DataFrame(columns=['average price ($/MWhe)', 'state'])
+  state_prices.set_index('state', inplace=True)
+  for file in list_csv_files:
+    if str(year) in file:
+      print(file)
+      state = file.split('_')[-2]
+      avg_price = pd.read_csv(file, skiprows=5)['energy_cost_enduse'].mean()
+      print(avg_price)
+      print(type(avg_price))
+      state_prices.loc[state, 'average price ($/MWhe)'] = avg_price
+  print(state_prices)
+  state_prices.to_excel(f'./results/average_electricity_prices_{cambium_scenario}_{year}.xlsx')
+
+
 def compute_cogen(df):
-  df['Remaining capacity (MWe)'] = df['NP_Capacity']
-  pass
+  df['Remaining capacity (MWe)'] = df.apply(lambda x: x['NP_Capacity'] - x['Thermal MWh/hr'] if x['NP_Capacity']-x['Thermal MWh/hr']>0 else 0, axis=1)
+  try:
+    elec_prices_df = pd.read_excel(f'./results/average_electricity_prices_{cambium_scenario}_{year}.xlsx', index_col=0)
+  except FileNotFoundError:
+    compute_average_electricity_prices(cambium_scenario, year)
+    elec_prices_df = pd.read_excel(f'./results/average_electricity_prices_{cambium_scenario}_{year}.xlsx', index_col=0)
+  print(elec_prices_df)
+  df['Cogen revenues ($/year)'] = df.apply(lambda x: x['Remaining capacity (MWe)']*elec_prices_df.loc[x['STATE']]*8760, axis=1)
+  return df
+  
 
 
 def save_data(df, cost_tag='', cogen_tag=''):
@@ -80,8 +108,8 @@ def main():
   else: cost_tag = 'noak'
   heat_df = get_data(foak)
   heat_df = compute_ccus_npv(heat_df)
+  heat_df = compute_cogen(heat_df)
   print(heat_df)
-  print(heat_df.columns)
   save_data(heat_df, cost_tag=cost_tag, cogen_tag='nocogen')
   plot_net_annual_revenues(heat_df, cost_tag=cost_tag, cogen_tag='nocogen')
   plot_anr_vs_ng_npv(heat_df, cost_tag=cost_tag)
