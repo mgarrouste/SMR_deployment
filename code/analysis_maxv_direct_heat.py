@@ -70,6 +70,7 @@ def compute_cogen(df):
 
 
 def save_data(df, cost_tag='', cogen_tag=''):
+  df.rename(columns={'FACILITY_ID':'id'}, inplace=True)
   df.to_csv(f'./results/direct_heat_maxv_results_{cost_tag}_{cogen_tag}.csv', index=False)
 
 
@@ -123,8 +124,9 @@ def main():
   heat_df = compute_net_annual_revenues(heat_df, anr_tag=anr_tag)
   heat_df = compute_net_annual_costs_ng_ccus(heat_df)
   #heat_df = compute_cogen(heat_df)
-  print(heat_df)
+  
   save_data(heat_df, cost_tag=anr_tag, cogen_tag='nocogen')
+  print(heat_df)
   plot_net_annual_revenues(heat_df, anr_tag=anr_tag, cogen_tag='nocogen')
   plot_anr_vs_ng_costs(heat_df, anr_tag=anr_tag)
 

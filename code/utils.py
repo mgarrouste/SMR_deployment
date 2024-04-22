@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 N=1000
-LEARNING = 'NOAK'
+LEARNING = 'FOAK'
 #INflation
 conversion_2021usd_to_2020usd = 0.99 #2020$/2021$ source: data.bls.gov
 
