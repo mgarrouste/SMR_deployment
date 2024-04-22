@@ -11,11 +11,11 @@ import argparse
 WACC = utils.WACC
 ITC_ANR = utils.ITC_ANR
 
-learning = False
+anr_tag = 'NOAK' # 'FOAK'
 
 cambium_scenario = 'MidCase'#'MidCaseTCExpire' # 'LowRECostTCExpire','MidCaseTCExpire', 'MidCase', 'LowRECost', 'HighRECost', 'HighNGPrice', 'LowNGPrice'
 
-excel_file = './results/price_taker_foak_'+cambium_scenario+'.xlsx' 
+excel_file = f'./results/price_taker_{anr_tag}_{cambium_scenario}.xlsx' 
 
 electricity_prices_partial_path = './input_data/cambium_'+cambium_scenario.lower()+'_state_hourly_electricity_prices/Cambium22_'+cambium_scenario+'_hourly_'
 
@@ -176,11 +176,12 @@ def plot_results(excel_file, boxplot=True):
   ax.axvline(x=0, color='grey', linestyle='--', linewidth=1)
   ax.set_ylabel('')
   fig.tight_layout()
-  fig.savefig(f'./results/electricity_price_taker_net_annual_revenues_foak_{cambium_scenario}.png')
+  fig.savefig(f'./results/electricity_price_taker_net_annual_revenues_{anr_tag}_{cambium_scenario}.png')
 
 
 def main():
-  ANR_data = pd.read_excel('./ANRs.xlsx', sheet_name='FOAK', index_col=0)
+  print(f'ANR costs: {anr_tag}')
+  ANR_data = pd.read_excel('./ANRs.xlsx', sheet_name=anr_tag, index_col=0)
   # save path
 
   states = ['AL', 'AR', 'AZ', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'IA', 'ID', 'IL', 'IN', 'KS', 'KY', 'LA', 'MA', 'MD', \
@@ -190,9 +191,7 @@ def main():
   years = [2024, 2030, 2040]
   all_states_results_list = []
   for year in years:
-    print(f'Year {year}')
     for state in states: 
-      print(f'State {state}')
       
       # Parallel solving
       with Pool(5) as pool:
