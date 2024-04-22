@@ -204,13 +204,42 @@ def main():
   save_electricity_results(all_states_elec_results_df, excel_file)
 
 
+def compare_deployment_stages():
+  noak_results = f'./results/price_taker_NOAK_{cambium_scenario}.xlsx'
+  foak_results = f'./results/price_taker_FOAK_{cambium_scenario}.xlsx'
+  assert os.path.isfile(noak_results), f'NOAK results not found: {noak_results}'
+  assert os.path.isfile(foak_results), f'FOAK results not found: {foak_results}'
+  noak_df = pd.read_excel(noak_results, usecols="B:G")
+  foak_df = pd.read_excel(foak_results, usecols="B:G")
+  # concatenate results
+  noak_df['Deployment'] = 'NOAK'
+  foak_df['Deployment'] = 'FOAK'
+  total_df = pd.concat([foak_df, noak_df], ignore_index=True)
+  # Formatting
+  total_df['Annual Net Revenues (M$/year/MWe)'] = total_df['Annual Net Revenues ($/year/MWe)']/1e6
+  total_df.replace({'Micro':'Microreactor'}, inplace=True)
+  # Plot
+  palette={'HTGR':'blue', 'iMSR':'orange', 'iPWR':'green', 'PBR-HTGR':'darkorchid', 'Microreactor':'darkgrey'}
+  fig, ax = plt.subplots(5,1, figsize=(6,6), sharex=True)
+  i = 0
+  for design, color in palette.items():
+    subset = total_df[total_df['ANR type']==design]
+    sns.boxplot(ax=ax[i], data=subset, x='Annual Net Revenues (M$/year/MWe)', y='Deployment', color=color)
+    ax[i].axvline(x=0, color='grey', linestyle='--', linewidth=1)
+    ax[i].set_ylabel(design)
+    i += 1
+  fig.tight_layout()
+  fig.savefig(f'./results/electricity_comparison_NOAK_FOAK_net_annual_revenues_{cambium_scenario}.png')
 
 if __name__ == '__main__':
   os.chdir(os.path.dirname(os.path.abspath(__file__)))
   parser = argparse.ArgumentParser()
   parser.add_argument('-p','--plot', required=False, help='Only plot results, does not run model')
+  parser.add_argument('-c', '--compare', required=False, help='Compare via a plot FOAK and NOAK results')
   args = parser.parse_args()
   if args.plot:
     plot_results(excel_file)
+  elif args.compare:
+    compare_deployment_stages()
   else:
     main()
