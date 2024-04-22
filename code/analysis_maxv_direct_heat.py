@@ -70,7 +70,7 @@ def compute_cogen(df):
 
 
 def save_data(df, cost_tag='', cogen_tag=''):
-  df.rename(columns={'FACILITY_ID':'id'}, inplace=True)
+  df.rename(columns={'FACILITY_ID':'id', 'STATE':'state'}, inplace=True)
   df.to_csv(f'./results/direct_heat_maxv_results_{cost_tag}_{cogen_tag}.csv', index=False)
 
 
