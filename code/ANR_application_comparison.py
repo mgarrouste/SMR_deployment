@@ -68,7 +68,7 @@ def combine_emissions(applications_results):
 
 
 def plot_cumulative_avoided_emissions(applications_results):
-  fig, ax = plt.subplots(2, 1, figsize=(10,6), sharex=True)
+  fig, ax = plt.subplots(2, 1, figsize=(6,6), sharex=True)
   xmax = 50
   # Total avoided emissions on top subplot
   total_df = combine_emissions(applications_results)

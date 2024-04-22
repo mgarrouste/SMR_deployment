@@ -93,7 +93,7 @@ def compute_net_annual_costs_ng_ccus(df):
   return df
 
 
-def plot_anr_vs_ng_costs(df, anr_tag='FOAK', cogen=False):
+def plot_anr_vs_ng_ccus_costs(df, anr_tag='FOAK', cogen=False):
   # NG with CCUS cost on the x axis
   x = 'NG CCUS Cost (M$/MWt/y)'
   df[x] = df['NG CCUS Cost ($/MWt/y)']/1e6
@@ -105,16 +105,38 @@ def plot_anr_vs_ng_costs(df, anr_tag='FOAK', cogen=False):
   fig, ax = plt.subplots(figsize=(8,6))
   med_x = np.arange(0,10, 0.1)
   # Style ANR design
-  sns.scatterplot(ax=ax, data=df, y=y, x=x, hue= 'NG price ($/MMBtu)', style='ANR design')
+  sns.scatterplot(ax=ax, data=df, y=y, x=x, hue= 'NG price ($/MMBtu)', style='ANR design', palette='flare')
   ax.plot(med_x, med_x, color='grey', linestyle='--', linewidth=0.8)
   ax.spines[['right', 'top']].set_visible(False)
   ax.set_ylim(-.1,2)
-  ax.set_xlim(-0.1,7.5)
+  ax.set_xlim(-0.1,7.1)
   ax.set_xlabel(f'{x}\nCCUS cost: {utils.ccus_cost} $/t-CO2')
 
   fig.tight_layout()
   fig.savefig(f'./results/direct_heat_maxv_cost_comparison_anr_ng_ccus_{anr_tag}_{cogen}.png')
 
+
+def plot_anr_vs_ng_costs(df, anr_tag='FOAK', cogen=False):
+  # NG with CCUS cost on the x axis
+  x = 'NG wo/ CCUS Cost (M$/MWt/y)'
+  df[x] = df['Fac_Ann_Rev']/(df['Thermal MWh/hr']*1e6)
+  # ANR Cost on the y axis
+  y = f'ANR Cost {anr_tag} (M$/MWt/y)'
+  df[y] = df[f'ANR Cost {anr_tag} ($/MWt/y)']/1e6
+
+  df.rename(columns={'Generator':'ANR design'}, inplace=True)
+  fig, ax = plt.subplots(figsize=(8,6))
+  med_x = np.arange(0,7, 0.1)
+  # Style ANR design
+  sns.scatterplot(ax=ax, data=df, y=y, x=x, hue= 'NG price ($/MMBtu)', style='ANR design', palette='crest')
+  ax.plot(med_x, med_x, color='grey', linestyle='--', linewidth=0.8)
+  ax.spines[['right', 'top']].set_visible(False)
+  ax.set_ylim(-.1,2)
+  ax.set_xlim(-0.1,7.1)
+  ax.set_xlabel(f'{x}')
+
+  fig.tight_layout()
+  fig.savefig(f'./results/direct_heat_maxv_cost_comparison_anr_ng_wo_ccus_{anr_tag}_{cogen}.png')
 
 
 def main():
@@ -126,9 +148,9 @@ def main():
   #heat_df = compute_cogen(heat_df)
   
   save_data(heat_df, cost_tag=anr_tag, cogen_tag='nocogen')
-  print(heat_df)
   plot_net_annual_revenues(heat_df, anr_tag=anr_tag, cogen_tag='nocogen')
   plot_anr_vs_ng_costs(heat_df, anr_tag=anr_tag)
+  plot_anr_vs_ng_ccus_costs(heat_df, anr_tag=anr_tag)
 
 
 
