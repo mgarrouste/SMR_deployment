@@ -156,7 +156,7 @@ def plot_anr_vs_ng_costs(df, anr_tag='FOAK', cogen=False):
 
 
 
-def plot_deployment_comparison_2():
+def plot_deployment_comparison():
   noak_results = './results/direct_heat_maxv_results_NOAK_nocogen.csv'
   foak_results = './results/direct_heat_maxv_results_FOAK_nocogen.csv'
   assert os.path.isfile(noak_results), f'NOAK results not found: {noak_results}'
@@ -171,17 +171,12 @@ def plot_deployment_comparison_2():
   total_df['Net Annual Revenues FOAK ($/y)'] = total_df['Net Annual Revenues FOAK ($/y)'].fillna(0)
   total_df = total_df[~(total_df['Industry_x'] == 'Other_Not Found')]
   total_df['Delta Net Rev'] = (total_df['Net Annual Revenues NOAK ($/y)'] - total_df['Net Annual Revenues FOAK ($/y)'])/(total_df['Installed_Cap_x']*1e6)
-  industries = total_df['Industry_x'].unique()
-  industries_labels = {'Ethyl Alcohol':'Ethyl\nAlcohol', 'Paper Mills':'Paper\nMills', 'Petroleum Refineries':'Petroleum\nRefineries', 
-                       'Alkalies and Chlorine':'Alkalies\nand\nChlorine', 'Lime':'Lime', 'Iron and Steel Mills': 'Iron and\nSteel', 
-                       'Wet Corn Milling':'Wet Corn\nMilling', 'Petro- and organic chemicals':'Petro-\nand organic\nchemicals', 
-                       'Plastics Materials and Resins':'Plastics',
-                         'Nitrogenous Fertilizers':'Nitrogenous\nFertilizers'}
+  # Plot
   fig, ax = plt.subplots(figsize=(10,8), sharex=True)
   sns.boxplot(ax=ax, data=total_df, y='Industry_x', x='Delta Net Rev', hue='NG price ($/MMBtu)_x', fill=False, width=.5, palette='flare')
   ax.set_ylabel('')
   ax.set_xlim(-0.02, 0.085)
-  ax.set_xlabel('Different Net Annual Revenues (M$/MWt/y)')
+  ax.set_xlabel('Differential Net Annual Revenues (M$/MWt/y)')
   ax.axvline(x=0, color='grey', linestyle='--', linewidth=1)
   sns.despine()
   ax.grid(True)
@@ -207,7 +202,7 @@ def main():
   save_data(heat_df, anr_tag=anr_tag, cogen_tag='nocogen')
  
   if anr_tag == 'NOAK':
-    plot_deployment_comparison_2()
+    plot_deployment_comparison()
   else:
     plot_net_annual_revenues(heat_df, anr_tag=anr_tag, cogen_tag='nocogen')
     plot_anr_vs_ng_costs(heat_df, anr_tag=anr_tag)
