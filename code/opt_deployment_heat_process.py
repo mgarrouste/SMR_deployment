@@ -242,6 +242,7 @@ def solve_process_heat_deployment(plant_id, ANR_data, H2_data, BE):
     results_ref['ANR O&M ($/year)'] = value(compute_anr_om(model))
     results_ref['H2 O&M ($/year)'] = value(compute_h2_om(model))
     results_ref['Conversion costs ($/year)'] = value(compute_conv_costs(model))
+    results_ref['Avoided NG costs ($/year)'] = value(annualized_avoided_ng_costs(model))
     results_ref['ANR CRF'] = value(get_crf(model))
     results_ref['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
     results_ref['Net Annual Revenues ($/MWe/y)'] = results_ref['Net Revenues ($/year)']/results_ref['Depl. ANR Cap. (MWe)']

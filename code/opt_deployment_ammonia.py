@@ -215,6 +215,14 @@ def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results, BE):
   
   def get_deployed_cap(model):
     return sum(sum (model.vM[n,g]*model.pANRCap[g] for g in model.G) for n in model.N)
+  
+  def annualized_avoided_ng_costs(model):
+    if BE:
+      avoided_costs = 0
+    else:
+      ng_price = utils.get_ng_price_aeo(model.pState)
+      avoided_costs = utils.nh3_nrj_intensity*model.pNH3Cap*ng_price 
+    return avoided_costs
 
   ############## SOLVE ###################
   solver = SolverFactory('cplex')
@@ -243,6 +251,7 @@ def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results, BE):
     results_ref['ANR O&M ($/year)'] = value(compute_anr_om(model))
     results_ref['H2 O&M ($/year)'] = value(compute_h2_om(model))
     results_ref['Conversion costs ($/year)'] = value(compute_conv_costs(model))
+    results_ref['Avoided NG costs ($/year)'] = value(annualized_avoided_ng_costs(model))
     results_ref['ANR CRF'] = value(get_crf(model))
     results_ref['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
     results_ref['Net Annual Revenues ($/MWe/y)'] = results_ref['Net Revenues ($/year)']/results_ref['Depl. ANR Cap. (MWe)']

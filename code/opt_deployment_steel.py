@@ -230,6 +230,14 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data, BE):
   
   def get_deployed_cap(model):
     return sum(sum (model.vM[n,g]*model.pANRCap[g] for g in model.G) for n in model.N)
+  
+  def annualized_avoided_ng_costs(model):
+    if BE:
+      avoided_costs = 0
+    else:
+      ng_price = utils.get_ng_price_aeo(model.pState)
+      avoided_costs = ng_price*steel_cap_ton_per_annum*utils.coal_to_steel_ratio_bau
+    return avoided_costs
 
   ############## SOLVE ###################
   solver = SolverFactory('cplex')
@@ -258,6 +266,7 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data, BE):
     results_dic['ANR O&M ($/year)'] = value(compute_anr_om(model))
     results_dic['H2 O&M ($/year)'] = value(compute_h2_om(model))
     results_dic['Conversion costs ($/year)'] = value(compute_conv_costs(model))
+    results_dic['Avoided NG costs ($/year)'] = value(annualized_avoided_ng_costs(model))
     results_dic['ANR CRF'] = value(get_crf(model))
     results_dic['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
     results_dic['Net Annual Revenues ($/MWe/y)'] = results_dic['Net Revenues ($/year)']/results_dic['Depl. ANR Cap. (MWe)']
