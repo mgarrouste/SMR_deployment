@@ -156,9 +156,15 @@ def solve_process_heat_deployment(plant_id, ANR_data, H2_data):
     heat_power_dem = model.pHeatDem/(CONV_MWh_to_MJ*365*24) #MWth
     costs = heat_power_dem*model.pGFCAPEX*gf_crf*(1-model.pITC_H2)
     return costs
+  
+  def annualized_avoided_ng_costs(model):
+    ng_price = utils.get_ng_price_aeo(model.pState)
+    avoided_costs = model.pHeatDem*ng_price/utils.mmbtu_to_mj
+    return avoided_costs
+
 
   def annualized_net_rev(model):
-    return -annualized_costs_anr_h2(model) - annualized_costs_gf(model)
+    return annualized_avoided_ng_costs(model)-annualized_costs_anr_h2(model) - annualized_costs_gf(model)
   model.NetRevenues = Objective(expr=annualized_net_rev, sense=maximize)  
 
 
@@ -221,6 +227,8 @@ def solve_process_heat_deployment(plant_id, ANR_data, H2_data):
   results_ref['H2 Dem. (kg/day)'] = value(model.pH2Dem)
   results_ref['Heat Dem. (MJ/year)'] = value(model.pHeatDem)
   results_ref['Net Revenues ($/year)'] = value(model.NetRevenues)
+  results_ref['H2 PTC Revenues ($/year)'] = demand_daily*365*utils.h2_ptc
+  results_ref['Net Revenues with H2 PTC ($/year)'] = results_ref['Net Revenues ($/year)']+results_ref['H2 PTC Revenues ($/year)']
   for h in model.H:
     results_ref[h] = 0
   if results.solver.termination_condition == TerminationCondition.optimal: 
@@ -232,6 +240,8 @@ def solve_process_heat_deployment(plant_id, ANR_data, H2_data):
     results_ref['H2 O&M ($/year)'] = value(compute_h2_om(model))
     results_ref['ANR CRF'] = value(get_crf(model))
     results_ref['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
+    results_ref['Net Annual Revenues ($/MWe/y)'] = results_ref['Net Revenues ($/year)']/results_ref['Depl. ANR Cap. (MWe)']
+    results_ref['Net Annual Revenues with H2 PTC ($/MWe/y)'] = results_ref['Net Revenues with H2 PTC ($/year)']/results_ref['Depl. ANR Cap. (MWe)']
     for g in model.G: 
       if value(model.vS[g]) >=1: 
         results_ref['ANR type'] = g

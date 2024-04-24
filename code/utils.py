@@ -52,6 +52,24 @@ ratio_ironore_DRI = 1.391 # tironore/tDRI
 bfbof_iron_cons = 1.226 #t_ironore/t_steel
 om_bfbof = 178.12 #$/t_steel
 
+
+def get_ng_price_current(state):
+  ng_prices_map = pd.read_excel('./input_data/ng_prices_state_annual_us.xlsx', sheet_name='clean_data_2022', index_col='state')
+  ng_price = float(ng_prices_map.loc[state, 'price ($/MMBtu)'])
+  return ng_price
+
+
+def get_ng_price_aeo(state):
+  div_prices = pd.read_excel('./input_data/eia_aeo_industrial_sector_ng_prices.xlsx', sheet_name='prices_division')
+  div_prices = div_prices[div_prices['year'] == 2024]
+  div_prices = div_prices[['region', 'price 2020USD/MMBtu']]
+  map_div_state = pd.read_excel('./input_data/eia_aeo_industrial_sector_ng_prices.xlsx', sheet_name='map_census_division_state')
+  state_prices = map_div_state.merge(div_prices, on='region')
+  state_prices.set_index('state', inplace=True)
+  ng_price = float(state_prices.loc[state, 'price 2020USD/MMBtu'])
+  return ng_price
+
+
 def update_capex_costs(ANR_data, learning_rate_anr_capex, H2_data, learning_rate_h2_capex, N=N):
   ANR_data['CAPEX $/MWe'] = ANR_data.apply(lambda x: x['CAPEX $/MWe']*np.power(N, np.log2(1-learning_rate_anr_capex)), axis=1)
   H2_data['CAPEX ($/MWe)'] = H2_data.apply(lambda x: x['CAPEX ($/MWe)']*np.power(N, np.log2(1-learning_rate_h2_capex)), axis=1)

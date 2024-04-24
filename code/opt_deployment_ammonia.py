@@ -142,9 +142,14 @@ def build_ammonia_plant_deployment(plant, ANR_data, H2_data):
     crf = model.pWACC / (1 - (1/(1+model.pWACC)**auxNucNH3LT) ) 
     costs =auxNucNH3CAPEX*crf*(1-model.pITC_H2)
     return costs
+  
+  def annualized_avoided_ng_costs(model):
+    ng_price = utils.get_ng_price_aeo(model.pState)
+    avoided_costs = utils.nh3_nrj_intensity*model.pNH3Cap*ng_price 
+    return avoided_costs
 
   def annualized_net_rev(model):
-    return -annualized_nuc_NH3_costs(model)-annualized_costs_anr_h2(model)
+    return annualized_avoided_ng_costs(model)-annualized_nuc_NH3_costs(model)-annualized_costs_anr_h2(model)
   model.NetRevenues = Objective(expr=annualized_net_rev, sense=maximize)  
 
 
@@ -223,6 +228,8 @@ def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results):
   results_ref['H2 Dem. (kg/day)'] = h2_dem_kg_per_day
   results_ref['Aux Elec Dem. (MWe)'] = elec_dem_MWh_per_day/24
   results_ref['Net Revenues ($/year)'] = value(model.NetRevenues)
+  results_ref['H2 PTC Revenues ($/year)'] = h2_dem_kg_per_day*365*utils.h2_ptc
+  results_ref['Net Revenues with H2 PTC ($/year)'] = results_ref['Net Revenues ($/year)']+results_ref['H2 PTC Revenues ($/year)']
   for h in model.H:
     results_ref[h] = 0
   if results.solver.termination_condition == TerminationCondition.optimal: 
@@ -234,6 +241,8 @@ def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results):
     results_ref['H2 O&M ($/year)'] = value(compute_h2_om(model))
     results_ref['ANR CRF'] = value(get_crf(model))
     results_ref['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
+    results_ref['Net Annual Revenues ($/MWe/y)'] = results_ref['Net Revenues ($/year)']/results_ref['Depl. ANR Cap. (MWe)']
+    results_ref['Net Annual Revenues with H2 PTC ($/MWe/y)'] = results_ref['Net Revenues with H2 PTC ($/year)']/results_ref['Depl. ANR Cap. (MWe)']
     for g in model.G: 
       if value(model.vS[g]) >=1: 
         results_ref['ANR type'] = g

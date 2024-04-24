@@ -155,9 +155,14 @@ def build_steel_plant_deployment(plant, ANR_data, H2_data):
     costs = steel_cap_ton_per_annum*(model.pEAFCAPEX*crf*(1-model.pITC_H2) + model.pShaftFCAPEX*(1-model.pITC_H2)*crf/model.pRatioSteelDRI + model.pEAFOM +\
             model.pIronOre*model.pRatioIronOreDRI/model.pRatioSteelDRI)
     return costs
+  
+  def annualized_avoided_ng_costs(model):
+    ng_price = utils.get_ng_price_aeo(model.pState)
+    avoided_costs = ng_price*steel_cap_ton_per_annum*utils.coal_to_steel_ratio_bau
+    return avoided_costs
 
   def annualized_net_rev(model):
-    return -annualized_costs_anr_h2(model)-annualized_costs_dri_eaf(model)
+    return annualized_avoided_ng_costs(model)-annualized_costs_anr_h2(model)-annualized_costs_dri_eaf(model)
   model.NetRevenues = Objective(expr=annualized_net_rev, sense=maximize)  
 
 
@@ -238,6 +243,8 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
   results_dic['H2 Dem. (kg/day)'] = value(model.pH2Dem)
   results_dic['Aux Elec Dem. (MWe)'] = value(model.pElecDem)
   results_dic['Net Revenues ($/year)'] = value(model.NetRevenues)
+  results_dic['H2 PTC Revenues ($/year)'] = value(model.pH2Dem)*365*utils.h2_ptc
+  results_dic['Net Revenues with H2 PTC ($/year)'] = results_dic['Net Revenues ($/year)']+results_dic['H2 PTC Revenues ($/year)']
   for h in model.H:
     results_dic[h] = 0
   if results.solver.termination_condition == TerminationCondition.optimal: 
@@ -250,7 +257,8 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
     results_dic['Conversion costs ($/year)'] = value(compute_conv_costs(model))
     results_dic['ANR CRF'] = value(get_crf(model))
     results_dic['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
-    
+    results_dic['Net Annual Revenues ($/MWe/y)'] = results_dic['Net Revenues ($/year)']/results_dic['Depl. ANR Cap. (MWe)']
+    results_dic['Net Annual Revenues with H2 PTC ($/MWe/y)'] = results_dic['Net Revenues with H2 PTC ($/year)']/results_dic['Depl. ANR Cap. (MWe)']
     for g in model.G: 
       if value(model.vS[g]) >=1: 
         results_dic['ANR type'] = g

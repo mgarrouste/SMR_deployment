@@ -137,8 +137,13 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data):
       + sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]*(model.pH2CAPEX[h]*(1-model.pITC_H2)*model.pH2CRF[h]+model.pH2FC[h]+model.pH2VOM[h]*365*24) for h in model.H) for g in model.G) for n in model.N) 
     return costs
 
+  def annualized_avoided_ng_costs(model):
+    ng_price = utils.get_ng_price_aeo(model.pState)
+    avoided_costs = ng_price*utils.smr_nrj_intensity*model.pRefDem*365
+    return avoided_costs
+  
   def annualized_net_rev(model):
-    return -annualized_costs(model)
+    return annualized_avoided_ng_costs(model)-annualized_costs(model)
   model.NetRevenues = Objective(expr=annualized_net_rev, sense=maximize)  
 
 
@@ -194,6 +199,8 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data):
   results_ref['state'] = value(model.pState)
   results_ref['H2 Dem. (kg/day)'] = value(model.pRefDem)
   results_ref['Net Revenues ($/year)'] = value(model.NetRevenues)
+  results_ref['H2 PTC Revenues ($/year)'] = demand_daily*365*utils.h2_ptc
+  results_ref['Net Revenues with H2 PTC ($/year)'] = results_ref['Net Revenues ($/year)']+results_ref['H2 PTC Revenues ($/year)']
   for h in model.H:
     results_ref[h] = 0
   if results.solver.termination_condition == TerminationCondition.optimal: 
@@ -205,6 +212,8 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data):
     results_ref['H2 O&M ($/year)'] = value(compute_h2_om(model))
     results_ref['ANR CRF'] = value(get_crf(model))
     results_ref['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
+    results_ref['Net Annual Revenues ($/MWe/y)'] = results_ref['Net Revenues ($/year)']/results_ref['Depl. ANR Cap. (MWe)']
+    results_ref['Net Annual Revenues with H2 PTC ($/MWe/y)'] = results_ref['Net Revenues with H2 PTC ($/year)']/results_ref['Depl. ANR Cap. (MWe)']
     
     for g in model.G: 
       if value(model.vS[g]) >=1: 
