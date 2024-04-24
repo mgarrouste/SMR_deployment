@@ -251,7 +251,7 @@ def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, BE=False):
   ANR_data, H2_data = utils.load_data(anr_tag=anr_tag)
 
   with Pool(10) as pool: 
-    results = pool.starmap(solve_refinery_deployment, [(ref_id, ANR_data, H2_data) for ref_id in ref_ids])
+    results = pool.starmap(solve_refinery_deployment, [(ref_id, ANR_data, H2_data, BE) for ref_id in ref_ids])
   pool.close()
 
   df = pd.DataFrame(results)

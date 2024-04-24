@@ -301,7 +301,7 @@ def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False
   # Build results dataset one by one
 
   with Pool(10) as pool:
-    results = pool.starmap(solve_steel_plant_deployment, [(plant, ANR_data, H2_data) for plant in steel_ids])
+    results = pool.starmap(solve_steel_plant_deployment, [(plant, ANR_data, H2_data, BE) for plant in steel_ids])
   pool.close()
 
   df = pd.DataFrame(results)
