@@ -34,7 +34,7 @@ def get_state(ref_id):
   return state
 
 
-def solve_refinery_deployment(ref_id, ANR_data, H2_data):
+def solve_refinery_deployment(ref_id, ANR_data, H2_data, BE):
   print(f'Start solve for {ref_id}')
   model = ConcreteModel(ref_id)
 
@@ -138,8 +138,11 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data):
     return costs
 
   def annualized_avoided_ng_costs(model):
-    ng_price = utils.get_ng_price_aeo(model.pState)
-    avoided_costs = ng_price*utils.smr_nrj_intensity*model.pRefDem*365
+    if BE:
+      avoided_costs = 0
+    else:
+      ng_price = utils.get_ng_price_aeo(model.pState)
+      avoided_costs = ng_price*utils.smr_nrj_intensity*model.pRefDem*365
     return avoided_costs
   
   def annualized_net_rev(model):
@@ -238,7 +241,7 @@ def compute_breakeven_price(results_ref):
   return breakeven_price
 
 
-def main(anr_tag='FOAK', wacc=WACC, print_main_results=True):
+def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, BE=False):
   abspath = os.path.abspath(__file__)
   dname = os.path.dirname(abspath)
   os.chdir(dname)
@@ -252,7 +255,7 @@ def main(anr_tag='FOAK', wacc=WACC, print_main_results=True):
   pool.close()
 
   df = pd.DataFrame(results)
-  excel_file = f'./results/raw_results_anr_{anr_tag}_h2_wacc_{str(wacc)}.xlsx'
+  excel_file = f'./results/raw_results_anr_{anr_tag}_h2_wacc_{str(wacc)}_BE_{BE}.xlsx'
   sheet_name = 'refining'
   if print_main_results:
     # Try to read the existing Excel file

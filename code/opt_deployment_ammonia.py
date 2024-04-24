@@ -29,7 +29,7 @@ def get_ammonia_plant_demand(plant):
   state = plant_df['State'].iloc[0]
   return ammonia_capacity, h2_demand_kg_per_day, elec_demand_MWe, state
 
-def build_ammonia_plant_deployment(plant, ANR_data, H2_data): 
+def build_ammonia_plant_deployment(plant, ANR_data, H2_data, BE): 
   print(f'Ammonia plant {plant} : start solving')
   model = ConcreteModel(plant)
 
@@ -144,8 +144,11 @@ def build_ammonia_plant_deployment(plant, ANR_data, H2_data):
     return costs
   
   def annualized_avoided_ng_costs(model):
-    ng_price = utils.get_ng_price_aeo(model.pState)
-    avoided_costs = utils.nh3_nrj_intensity*model.pNH3Cap*ng_price 
+    if BE:
+      avoided_costs = 0
+    else:
+      ng_price = utils.get_ng_price_aeo(model.pState)
+      avoided_costs = utils.nh3_nrj_intensity*model.pNH3Cap*ng_price 
     return avoided_costs
 
   def annualized_net_rev(model):
@@ -183,8 +186,8 @@ def build_ammonia_plant_deployment(plant, ANR_data, H2_data):
   return model
 
 
-def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results):
-  model = build_ammonia_plant_deployment(plant, ANR_data, H2_data)
+def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results, BE):
+  model = build_ammonia_plant_deployment(plant, ANR_data, H2_data, BE)
   ammonia_capacity, h2_dem_kg_per_day, elec_dem_MWh_per_day, state = get_ammonia_plant_demand(plant)
   # for carbon accounting
   def compute_annual_carbon_emissions(model):
@@ -277,7 +280,7 @@ def compute_ammonia_capex_breakeven(results_ref, be_ng_price_foak, ng_price):
   return be_capex
 
 
-def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False): 
+def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False, BE=False): 
   # Go the present directory
   abspath = os.path.abspath(__file__)
   dname = os.path.dirname(abspath)
@@ -293,12 +296,12 @@ def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False
   # Build results dataset one by one
   
   with Pool(10) as pool:
-    results = pool.starmap(solve_ammonia_plant_deployment, [(ANR_data, H2_data, plant, print_results) for plant in plant_ids])
+    results = pool.starmap(solve_ammonia_plant_deployment, [(ANR_data, H2_data, plant, print_results, BE) for plant in plant_ids])
   pool.close()
 
   df = pd.DataFrame(results)
 
-  excel_file = f'./results/raw_results_anr_{anr_tag}_h2_wacc_{str(wacc)}.xlsx'
+  excel_file = f'./results/raw_results_anr_{anr_tag}_h2_wacc_{str(wacc)}_BE_{BE}.xlsx'
   sheet_name = 'ammonia'
   if print_main_results:
     # Try to read the existing Excel file

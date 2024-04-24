@@ -40,7 +40,7 @@ def get_heat_demand(plant_id):
   yearly_heat_demand = select_df['Heat demand (MJ/year)'].iloc[0]
   return yearly_heat_demand
 
-def solve_process_heat_deployment(plant_id, ANR_data, H2_data):
+def solve_process_heat_deployment(plant_id, ANR_data, H2_data, BE):
   print(f'Start solve for {plant_id}')
   model = ConcreteModel(plant_id)
 
@@ -158,8 +158,11 @@ def solve_process_heat_deployment(plant_id, ANR_data, H2_data):
     return costs
   
   def annualized_avoided_ng_costs(model):
-    ng_price = utils.get_ng_price_aeo(model.pState)
-    avoided_costs = model.pHeatDem*ng_price/utils.mmbtu_to_mj
+    if BE:
+      avoided_costs = 0
+    else:
+      ng_price = utils.get_ng_price_aeo(model.pState)
+      avoided_costs = model.pHeatDem*ng_price/utils.mmbtu_to_mj
     return avoided_costs
 
 
@@ -265,7 +268,7 @@ def compute_breakeven_price(results_ref):
   return breakeven_price
 
 
-def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False):
+def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False, BE=False):
   abspath = os.path.abspath(__file__)
   dname = os.path.dirname(abspath)
   os.chdir(dname)
@@ -274,12 +277,12 @@ def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False
   ANR_data, H2_data = utils.load_data(anr_tag=anr_tag)
 
   with Pool() as pool: 
-    results = pool.starmap(solve_process_heat_deployment, [(plant, ANR_data, H2_data) for plant in plant_ids])
+    results = pool.starmap(solve_process_heat_deployment, [(plant, ANR_data, H2_data, BE) for plant in plant_ids])
   pool.close()
 
   df = pd.DataFrame(results)
 
-  excel_file = f'./results/raw_results_anr_{anr_tag}_h2_wacc_{str(wacc)}.xlsx'
+  excel_file = f'./results/raw_results_anr_{anr_tag}_h2_wacc_{str(wacc)}_BE_{BE}.xlsx'
   sheet_name = 'process_heat'
   if print_main_results:
     # Try to read the existing Excel file

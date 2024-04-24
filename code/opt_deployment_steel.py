@@ -34,7 +34,7 @@ def get_state(plant):
   state = plant_df['STATE'].iloc[0]
   return state
 
-def build_steel_plant_deployment(plant, ANR_data, H2_data): 
+def build_steel_plant_deployment(plant, ANR_data, H2_data, BE): 
   print(f'Start {plant}')
   model = ConcreteModel(plant)
 
@@ -157,8 +157,11 @@ def build_steel_plant_deployment(plant, ANR_data, H2_data):
     return costs
   
   def annualized_avoided_ng_costs(model):
-    ng_price = utils.get_ng_price_aeo(model.pState)
-    avoided_costs = ng_price*steel_cap_ton_per_annum*utils.coal_to_steel_ratio_bau
+    if BE:
+      avoided_costs = 0
+    else:
+      ng_price = utils.get_ng_price_aeo(model.pState)
+      avoided_costs = ng_price*steel_cap_ton_per_annum*utils.coal_to_steel_ratio_bau
     return avoided_costs
 
   def annualized_net_rev(model):
@@ -196,10 +199,10 @@ def build_steel_plant_deployment(plant, ANR_data, H2_data):
   return model
 
 
-def solve_steel_plant_deployment(plant, ANR_data, H2_data):
+def solve_steel_plant_deployment(plant, ANR_data, H2_data, BE):
   steel_cap_ton_per_annum, h2_dem_kg_per_day, elec_dem_MWh_per_day = get_steel_plant_demand(plant)
 
-  model = build_steel_plant_deployment(plant, ANR_data, H2_data)
+  model = build_steel_plant_deployment(plant, ANR_data, H2_data, BE)
   # for carbon accounting
   def compute_annual_carbon_emissions(model):
     return sum(sum(sum(model.pH2CarbonInt[h,g]*model.vQ[n,h,g]*model.pH2CapH2[h]*24*365 for g in model.G) for h in model.H) for n in model.N)+\
@@ -282,7 +285,7 @@ def compute_breakeven_price(results_ref):
   breakeven_price = breakeven_price_per_ton/utils.coal_heat_content
   return breakeven_price
 
-def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False): 
+def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False, BE=False): 
   # Go the present directory
   abspath = os.path.abspath(__file__)
   dname = os.path.dirname(abspath)
@@ -303,7 +306,7 @@ def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False
 
   df = pd.DataFrame(results)
 
-  excel_file = f'./results/raw_results_anr_{anr_tag}_h2_wacc_{str(wacc)}.xlsx'
+  excel_file = f'./results/raw_results_anr_{anr_tag}_h2_wacc_{str(wacc)}_BE_{BE}.xlsx'
   sheet_name = 'steel'
   if print_main_results:
     # Try to read the existing Excel file
