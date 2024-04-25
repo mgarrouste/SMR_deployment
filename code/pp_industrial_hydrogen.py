@@ -64,24 +64,29 @@ def plot_net_annual_revenues(df):
 
 def plot_mean_cashflows(df):
   save_path = f'./results/industrial_hydrogen_anr_avg_cashflows_{OAK}_cogen_{cogen_tag}.png'
-  print(f'Plot net annual revenues: {save_path}')
+  print(f'Plot average cashflows: {save_path}')
   # Cashflows in M$/MWt/y
   df['ANR CAPEX'] = -df['ANR CAPEX ($/year)']*df['Thermal Efficiency']/(1e6*df['Depl. ANR Cap. (MWe)'])
   df['H2 CAPEX'] = -df['H2 CAPEX ($/year)']*df['Thermal Efficiency']/(1e6*df['Depl. ANR Cap. (MWe)'])
   df['ANR O&M'] = -df['ANR O&M ($/year)']*df['Thermal Efficiency']/(1e6*df['Depl. ANR Cap. (MWe)'])
   df['H2 O&M'] = -df['H2 O&M ($/year)']*df['Thermal Efficiency']/(1e6*df['Depl. ANR Cap. (MWe)'])
-  df['NG Avoided Costs'] = df['Avoided NG costs ($/year)']*df['Thermal Efficiency']/(1e6*df['Depl. ANR Cap. (MWe)'])
+  df['Avoided Fossil Fuel Costs'] = df['Avoided NG costs ($/year)']*df['Thermal Efficiency']/(1e6*df['Depl. ANR Cap. (MWe)'])
   df['H2 PTC'] = df['H2 PTC Revenues ($/year)']*df['Thermal Efficiency']/(1e6*df['Depl. ANR Cap. (MWe)'])
-  ind_df = df[['Industry','ANR CAPEX', 'H2 CAPEX', 'ANR O&M', 'H2 O&M', 'NG Avoided Costs', 'H2 PTC']]
-  design_df = df[['ANR type','ANR CAPEX', 'H2 CAPEX', 'ANR O&M', 'H2 O&M', 'NG Avoided Costs', 'H2 PTC']]
-  ind_df = ind_df.groupby('Industry').mean()
-  print(ind_df)
+  design_df = df[['Industry','ANR type','ANR CAPEX', 'H2 CAPEX', 'ANR O&M', 'H2 O&M', 'Avoided Fossil Fuel Costs', 'H2 PTC']]
+  design_df = design_df.groupby([ 'ANR type','Industry']).mean()
+  design_df.to_excel( f'./results/industrial_hydrogen_anr_avg_cashflows_{OAK}_cogen_{cogen_tag}.xlsx')
+  color_map = {'ANR CAPEX': 'royalblue', 
+               'H2 CAPEX': 'lightsteelblue', 
+               'ANR O&M':'forestgreen', 
+               'H2 O&M':'palegreen',
+               'Avoided Fossil Fuel Costs':'darkorchid', 
+               'H2 PTC':'plum'}
   fig, ax = plt.subplots(figsize = (8,6))
-  ind_df.plot(ax = ax, kind ='bar', stacked=True)
+  design_df.plot(ax = ax, kind ='bar', stacked=True, color=color_map)
   ax.set_ylabel('Average Normalized Cashflows (M$/MWt/y)')
   ax.set_xlabel('')
   ax.axhline(y=0, color='grey', linestyle='--', linewidth=0.5)
-  ax.set_xticks(ax.get_xticks(), ax.get_xticklabels(), rotation=0, ha='center')
+  ax.set_xticks(ax.get_xticks(), ax.get_xticklabels(), rotation=50, ha='right')
   ax.set_ylim(-0.42, 0.62)
   ax.yaxis.set_ticks(np.arange(-0.4, 0.7, 0.1))
   ax.get_legend().set_visible(False)
