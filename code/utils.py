@@ -11,6 +11,7 @@ ccus_cost = 100#$/ton CO2
 
 # Energy conversion
 mmbtu_to_mwh = 0.293071 # MWh/MMBtu
+mwh_to_mj = 3600 # MJ/MWh
 
 # Natural gas
 mcf_to_mmbtu = 1.038 #mmbtu/mcf
@@ -35,6 +36,9 @@ smr_nrj_intensity = 0.1578 # MMBtu/kgh2
 heat_avg_carbon_intensity = 0.002028 #tCO2/MMBtu
 h2_hhv = 141.88 # MJ/kgh2
 mmbtu_to_mj = 1055.06 #mj/MmBtu
+# GF: Glass Furnace
+GFCAPEX = 1340000 #$/MWth
+GFLT = 12 # years
 # Steel
 coal_to_steel_ratio_bau = 0.474 # tcoal/tsteel
 co2_to_steel_ratio_bau = 1.990 #tco2/tsteel
