@@ -7,7 +7,7 @@ LEARNING = 'FOAK'
 conversion_2021usd_to_2020usd = 0.99 #2020$/2021$ source: data.bls.gov
 
 # CCUS costs
-ccus_cost = 100#$/ton CO2
+ccus_cost = 150#$/ton CO2
 
 # Energy conversion
 mmbtu_to_mwh = 0.293071 # MWh/MMBtu
