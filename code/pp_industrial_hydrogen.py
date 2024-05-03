@@ -8,7 +8,6 @@ OAK = 'FOAK'
 BE= False
 cogen_tag = False
 industries = {'ammonia':'Ammonia', 
-              'process_heat':'Hydrogen \nProcess Heat', 
               'refining':'Refining', 
               'steel':'Steel'}
 anr_design_palette = {'HTGR':'blue', 
