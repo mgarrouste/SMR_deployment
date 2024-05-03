@@ -6,7 +6,7 @@ import seaborn as sns
 anr_tag = 'FOAK'
 cogen_tag = 'nocogen'
 
-elec_results_path = './results/electricity_prod_results_no_learning_MidCase_2024.xlsx'
+elec_results_path = f'./results/price_taker_{anr_tag}_MidCase.xlsx'
 
 h2_results_path = f'./results/clean_results_anr_{anr_tag}_h2_wacc_0.077.xlsx'
 
@@ -14,11 +14,13 @@ heat_results_path = f'./results/direct_heat_maxv_results_{anr_tag}_{cogen_tag}.c
 
 color_map = {'Industrial Hydrogen':'blue', 'Direct Process Heat':'red', 'Total':'Green'}
 
-def load_elec_results(elec_results_path, industry_tag, industry_name):
-  ind_df = pd.read_excel(elec_results_path, sheet_name=industry_tag)
-  ind_df['Ind'] = industry_name
-  ind_df.set_index(['id', 'Ind'])
-  return ind_df
+def load_elec_results(elec_results_path):
+  elec_df = pd.read_excel(elec_results_path, index_col=0)
+  elec_df['Net Annual Revenues (M$/MWe/y)'] = elec_df['Annual Net Revenues ($/year/MWe)']/1e6
+  # Only keep the best design for each state and year
+  df = elec_df.loc[elec_df.groupby('state')['Net Annual Revenues (M$/MWe/y)'].transform(max) == elec_df['Net Annual Revenues (M$/MWe/y)']]
+  return df
+  
 
 def load_h2_results(h2_results_path):
   """"Loads all hydrogen results and returns results sorted by breakeven prices"""
@@ -39,6 +41,7 @@ def load_h2_results(h2_results_path):
 def load_heat_results(heat_results_path):
   heat_df = pd.read_csv(heat_results_path, index_col='id')
   # Sort by NG benchmark price and revenues = avoided NG cost -> Increaw
+  heat_df[f'Net Annual Revenues {anr_tag} (M$/MWt/y)'] # TODO
   heat_df.sort_values(by=['NG price ($/MMBtu)', f'Net Annual Revenues {anr_tag} ($/y)'], inplace=True)
   heat_df['Application'] = 'Direct Process Heat'
   return heat_df
@@ -104,6 +107,23 @@ def plot_cumulative_avoided_emissions(applications_results):
   fig.savefig('./results/viable_avoided_emissions.png')
 
 
+
+def plot_net_annual_revenues_all_app(applications_results):
+  fig, ax = plt.subplots(len(applications_results),1, sharex=True, figsize=(10,8))
+  count = 0
+  palette={'HTGR':'blue', 'iMSR':'orange', 'iPWR':'green', 'PBR-HTGR':'darkorchid', 'Microreactor':'darkgrey'}
+  for app, app_data in applications_results.items():
+    sns.stripplot(ax=ax[count], data=app_data['data'], x='Annual Net Revenues (M$/MWe/y)', y=app,\
+                  palette=palette, hue='Reactor', marker='*', size=7, alpha=0.8)
+    if count !=0:
+      ax[count].get_legend().set_visible(False)
+    ax[count].set_ylabel('')
+    ax[count].grid(True)
+    count +=1
+  fig.tight_layout()
+  plt.show()
+  #fig.savefig('./results/ANR_application_comparison.png')
+
 def main():
   h2_df = load_h2_results(h2_results_path=h2_results_path)
   h2_df = compute_cumulative_avoided_emissions(h2_df)
@@ -116,6 +136,11 @@ def main():
                                                    'emissions_label':'Emissions',
                                                    'price_label':'NG price ($/MMBtu)'}}
   plot_cumulative_avoided_emissions(applications_results)
+  elec_df = load_elec_results(elec_results_path)
+  applications_results['Electricity'] = {'data':elec_df, 
+                                         'emissions_label':None, 
+                                         'price_label':None}
+  plot_net_annual_revenues_all_app(applications_results)
 
 if __name__ == '__main__':
   main()
