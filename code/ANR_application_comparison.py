@@ -2,19 +2,20 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
+from utils import palette
 
-anr_tag = 'FOAK'
-cogen_tag = 'nocogen'
+NOAK = True
+cogen = False
+if NOAK: anr_tag = 'NOAK'
+else: anr_tag = 'FOAK'
+if cogen: cogen_tag = 'cogen'
+else: cogen_tag = 'nocogen'
 
-elec_results_path = f'./results/price_taker_{anr_tag}_MidCase.xlsx'
+color_map = {'Industrial Hydrogen':'blue', 'Direct Process Heat':'red', 'Total':'Green', 'FOAK':'limegreen', 
+             'NOAK':'forestgreen'}
 
-h2_results_path = f'./results/clean_results_anr_{anr_tag}_h2_wacc_0.077.xlsx'
-
-heat_results_path = f'./results/process_heat/best_pathway_{anr_tag}_{cogen_tag}.xlsx'
-
-color_map = {'Industrial Hydrogen':'blue', 'Direct Process Heat':'red', 'Total':'Green'}
-
-def load_elec_results(elec_results_path):
+def load_elec_results(anr_tag):
+  elec_results_path = f'./results/price_taker_{anr_tag}_MidCase.xlsx'
   elec_df = pd.read_excel(elec_results_path, index_col=0)
   elec_df['Annual Net Revenues (M$/MWe/y)'] = elec_df['Annual Net Revenues ($/year/MWe)']/1e6
   # Only keep the best design for each state and year
@@ -24,8 +25,9 @@ def load_elec_results(elec_results_path):
   return df
   
 
-def load_h2_results(h2_results_path):
+def load_h2_results(anr_tag):
   """"Loads all hydrogen results and returns results sorted by breakeven prices"""
+  h2_results_path = f'./results/clean_results_anr_{anr_tag}_h2_wacc_0.077.xlsx'
   industries = ['process_heat', 'refining', 'steel', 'ammonia']
   list_df = []
   for ind in industries:
@@ -42,8 +44,9 @@ def load_h2_results(h2_results_path):
   return all_df 
 
 
-def load_heat_results(heat_results_path):
+def load_heat_results(anr_tag, cogen_tag):
   """Loads direct process heat results and returns them sorted by breakeven prices"""
+  heat_results_path = f'./results/process_heat/best_pathway_{anr_tag}_{cogen_tag}.xlsx'
   heat_df = pd.read_excel(heat_results_path, index_col='FACILITY_ID')
   heat_df['Annual Net Revenues (M$/MWe/y)']  = heat_df['Pathway Net Ann. Rev. (M$/y)']/heat_df['Depl. ANR Cap. (MWe)']
   heat_df.sort_values(by=['Breakeven NG price ($/MMBtu)', 'Annual Net Revenues (M$/MWe/y)'], inplace=True)
@@ -75,7 +78,7 @@ def combine_emissions(applications_results):
 
 
 def plot_cumulative_avoided_emissions(applications_results):
-  fig, ax = plt.subplots(2, 1, figsize=(6,6), sharex=True)
+  fig, ax = plt.subplots(2, 1, figsize=(8,5), sharex=True)
   xmax = 50
   # Total avoided emissions on top subplot
   total_df = combine_emissions(applications_results)
@@ -84,7 +87,8 @@ def plot_cumulative_avoided_emissions(applications_results):
   edges = [0]+list(total_df['NG price ($/MMBtu)'])+[xmax]
   ax[0].stairs(values, edges, label='Total', color=color_map['Total'], baseline=None)
   ax[0].set_xlim(-2,xmax)
-  ax[0].xaxis.set_ticks(np.arange(0, xmax+10, 10))
+  ax[0].xaxis.set_ticks(np.arange(0, xmax+10, 5))
+  ax[0].yaxis.set_ticks(np.arange(0, 250, 25))
   ax[0].set_xlabel('')
   ax[0].set_ylabel('')
   ax[0].grid(True)
@@ -97,7 +101,8 @@ def plot_cumulative_avoided_emissions(applications_results):
     edges = [0]+list(data[app_results['price_label']])+[xmax]
     ax[1].stairs(values, edges, label=app, color=color_map[app], baseline=None)
   ax[1].set_xlim(-2,xmax)
-  ax[1].xaxis.set_ticks(np.arange(0, xmax+10, 10))
+  ax[1].xaxis.set_ticks(np.arange(0, xmax+10, 5))
+  ax[1].yaxis.set_ticks(np.arange(0, 150, 25))
   ax[1].set_xlabel('Breakeven NG price ($/MMBtu)')
   ax[1].set_ylabel('')
   ax[1].grid(True)
@@ -126,7 +131,7 @@ def concat_results(results):
 def plot_net_annual_revenues_all_app(df):
   fig, ax = plt.subplots(figsize=(6,4))
   save_path = f'./results/ANR_application_comparison_{anr_tag}_{cogen_tag}.png'
-  palette={'HTGR':'blue', 'iMSR':'orange', 'iPWR':'green', 'PBR-HTGR':'darkorchid', 'Micro':'darkgrey'}
+  
   sns.stripplot(ax=ax, data=df, x='Annual Net Revenues (M$/MWe/y)', y='Application',\
                   palette=palette, hue='ANR', alpha=0.5)
   sns.boxplot(ax=ax, data=df, x='Annual Net Revenues (M$/MWe/y)', y='Application', color='black',\
@@ -141,10 +146,84 @@ def plot_net_annual_revenues_all_app(df):
   fig.tight_layout()
   fig.savefig(save_path, bbox_inches='tight')
 
-def main():
-  h2_df = load_h2_results(h2_results_path=h2_results_path)
+
+def compare_oak_net_annual_revenues():
+  save_path = f'./results/ANR_application_comparison_FOAK_vs_NOAK_{cogen_tag}.png'
+  noak_df = pd.read_excel(f'./results/ANR_application_comparison_NOAK_{cogen_tag}.xlsx')
+  foak_df = pd.read_excel(f'./results/ANR_application_comparison_FOAK_{cogen_tag}.xlsx')
+  noak_df['Stage'] = 'NOAK'
+  foak_df['Stage'] = 'FOAK'
+  total_df = pd.concat([foak_df, noak_df], ignore_index=True)
+  applications = total_df['Application'].unique()
+  fig, ax = plt.subplots(len(applications), 1, sharex=True, figsize=(7,7))
+  for c, app in enumerate(applications):
+    sns.stripplot(ax=ax[c], data = total_df[total_df.Application == app], x='Annual Net Revenues (M$/MWe/y)', y = 'Stage',\
+                   palette=palette, hue='ANR', alpha=0.5)
+    sns.boxplot(ax=ax[c], data =total_df[total_df.Application == app], x='Annual Net Revenues (M$/MWe/y)', y='Stage', \
+                color='black', fill=False, width=0.5)
+    sns.despine()
+    ax[c].xaxis.grid(True)
+    ax[c].set_ylabel(app)
+    ax[c].get_legend().set_visible(False)
+  handles, labels = ax[1].get_legend_handles_labels()
+  fig.legend(handles, labels,  bbox_to_anchor=(.5,1.08),loc='upper center', ncol=3)
+  fig.tight_layout()
+  fig.savefig(save_path, bbox_inches='tight')
+
+def compare_oak_avoided_emissions():
+  oak = 'FOAK'
+  h2_df = load_h2_results(oak)
   h2_df = compute_cumulative_avoided_emissions(h2_df)
-  heat_df = load_heat_results(heat_results_path=heat_results_path)
+  heat_df = load_heat_results(oak, cogen_tag)
+  heat_df = compute_cumulative_avoided_emissions(heat_df, emissions_label='Emissions_mmtco2/y')
+  foak_results = {'Industrial Hydrogen':{'data':h2_df, 
+                                                 'emissions_label':'Ann. avoided CO2 emissions (MMT-CO2/year)',
+                                                 'price_label':'Breakeven price ($/MMBtu)'}
+                          ,'Direct Process Heat':{'data':heat_df, 
+                                                   'emissions_label':'Emissions_mmtco2/y',
+                                                   'price_label':'Breakeven NG price ($/MMBtu)'}}
+  oak = 'NOAK'
+  h2_df = load_h2_results(oak)
+  h2_df = compute_cumulative_avoided_emissions(h2_df)
+  heat_df = load_heat_results(oak, cogen_tag)
+  heat_df = compute_cumulative_avoided_emissions(heat_df, emissions_label='Emissions_mmtco2/y')
+  noak_results = {'Industrial Hydrogen':{'data':h2_df, 
+                                                 'emissions_label':'Ann. avoided CO2 emissions (MMT-CO2/year)',
+                                                 'price_label':'Breakeven price ($/MMBtu)'}
+                          ,'Direct Process Heat':{'data':heat_df, 
+                                                   'emissions_label':'Emissions_mmtco2/y',
+                                                   'price_label':'Breakeven NG price ($/MMBtu)'}}
+  foak_results = combine_emissions(foak_results)
+  noak_results = combine_emissions(noak_results)
+  fig, ax = plt.subplots(figsize=(8,5))
+  xmax = 70
+  # Total avoided emissions on top subplot
+  values_foak = list(foak_results['Viable avoided emissions (MMt-CO2/y)'])
+  values_foak += [values_foak[-1]]
+  edges_foak = [0]+list(foak_results['NG price ($/MMBtu)'])+[xmax]
+  ax.stairs(values_foak, edges_foak, label='FOAK', color=color_map['FOAK'], baseline=None)
+  values_noak = list(noak_results['Viable avoided emissions (MMt-CO2/y)'])
+  values_noak += [values_noak[-1]]
+  edges_noak = [0]+list(noak_results['NG price ($/MMBtu)'])+[xmax]
+  ax.stairs(values_noak, edges_noak, label='NOAK', color=color_map['NOAK'], baseline=None)
+  ax.set_xlim(-2,xmax)
+  ax.xaxis.set_ticks(np.arange(0, xmax+10, 5))
+  ax.yaxis.set_ticks(np.arange(0, 250, 25))
+  ax.set_xlabel('Breakeven NG price ($/MMBtu)')  
+  ax.spines['top'].set_visible(False)
+  ax.spines['right'].set_visible(False)
+  ax.grid(True)
+  fig.text(0.04, 0.5, r'Viable avoided emissions $(MMt-{CO_2}/y)$', va='center', rotation='vertical')
+  lines_labels = [ax.get_legend_handles_labels() for ax in fig.axes]
+  lines, labels = [sum(lol, []) for lol in zip(*lines_labels)]
+  fig.legend(lines, labels, loc='upper right', ncol=1)
+  fig.savefig(f'./results/all_applications_viable_avoided_emissions_FOAK_vs_NOAK_{cogen_tag}.png')
+
+
+def main():
+  h2_df = load_h2_results(anr_tag)
+  h2_df = compute_cumulative_avoided_emissions(h2_df)
+  heat_df = load_heat_results(anr_tag, cogen_tag)
   heat_df = compute_cumulative_avoided_emissions(heat_df, emissions_label='Emissions_mmtco2/y')
   applications_results = {'Industrial Hydrogen':{'data':h2_df, 
                                                  'emissions_label':'Ann. avoided CO2 emissions (MMT-CO2/year)',
@@ -153,13 +232,18 @@ def main():
                                                    'emissions_label':'Emissions_mmtco2/y',
                                                    'price_label':'Breakeven NG price ($/MMBtu)'}}
   plot_cumulative_avoided_emissions(applications_results)
-  elec_df = load_elec_results(elec_results_path)
+  elec_df = load_elec_results(anr_tag)
   applications_results['Electricity'] = {'data':elec_df, 
                                          'emissions_label':None, 
                                          'price_label':None}
   results = concat_results(applications_results)
-  results.to_excel(f'./results/ANR_application_comparison_{anr_tag}_{cogen_tag}.xlsx')
+  results.to_excel(f'./results/ANR_application_comparison_{anr_tag}_{cogen_tag}.xlsx', index=False)
   plot_net_annual_revenues_all_app(results)
+  if NOAK:
+    compare_oak_net_annual_revenues()
+    compare_oak_avoided_emissions()
+  if cogen:
+    pass # TODO compare_cogen_net_annual_revenues()
 
 if __name__ == '__main__':
   main()
