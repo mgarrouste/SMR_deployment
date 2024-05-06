@@ -124,16 +124,22 @@ def concat_results(results):
 
 
 def plot_net_annual_revenues_all_app(df):
-  fig, ax = plt.subplots(figsize=(10,8))
-  count = 0
+  fig, ax = plt.subplots(figsize=(6,4))
+  save_path = f'./results/ANR_application_comparison_{anr_tag}_{cogen_tag}.png'
   palette={'HTGR':'blue', 'iMSR':'orange', 'iPWR':'green', 'PBR-HTGR':'darkorchid', 'Micro':'darkgrey'}
   sns.stripplot(ax=ax, data=df, x='Annual Net Revenues (M$/MWe/y)', y='Application',\
-                  palette=palette, hue='ANR', size=7, alpha=0.8)
+                  palette=palette, hue='ANR', alpha=0.5)
   sns.boxplot(ax=ax, data=df, x='Annual Net Revenues (M$/MWe/y)', y='Application', color='black',\
                   fill=False, width=0.5)
+  sns.despine()
+  ax.set_ylabel('')
+  ax.set_xlabel('Net Annual Revenues (M$/MWe/y)')
+  ax.get_legend().set_visible(False)
+  ax.xaxis.grid(True)
+  handles, labels = ax.get_legend_handles_labels()
+  fig.legend(handles, labels,  bbox_to_anchor=(.5,1.08),loc='upper center', ncol=3)
   fig.tight_layout()
-  plt.show()
-  #fig.savefig('./results/ANR_application_comparison.png')
+  fig.savefig(save_path, bbox_inches='tight')
 
 def main():
   h2_df = load_h2_results(h2_results_path=h2_results_path)
@@ -152,6 +158,7 @@ def main():
                                          'emissions_label':None, 
                                          'price_label':None}
   results = concat_results(applications_results)
+  results.to_excel(f'./results/ANR_application_comparison_{anr_tag}_{cogen_tag}.xlsx')
   plot_net_annual_revenues_all_app(results)
 
 if __name__ == '__main__':
