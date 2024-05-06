@@ -4,7 +4,7 @@ import numpy as np
 import seaborn as sns
 from utils import palette
 
-NOAK = False
+NOAK = True
 cogen = False
 if NOAK: anr_tag = 'NOAK'
 else: anr_tag = 'FOAK'
@@ -27,7 +27,7 @@ def load_elec_results(anr_tag):
 
 def load_h2_results(anr_tag):
   """"Loads all hydrogen results and returns results sorted by breakeven prices"""
-  h2_results_path = f'./results/clean_results_anr_{anr_tag}_h2_wacc_0.077.xlsx'
+  h2_results_path = f'./results/clean_results_anr_{anr_tag}_h2_wacc_0.077_BE_False.xlsx'
   industries = ['refining', 'steel', 'ammonia']
   list_df = []
   for ind in industries:
@@ -129,20 +129,32 @@ def concat_results(results):
 
 
 def plot_net_annual_revenues_all_app(df):
-  fig, ax = plt.subplots(figsize=(7,4))
+  fig, ax = plt.subplots(1,2,figsize=(10,4))
   save_path = f'./results/ANR_application_comparison_{anr_tag}_{cogen_tag}.png'
   
-  sns.stripplot(ax=ax, data=df, x='Annual Net Revenues (M$/MWe/y)', y='Application',\
+  sns.stripplot(ax=ax[0], data=df, x='Annual Net Revenues (M$/MWe/y)', y='Application',\
                   palette=palette, hue='ANR', alpha=0.6)
-  sns.boxplot(ax=ax, data=df, x='Annual Net Revenues (M$/MWe/y)', y='Application', color='black',\
+  sns.boxplot(ax=ax[0], data=df, x='Annual Net Revenues (M$/MWe/y)', y='Application', color='black',\
                   fill=False, width=0.5)
   sns.despine()
-  ax.set_ylabel('')
-  ax.set_xlabel('Net Annual Revenues (M$/MWe/y)')
-  ax.get_legend().set_visible(False)
-  ax.xaxis.grid(True)
-  ax.xaxis.set_ticks(np.arange(-1, 0.2, 0.1))
-  handles, labels = ax.get_legend_handles_labels()
+  ax[0].set_ylabel('')
+  ax[0].set_xlabel('Net Annual Revenues (M$/MWe/y)')
+  ax[0].get_legend().set_visible(False)
+  ax[0].xaxis.grid(True)
+  ax[0].xaxis.set_ticks(np.arange(-1, 0.1, 0.25))
+  sns.stripplot(ax=ax[1], data=df, x='Annual Net Revenues (M$/MWe/y)', y='Application',\
+                  palette=palette, hue='ANR', alpha=0.6)
+  sns.boxplot(ax=ax[1],data=df, x='Annual Net Revenues (M$/MWe/y)', y='Application', color='black',\
+                  fill=False, width=0.5)
+  sns.despine()
+  ax[1].set_ylabel('')
+  ax[1].set_xlabel('Net Annual Revenues (M$/MWe/y)')
+  ax[1].get_legend().set_visible(False)
+  ax[1].xaxis.grid(True)
+  ax[1].xaxis.set_ticks(np.arange(0, 0.21, 0.025))
+  ax[1].yaxis.set_ticklabels(['', '', ''])
+  ax[1].set_xlim(0,0.21)
+  handles, labels = ax[0].get_legend_handles_labels()
   fig.legend(handles, labels,  bbox_to_anchor=(.5,1.08),loc='upper center', ncol=3)
   fig.tight_layout()
   fig.savefig(save_path, bbox_inches='tight')
@@ -156,7 +168,7 @@ def compare_oak_net_annual_revenues():
   foak_df['Stage'] = 'FOAK'
   total_df = pd.concat([foak_df, noak_df], ignore_index=True)
   applications = total_df['Application'].unique()
-  fig, ax = plt.subplots(len(applications), 1, sharex=True, figsize=(7,7))
+  fig, ax = plt.subplots(len(applications), 1, sharex=True, figsize=(9,6))
   for c, app in enumerate(applications):
     sns.stripplot(ax=ax[c], data = total_df[total_df.Application == app], x='Annual Net Revenues (M$/MWe/y)', y = 'Stage',\
                    palette=palette, hue='ANR', alpha=0.5)
