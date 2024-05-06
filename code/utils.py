@@ -3,6 +3,12 @@ import numpy as np
 
 N=1000
 LEARNING = 'FOAK'
+
+palette={'HTGR':'blue', 
+         'iMSR':'orange', 
+         'iPWR':'green', 
+         'PBR-HTGR':'darkorchid', 
+         'Micro':'darkgrey'}
 #INflation
 conversion_2021usd_to_2020usd = 0.99 #2020$/2021$ source: data.bls.gov
 
