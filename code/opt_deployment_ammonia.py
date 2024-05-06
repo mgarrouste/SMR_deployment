@@ -290,7 +290,7 @@ def compute_ammonia_capex_breakeven(results_ref, be_ng_price_foak, ng_price):
   return be_capex
 
 
-def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False, BE=False): 
+def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False, BE=True): 
   # Go the present directory
   abspath = os.path.abspath(__file__)
   dname = os.path.dirname(abspath)

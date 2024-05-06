@@ -4,7 +4,7 @@ import numpy as np
 import seaborn as sns
 from utils import palette
 
-NOAK = True
+NOAK = False
 cogen = False
 if NOAK: anr_tag = 'NOAK'
 else: anr_tag = 'FOAK'
@@ -28,18 +28,18 @@ def load_elec_results(anr_tag):
 def load_h2_results(anr_tag):
   """"Loads all hydrogen results and returns results sorted by breakeven prices"""
   h2_results_path = f'./results/clean_results_anr_{anr_tag}_h2_wacc_0.077.xlsx'
-  industries = ['process_heat', 'refining', 'steel', 'ammonia']
+  industries = ['refining', 'steel', 'ammonia']
   list_df = []
   for ind in industries:
     df = pd.read_excel(h2_results_path, sheet_name=ind, index_col='id')
-    df = df[['state', 'H2 Dem. (kg/day)', 'Net Revenues ($/year)', 'HTSE', 'Depl. ANR Cap. (MWe)', 'ANR type', \
+    df = df[['state', 'H2 Dem. (kg/day)', 'Net Annual Revenues with H2 PTC ($/MWe/y)', 'HTSE', 'Depl. ANR Cap. (MWe)', 'ANR type', \
              '# ANR modules', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)' ]]
     df['Industry'] = ind 
     list_df.append(df)
   all_df = pd.concat(list_df)
   all_df['Application'] = 'Industrial Hydrogen'
   all_df['ANR'] = all_df['ANR type']
-  all_df['Annual Net Revenues (M$/MWe/y)'] = all_df['Net Revenues ($/year)']/(all_df['Depl. ANR Cap. (MWe)']*1e6)
+  all_df['Annual Net Revenues (M$/MWe/y)'] = all_df['Net Annual Revenues with H2 PTC ($/MWe/y)']/(all_df['Depl. ANR Cap. (MWe)']*1e6)
   all_df.sort_values(by='Breakeven price ($/MMBtu)', inplace=True)
   return all_df 
 
@@ -129,11 +129,11 @@ def concat_results(results):
 
 
 def plot_net_annual_revenues_all_app(df):
-  fig, ax = plt.subplots(figsize=(6,4))
+  fig, ax = plt.subplots(figsize=(7,4))
   save_path = f'./results/ANR_application_comparison_{anr_tag}_{cogen_tag}.png'
   
   sns.stripplot(ax=ax, data=df, x='Annual Net Revenues (M$/MWe/y)', y='Application',\
-                  palette=palette, hue='ANR', alpha=0.5)
+                  palette=palette, hue='ANR', alpha=0.6)
   sns.boxplot(ax=ax, data=df, x='Annual Net Revenues (M$/MWe/y)', y='Application', color='black',\
                   fill=False, width=0.5)
   sns.despine()
@@ -141,6 +141,7 @@ def plot_net_annual_revenues_all_app(df):
   ax.set_xlabel('Net Annual Revenues (M$/MWe/y)')
   ax.get_legend().set_visible(False)
   ax.xaxis.grid(True)
+  ax.xaxis.set_ticks(np.arange(-1, 0.2, 0.1))
   handles, labels = ax.get_legend_handles_labels()
   fig.legend(handles, labels,  bbox_to_anchor=(.5,1.08),loc='upper center', ncol=3)
   fig.tight_layout()
@@ -237,7 +238,12 @@ def main():
                                          'emissions_label':None, 
                                          'price_label':None}
   results = concat_results(applications_results)
-  results.to_excel(f'./results/ANR_application_comparison_{anr_tag}_{cogen_tag}.xlsx', index=False)
+  results_stats = results[['Application', 'Annual Net Revenues (M$/MWe/y)']].describe([.1,.25, .5, .75,.9])
+  excel_file = f'./results/ANR_application_comparison_{anr_tag}_{cogen_tag}.xlsx'
+  with pd.ExcelFile(excel_file, engine='openpyxl') as xls:
+    with pd.ExcelWriter(excel_file, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
+      results.to_excel(writer, sheet_name='data', index=False)
+      results_stats.to_excel(writer, sheet_name='stats')
   plot_net_annual_revenues_all_app(results)
   if NOAK:
     compare_oak_net_annual_revenues()

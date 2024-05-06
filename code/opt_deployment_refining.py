@@ -243,7 +243,7 @@ def compute_breakeven_price(results_ref):
   return breakeven_price
 
 
-def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, BE=False):
+def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, BE=True):
   abspath = os.path.abspath(__file__)
   dname = os.path.dirname(abspath)
   os.chdir(dname)

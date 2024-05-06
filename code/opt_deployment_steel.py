@@ -294,7 +294,7 @@ def compute_breakeven_price(results_ref):
   breakeven_price = breakeven_price_per_ton/utils.coal_heat_content
   return breakeven_price
 
-def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False, BE=False): 
+def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False, BE=True): 
   # Go the present directory
   abspath = os.path.abspath(__file__)
   dname = os.path.dirname(abspath)
