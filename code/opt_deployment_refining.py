@@ -193,6 +193,13 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data, BE):
   def get_deployed_cap(model):
     return sum(sum (model.vM[n,g]*model.pANRCap[g] for g in model.G) for n in model.N)
 
+
+  def compute_surplus_capacity(model):
+    deployed_capacity = sum(sum (model.vM[n,g]*model.pANRCap[g] for g in model.G) for n in model.N)
+    aux_elec_demand = 0 # No auxiliary demand for refining
+    h2_elec_demand  = sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g] for h in model.H) for g in model.G) for n in model.N)
+    return deployed_capacity - aux_elec_demand - h2_elec_demand
+
   #### SOLVE with CPLEX ####
   opt = SolverFactory('cplex')
 
@@ -217,6 +224,7 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data, BE):
     results_ref['Avoided NG costs ($/year)'] = value(annualized_avoided_ng_costs(model))
     results_ref['ANR CRF'] = value(get_crf(model))
     results_ref['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
+    results_ref['Surplus ANR Cap. (MWe)'] = value(compute_surplus_capacity(model))
     results_ref['Net Annual Revenues ($/MWe/y)'] = results_ref['Net Revenues ($/year)']/results_ref['Depl. ANR Cap. (MWe)']
     results_ref['Net Annual Revenues with H2 PTC ($/MWe/y)'] = results_ref['Net Revenues with H2 PTC ($/year)']/results_ref['Depl. ANR Cap. (MWe)']
     

@@ -223,6 +223,14 @@ def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results, BE):
       ng_price = utils.get_ng_price_aeo(model.pState)
       avoided_costs = utils.nh3_nrj_intensity*model.pNH3Cap*ng_price 
     return avoided_costs
+  
+  def compute_surplus_capacity(model):
+    deployed_capacity = sum(sum (model.vM[n,g]*model.pANRCap[g] for g in model.G) for n in model.N)
+    aux_elec_demand = elec_dem_MWh_per_day/24
+    h2_elec_demand  = sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g] for h in model.H) for g in model.G) for n in model.N)
+    return deployed_capacity - aux_elec_demand - h2_elec_demand
+
+
 
   ############## SOLVE ###################
   solver = SolverFactory('cplex')
@@ -254,6 +262,7 @@ def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results, BE):
     results_ref['Avoided NG costs ($/year)'] = value(annualized_avoided_ng_costs(model))
     results_ref['ANR CRF'] = value(get_crf(model))
     results_ref['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
+    results_ref['Surplus ANR Cap. (MWe)'] = value(compute_surplus_capacity(model))
     results_ref['Net Annual Revenues ($/MWe/y)'] = results_ref['Net Revenues ($/year)']/results_ref['Depl. ANR Cap. (MWe)']
     results_ref['Net Annual Revenues with H2 PTC ($/MWe/y)'] = results_ref['Net Revenues with H2 PTC ($/year)']/results_ref['Depl. ANR Cap. (MWe)']
     for g in model.G: 

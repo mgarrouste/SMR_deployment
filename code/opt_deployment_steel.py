@@ -238,6 +238,12 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data, BE):
       ng_price = utils.get_ng_price_aeo(model.pState)
       avoided_costs = ng_price*steel_cap_ton_per_annum*utils.coal_to_steel_ratio_bau
     return avoided_costs
+  
+  def compute_surplus_capacity(model):
+    deployed_capacity = sum(sum (model.vM[n,g]*model.pANRCap[g] for g in model.G) for n in model.N)
+    aux_elec_demand = elec_dem_MWh_per_day/24
+    h2_elec_demand  = sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g] for h in model.H) for g in model.G) for n in model.N)
+    return deployed_capacity - aux_elec_demand - h2_elec_demand
 
   ############## SOLVE ###################
   solver = SolverFactory('cplex')
@@ -269,6 +275,7 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data, BE):
     results_dic['Avoided NG costs ($/year)'] = value(annualized_avoided_ng_costs(model))
     results_dic['ANR CRF'] = value(get_crf(model))
     results_dic['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
+    results_dic['Surplus ANR Cap. (MWe)'] = value(compute_surplus_capacity(model))
     results_dic['Net Annual Revenues ($/MWe/y)'] = results_dic['Net Revenues ($/year)']/results_dic['Depl. ANR Cap. (MWe)']
     results_dic['Net Annual Revenues with H2 PTC ($/MWe/y)'] = results_dic['Net Revenues with H2 PTC ($/year)']/results_dic['Depl. ANR Cap. (MWe)']
     for g in model.G: 
