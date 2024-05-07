@@ -5,7 +5,7 @@ import utils
 import seaborn as sns
 
 OAK = 'FOAK'
-BE= False
+
 cogen_tag = False
 industries = {'ammonia':'Ammonia', 
               'refining':'Refining', 
@@ -16,10 +16,10 @@ anr_design_palette = {'HTGR':'blue',
                       'PBR-HTGR':'darkorchid', 
                       'Microreactor':'darkgrey'}
 
-def load_data(OAK, BE):
+def load_data(OAK):
   list_df = []
   for ind, ind_label in industries.items():
-    df = pd.read_excel(f'./results/raw_results_anr_{OAK}_h2_wacc_0.077_BE_{BE}.xlsx', sheet_name=ind)
+    df = pd.read_excel(f'./results/raw_results_anr_{OAK}_h2_wacc_0.077.xlsx', sheet_name=ind)
     df['Industry'] = ind_label
     list_df.append(df)
   total_df = pd.concat(list_df, ignore_index=True)
@@ -97,9 +97,9 @@ def plot_mean_cashflows(df):
 
 
 def main():
-  total_df = load_data(OAK, BE)
+  total_df = load_data(OAK)
   total_df = compute_normalized_net_revenues(total_df, OAK)
-  total_df.to_csv('./results/temp.csv')
+  total_df.to_csv(f'./results/industrial_hydrogen_avg_cashflows_{OAK}_cogen_{cogen_tag}.csv')
   plot_net_annual_revenues(total_df)
   plot_mean_cashflows(total_df)
 
