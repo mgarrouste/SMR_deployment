@@ -220,6 +220,7 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data):
     results_ref['H2 O&M ($/year)'] = value(compute_h2_om(model))
     results_ref['Conversion costs ($/year)'] = 0 # no conversion costs
     results_ref['Avoided NG costs ($/year)'] = value(annualized_avoided_ng_costs(model))
+    results_ref['Breakeven price ($/MMBtu)'] = compute_breakeven_price(results_ref) # Compute BE prices before adding avoided NG costs!
     results_ref['Net Revenues ($/year)'] +=results_ref['Avoided NG costs ($/year)']
     results_ref['ANR CRF'] = value(get_crf(model))
     results_ref['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
@@ -237,7 +238,6 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data):
           if value(model.vM[n,g]) >=1:
             for h in model.H:
               results_ref[h] += value(model.vQ[n,h,g])
-    results_ref['Breakeven price ($/MMBtu)'] = compute_breakeven_price(results_ref)
     print(f'Refining plant {ref_id} solved')
     return results_ref
   else:

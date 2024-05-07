@@ -267,6 +267,7 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
     results_dic['H2 O&M ($/year)'] = value(compute_h2_om(model))
     results_dic['Conversion costs ($/year)'] = value(compute_conv_costs(model))
     results_dic['Avoided NG costs ($/year)'] = value(annualized_avoided_ng_costs(model))
+    results_dic['Breakeven price ($/MMBtu)'] = compute_breakeven_price(results_dic) # Compute BE price before adding avoided ng costs!
     results_dic['Net Revenues ($/year)'] +=results_dic['Avoided NG costs ($/year)']
     results_dic['ANR CRF'] = value(get_crf(model))
     results_dic['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
@@ -284,7 +285,6 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
           if value(model.vM[n,g]) >=1:
             for h in model.H:
               results_dic[h] += value(model.vQ[n,h,g])
-    results_dic['Breakeven price ($/MMBtu)'] = compute_breakeven_price(results_dic)
     print(f'Solved {plant}')
     return results_dic
   else:

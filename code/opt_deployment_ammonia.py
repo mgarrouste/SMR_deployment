@@ -250,6 +250,7 @@ def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results):
     results_ref['H2 O&M ($/year)'] = value(compute_h2_om(model))
     results_ref['Conversion costs ($/year)'] = value(compute_conv_costs(model))
     results_ref['Avoided NG costs ($/year)'] = value(annualized_avoided_ng_costs(model))
+    results_ref['Breakeven price ($/MMBtu)'] = compute_ng_breakeven_price(results_ref) # Compute BE price before adding avoided ng costs!
     results_ref['Net Revenues ($/year)'] +=results_ref['Avoided NG costs ($/year)']
     results_ref['ANR CRF'] = value(get_crf(model))
     results_ref['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
@@ -268,7 +269,6 @@ def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results):
             for h in model.H:
               if value(model.vQ[n,h,g]) > 0:
                 results_ref[h] += value(model.vQ[n,h,g])
-    results_ref['Breakeven price ($/MMBtu)'] = compute_ng_breakeven_price(results_ref)
     print(f'Ammonia plant {plant} solved')
     return results_ref
   else:
