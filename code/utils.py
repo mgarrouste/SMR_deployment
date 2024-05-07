@@ -1,14 +1,24 @@
 import pandas as pd 
 import numpy as np
+import glob
 
 N=1000
-LEARNING = 'FOAK'
+LEARNING = 'NOAK'
 
 palette={'HTGR':'blue', 
          'iMSR':'orange', 
          'iPWR':'green', 
          'PBR-HTGR':'darkorchid', 
          'Micro':'darkgrey'}
+cashflows_color_map = {'ANR CAPEX': 'navy', 
+             'ANR for H2 CAPEX': 'royalblue',
+               'H2 CAPEX': 'lightsteelblue', 
+               'ANR O&M':'darkgreen', 
+               'ANR for H2 O&M':'forestgreen', 
+               'H2 O&M':'palegreen',
+               'Avoided Fossil Fuel Costs':'darkorchid', 
+               'H2 PTC':'plum', 
+               'Electricity':'pink'}
 #INflation
 conversion_2021usd_to_2020usd = 0.99 #2020$/2021$ source: data.bls.gov
 
@@ -62,6 +72,29 @@ ratio_ironore_DRI = 1.391 # tironore/tDRI
 bfbof_iron_cons = 1.226 #t_ironore/t_steel
 om_bfbof = 178.12 #$/t_steel
 
+
+def compute_average_electricity_prices(cambium_scenario, year):
+  folder = f'./input_data/cambium_{cambium_scenario.lower()}_state_hourly_electricity_prices'
+  list_csv_files = glob.glob(folder+'/Cambium*.csv')
+  state_prices = pd.DataFrame(columns=['average price ($/MWhe)', 'state'])
+  state_prices.set_index('state', inplace=True)
+  for file in list_csv_files:
+    if str(year) in file:
+      state = file.split('_')[-2]
+      avg_price = pd.read_csv(file, skiprows=5)['energy_cost_enduse'].mean()
+      state_prices.loc[state, 'average price ($/MWhe)'] = avg_price
+  state_prices.to_excel(f'./results/average_electricity_prices_{cambium_scenario}_{year}.xlsx')
+
+
+def compute_cogen(df, surplus_cap_col_name, state_col_name, cambium_scenario, year):
+  try:
+    elec_prices_df = pd.read_excel(f'./results/average_electricity_prices_{cambium_scenario}_{year}.xlsx', index_col=0)
+  except FileNotFoundError:
+    compute_average_electricity_prices(cambium_scenario, year)
+    elec_prices_df = pd.read_excel(f'./results/average_electricity_prices_{cambium_scenario}_{year}.xlsx', index_col=0)
+  df['Electricity revenues ($/y)'] = df.apply(lambda x: x[surplus_cap_col_name]*elec_prices_df.loc[x[state_col_name]]*8760, axis=1)
+  return df
+  
 
 def get_ng_price_current(state):
   ng_prices_map = pd.read_excel('./input_data/ng_prices_state_annual_us.xlsx', sheet_name='clean_data_2022', index_col='state')
