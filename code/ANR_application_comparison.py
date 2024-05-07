@@ -4,12 +4,6 @@ import numpy as np
 import seaborn as sns
 from utils import palette
 
-NOAK = False
-cogen = False
-if NOAK: anr_tag = 'NOAK'
-else: anr_tag = 'FOAK'
-if cogen: cogen_tag = 'cogen'
-else: cogen_tag = 'nocogen'
 
 color_map = {'Industrial Hydrogen':'blue', 'Direct Process Heat':'red', 'Total':'Green', 'FOAK':'limegreen', 
              'NOAK':'forestgreen'}
@@ -25,7 +19,7 @@ def load_elec_results(anr_tag):
   return df
   
 
-def load_h2_results(anr_tag):
+def load_h2_results(anr_tag, cogen):
   """"Loads all hydrogen results and returns results sorted by breakeven prices"""
   h2_results_path = f'./results/clean_results_anr_{anr_tag}_h2_wacc_0.077.xlsx'
   industries = ['refining', 'steel', 'ammonia']
@@ -33,13 +27,15 @@ def load_h2_results(anr_tag):
   for ind in industries:
     df = pd.read_excel(h2_results_path, sheet_name=ind, index_col='id')
     df = df[['state', 'H2 Dem. (kg/day)', 'Net Annual Revenues with H2 PTC ($/MWe/y)', 'HTSE', 'Depl. ANR Cap. (MWe)', 'ANR type', \
-             '# ANR modules', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 'Electricity revenues ($/y)']]
+             '# ANR modules', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 'Electricity revenues ($/y)', \
+             'Net Revenues with H2 PTC with elec ($/year)']]
     df['Industry'] = ind 
     list_df.append(df)
   all_df = pd.concat(list_df)
   all_df['Application'] = 'Industrial Hydrogen'
   all_df['ANR'] = all_df['ANR type']
-  all_df['Annual Net Revenues (M$/MWe/y)'] = all_df['Net Annual Revenues with H2 PTC ($/MWe/y)']/(1e6)
+  if cogen: all_df['Annual Net Revenues (M$/MWe/y)'] = all_df['Net Revenues with H2 PTC with elec ($/year)']/(1e6*all_df['Depl. ANR Cap. (MWe)'])
+  else: all_df['Annual Net Revenues (M$/MWe/y)'] = all_df['Net Annual Revenues with H2 PTC ($/MWe/y)']/(1e6)
   all_df.sort_values(by='Breakeven price ($/MMBtu)', inplace=True)
   return all_df 
 
@@ -77,7 +73,7 @@ def combine_emissions(applications_results):
   return total_df
 
 
-def plot_cumulative_avoided_emissions(applications_results):
+def plot_cumulative_avoided_emissions(applications_results, anr_tag, cogen_tag):
   fig, ax = plt.subplots(2, 1, figsize=(8,5), sharex=True)
   xmax = 50
   # Total avoided emissions on top subplot
@@ -128,7 +124,7 @@ def concat_results(results):
   return df
 
 
-def plot_net_annual_revenues_all_app(df):
+def plot_net_annual_revenues_all_app(df, anr_tag, cogen_tag):
   fig, ax = plt.subplots(figsize=(10,4))
   save_path = f'./results/ANR_application_comparison_{anr_tag}_{cogen_tag}.png'
   print(save_path)
@@ -149,7 +145,7 @@ def plot_net_annual_revenues_all_app(df):
   fig.savefig(save_path, bbox_inches='tight')
 
 
-def compare_oak_net_annual_revenues():
+def compare_oak_net_annual_revenues(cogen_tag):
   save_path = f'./results/ANR_application_comparison_FOAK_vs_NOAK_{cogen_tag}.png'
   noak_df = pd.read_excel(f'./results/ANR_application_comparison_NOAK_{cogen_tag}.xlsx')
   foak_df = pd.read_excel(f'./results/ANR_application_comparison_FOAK_{cogen_tag}.xlsx')
@@ -172,9 +168,9 @@ def compare_oak_net_annual_revenues():
   fig.tight_layout()
   fig.savefig(save_path, bbox_inches='tight')
 
-def compare_oak_avoided_emissions():
+def compare_oak_avoided_emissions(cogen_tag):
   oak = 'FOAK'
-  h2_df = load_h2_results(oak)
+  h2_df = load_h2_results(oak, cogen=False)
   h2_df = compute_cumulative_avoided_emissions(h2_df)
   heat_df = load_heat_results(oak, cogen_tag)
   heat_df = compute_cumulative_avoided_emissions(heat_df, emissions_label='Emissions_mmtco2/y')
@@ -185,7 +181,7 @@ def compare_oak_avoided_emissions():
                                                    'emissions_label':'Emissions_mmtco2/y',
                                                    'price_label':'Breakeven NG price ($/MMBtu)'}}
   oak = 'NOAK'
-  h2_df = load_h2_results(oak)
+  h2_df = load_h2_results(oak, cogen=False)
   h2_df = compute_cumulative_avoided_emissions(h2_df)
   heat_df = load_heat_results(oak, cogen_tag)
   heat_df = compute_cumulative_avoided_emissions(heat_df, emissions_label='Emissions_mmtco2/y')
@@ -278,8 +274,12 @@ def compare_cogen_net_annual_revenues():
 
 
 
-def main():
-  h2_df = load_h2_results(anr_tag)
+def run_case(oak, cogen):
+  if oak: anr_tag = 'NOAK'
+  else: anr_tag = 'FOAK'
+  if cogen: cogen_tag = 'cogen'
+  else: cogen_tag = 'nocogen'
+  h2_df = load_h2_results(anr_tag, cogen)
   h2_df = compute_cumulative_avoided_emissions(h2_df)
   heat_df = load_heat_results(anr_tag, cogen_tag)
   heat_df = compute_cumulative_avoided_emissions(heat_df, emissions_label='Emissions_mmtco2/y')
@@ -289,7 +289,7 @@ def main():
                           ,'Direct Process Heat':{'data':heat_df, 
                                                    'emissions_label':'Emissions_mmtco2/y',
                                                    'price_label':'Breakeven NG price ($/MMBtu)'}}
-  plot_cumulative_avoided_emissions(applications_results)
+  plot_cumulative_avoided_emissions(applications_results, anr_tag, cogen_tag)
   elec_df = load_elec_results(anr_tag)
   applications_results['Electricity'] = {'data':elec_df, 
                                          'emissions_label':None, 
@@ -308,12 +308,20 @@ def main():
     with pd.ExcelFile(excel_file, engine='openpyxl') as xls:
       with pd.ExcelWriter(excel_file, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
         results_stats.to_excel(writer, sheet_name='stats')
-  plot_net_annual_revenues_all_app(results)
-  if NOAK:
-    compare_oak_net_annual_revenues()
-    compare_oak_avoided_emissions()
-  if cogen:
-    compare_cogen_net_annual_revenues()
+  plot_net_annual_revenues_all_app(results,anr_tag, cogen_tag)
+
+def main():
+  for cogen in [True, False]:
+    
+    if cogen: cogen_tag = 'cogen'
+    else: cogen_tag = 'nocogen'
+
+    for noak in [True, False]:
+      run_case(noak, cogen)
+
+    compare_oak_net_annual_revenues(cogen_tag)
+    compare_oak_avoided_emissions(cogen_tag)
+  compare_cogen_net_annual_revenues()
 
 if __name__ == '__main__':
   main()
