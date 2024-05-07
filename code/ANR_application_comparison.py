@@ -4,8 +4,8 @@ import numpy as np
 import seaborn as sns
 from utils import palette
 
-NOAK = False
-cogen = False
+NOAK = True
+cogen = True
 if NOAK: anr_tag = 'NOAK'
 else: anr_tag = 'FOAK'
 if cogen: cogen_tag = 'cogen'
@@ -33,7 +33,7 @@ def load_h2_results(anr_tag):
   for ind in industries:
     df = pd.read_excel(h2_results_path, sheet_name=ind, index_col='id')
     df = df[['state', 'H2 Dem. (kg/day)', 'Net Annual Revenues with H2 PTC ($/MWe/y)', 'HTSE', 'Depl. ANR Cap. (MWe)', 'ANR type', \
-             '# ANR modules', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)' ]]
+             '# ANR modules', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 'Electricity revenues ($/y)']]
     df['Industry'] = ind 
     list_df.append(df)
   all_df = pd.concat(list_df)
@@ -131,6 +131,7 @@ def concat_results(results):
 def plot_net_annual_revenues_all_app(df):
   fig, ax = plt.subplots(1,2,figsize=(10,4))
   save_path = f'./results/ANR_application_comparison_{anr_tag}_{cogen_tag}.png'
+  print(save_path)
   
   sns.stripplot(ax=ax[0], data=df, x='Annual Net Revenues (M$/MWe/y)', y='Application',\
                   palette=palette, hue='ANR', alpha=0.6)
@@ -140,8 +141,8 @@ def plot_net_annual_revenues_all_app(df):
   ax[0].set_ylabel('')
   ax[0].set_xlabel('Net Annual Revenues (M$/MWe/y)')
   ax[0].get_legend().set_visible(False)
+  ax[0].xaxis.set_ticks(np.arange(-1, 0.41, 0.2))
   ax[0].xaxis.grid(True)
-  ax[0].xaxis.set_ticks(np.arange(-1, 0.1, 0.25))
   sns.stripplot(ax=ax[1], data=df, x='Annual Net Revenues (M$/MWe/y)', y='Application',\
                   palette=palette, hue='ANR', alpha=0.6)
   sns.boxplot(ax=ax[1],data=df, x='Annual Net Revenues (M$/MWe/y)', y='Application', color='black',\
@@ -233,6 +234,62 @@ def compare_oak_avoided_emissions():
   fig.savefig(f'./results/all_applications_viable_avoided_emissions_FOAK_vs_NOAK_{cogen_tag}.png')
 
 
+def compare_cogen_net_annual_revenues():
+  save_path = f'./results/ANR_application_comparison_cogen_vs_nocogen.png'
+  # Load and prep data
+  noak_co = pd.read_excel(f'./results/ANR_application_comparison_NOAK_cogen.xlsx')
+  noak_no = pd.read_excel(f'./results/ANR_application_comparison_NOAK_nocogen.xlsx')
+  foak_no = pd.read_excel(f'./results/ANR_application_comparison_FOAK_nocogen.xlsx')
+  foak_co = pd.read_excel(f'./results/ANR_application_comparison_FOAK_cogen.xlsx')
+  noak_co['Co'] = 'Cogeneration'
+  noak_no['Co'] = 'No Cogeneration'
+  foak_co['Co'] = 'Cogeneration'
+  foak_no['Co'] = 'No Cogeneration'
+  foak = pd.concat([foak_co, foak_no], ignore_index=True)
+  noak = pd.concat([noak_co, noak_no], ignore_index=True)
+  applications = ['Industrial Hydrogen', 'Direct Process Heat']
+
+  fig = plt.figure(figsize=(8,8))
+  (topfig, botfig) = fig.subfigures(2,1)
+  topfig.suptitle('FOAK')
+  botfig.suptitle('NOAK')
+
+  # FOAK on top
+  topax = topfig.subplots(2,1,sharex=True)
+  for c, app in enumerate(applications):
+    sns.stripplot(ax=topax[c], data = foak[foak.Application == app], x='Annual Net Revenues (M$/MWe/y)', y = 'Co',\
+                   palette=palette, hue='ANR', alpha=0.5)
+    sns.boxplot(ax=topax[c], data =foak[foak.Application == app], x='Annual Net Revenues (M$/MWe/y)', y='Co', \
+                color='black', fill=False, width=0.5)
+    sns.despine()
+    topax[c].xaxis.grid(True)
+    topax[c].set_ylabel(app)
+    topax[c].set_xlim(-1.1, 0.22)
+    topax[c].get_legend().set_visible(False)
+  h1, l1 = topax[1].get_legend_handles_labels()
+  h2, l2 = topax[0].get_legend_handles_labels()
+  #topfig.legend(h1+h1, l1+l2,  bbox_to_anchor=(.5,1.08),loc='upper center', ncol=3)
+
+  #NOAK bottom
+  botax = botfig.subplots(2,1,sharex=True)
+  for c, app in enumerate(applications):
+    sns.stripplot(ax=botax[c], data = noak[noak.Application == app], x='Annual Net Revenues (M$/MWe/y)', y = 'Co',\
+                   palette=palette, hue='ANR', alpha=0.5)
+    sns.boxplot(ax=botax[c], data =noak[noak.Application == app], x='Annual Net Revenues (M$/MWe/y)', y='Co', \
+                color='black', fill=False, width=0.5)
+    sns.despine()
+    botax[c].xaxis.grid(True)
+    botax[c].set_ylabel(app)
+    botax[c].set_xlim(-1.1, 0.22)
+    botax[c].get_legend().set_visible(False)
+  h3, l3 = botax[1].get_legend_handles_labels()
+  h4, l4 = botax[0].get_legend_handles_labels()
+  by_label = dict(zip(l1+l2+l3+l4, h1+h2+h3+h4))
+  botfig.legend(by_label.values(), by_label.keys(),  bbox_to_anchor=(.5,-.08),loc='upper center', ncol=3)
+  fig.savefig(save_path, bbox_inches = 'tight')
+
+
+
 def main():
   h2_df = load_h2_results(anr_tag)
   h2_df = compute_cumulative_avoided_emissions(h2_df)
@@ -252,16 +309,23 @@ def main():
   results = concat_results(applications_results)
   results_stats = results[['Application', 'Annual Net Revenues (M$/MWe/y)']].describe([.1,.25, .5, .75,.9])
   excel_file = f'./results/ANR_application_comparison_{anr_tag}_{cogen_tag}.xlsx'
-  with pd.ExcelFile(excel_file, engine='openpyxl') as xls:
-    with pd.ExcelWriter(excel_file, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
-      results.to_excel(writer, sheet_name='data', index=False)
-      results_stats.to_excel(writer, sheet_name='stats')
+  try:
+    with pd.ExcelFile(excel_file, engine='openpyxl') as xls:
+      with pd.ExcelWriter(excel_file, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
+        results.to_excel(writer, sheet_name='data', index=False)
+        results_stats.to_excel(writer, sheet_name='stats')
+  except FileNotFoundError:
+    # If the file doesn't exist, create a new one and write the DataFrame to it
+    results.to_excel(excel_file, sheet_name='data', index=False)
+    with pd.ExcelFile(excel_file, engine='openpyxl') as xls:
+      with pd.ExcelWriter(excel_file, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
+        results_stats.to_excel(writer, sheet_name='stats')
   plot_net_annual_revenues_all_app(results)
   if NOAK:
     compare_oak_net_annual_revenues()
     compare_oak_avoided_emissions()
   if cogen:
-    pass # TODO compare_cogen_net_annual_revenues()
+    compare_cogen_net_annual_revenues()
 
 if __name__ == '__main__':
   main()
