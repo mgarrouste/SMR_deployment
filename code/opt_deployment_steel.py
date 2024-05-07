@@ -267,6 +267,7 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
     results_dic['H2 O&M ($/year)'] = value(compute_h2_om(model))
     results_dic['Conversion costs ($/year)'] = value(compute_conv_costs(model))
     results_dic['Avoided NG costs ($/year)'] = value(annualized_avoided_ng_costs(model))
+    results_dic['Net Revenues ($/year)'] +=results_dic['Avoided NG costs ($/year)']
     results_dic['ANR CRF'] = value(get_crf(model))
     results_dic['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
     results_dic['Depl H2 Cap. (MWe)'] = value(get_eq_elec_dem_h2(model))

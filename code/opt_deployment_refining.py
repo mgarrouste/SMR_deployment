@@ -220,6 +220,7 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data):
     results_ref['H2 O&M ($/year)'] = value(compute_h2_om(model))
     results_ref['Conversion costs ($/year)'] = 0 # no conversion costs
     results_ref['Avoided NG costs ($/year)'] = value(annualized_avoided_ng_costs(model))
+    results_ref['Net Revenues ($/year)'] +=results_ref['Avoided NG costs ($/year)']
     results_ref['ANR CRF'] = value(get_crf(model))
     results_ref['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
     results_ref['Depl. H2 Cap. (MWe)'] = value(get_eq_elec_dem_h2(model))
