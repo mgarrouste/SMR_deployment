@@ -4,8 +4,8 @@ import numpy as np
 import seaborn as sns
 from utils import palette
 
-NOAK = True
-cogen = True
+NOAK = False
+cogen = False
 if NOAK: anr_tag = 'NOAK'
 else: anr_tag = 'FOAK'
 if cogen: cogen_tag = 'cogen'
@@ -39,7 +39,7 @@ def load_h2_results(anr_tag):
   all_df = pd.concat(list_df)
   all_df['Application'] = 'Industrial Hydrogen'
   all_df['ANR'] = all_df['ANR type']
-  all_df['Annual Net Revenues (M$/MWe/y)'] = all_df['Net Annual Revenues with H2 PTC ($/MWe/y)']/(all_df['Depl. ANR Cap. (MWe)']*1e6)
+  all_df['Annual Net Revenues (M$/MWe/y)'] = all_df['Net Annual Revenues with H2 PTC ($/MWe/y)']/(1e6)
   all_df.sort_values(by='Breakeven price ($/MMBtu)', inplace=True)
   return all_df 
 
@@ -129,33 +129,21 @@ def concat_results(results):
 
 
 def plot_net_annual_revenues_all_app(df):
-  fig, ax = plt.subplots(1,2,figsize=(10,4))
+  fig, ax = plt.subplots(figsize=(10,4))
   save_path = f'./results/ANR_application_comparison_{anr_tag}_{cogen_tag}.png'
   print(save_path)
   
-  sns.stripplot(ax=ax[0], data=df, x='Annual Net Revenues (M$/MWe/y)', y='Application',\
+  sns.stripplot(ax=ax, data=df, x='Annual Net Revenues (M$/MWe/y)', y='Application',\
                   palette=palette, hue='ANR', alpha=0.6)
-  sns.boxplot(ax=ax[0], data=df, x='Annual Net Revenues (M$/MWe/y)', y='Application', color='black',\
+  sns.boxplot(ax=ax, data=df, x='Annual Net Revenues (M$/MWe/y)', y='Application', color='black',\
                   fill=False, width=0.5)
   sns.despine()
-  ax[0].set_ylabel('')
-  ax[0].set_xlabel('Net Annual Revenues (M$/MWe/y)')
-  ax[0].get_legend().set_visible(False)
-  ax[0].xaxis.set_ticks(np.arange(-1, 0.41, 0.2))
-  ax[0].xaxis.grid(True)
-  sns.stripplot(ax=ax[1], data=df, x='Annual Net Revenues (M$/MWe/y)', y='Application',\
-                  palette=palette, hue='ANR', alpha=0.6)
-  sns.boxplot(ax=ax[1],data=df, x='Annual Net Revenues (M$/MWe/y)', y='Application', color='black',\
-                  fill=False, width=0.5)
-  sns.despine()
-  ax[1].set_ylabel('')
-  ax[1].set_xlabel('Net Annual Revenues (M$/MWe/y)')
-  ax[1].get_legend().set_visible(False)
-  ax[1].xaxis.grid(True)
-  ax[1].xaxis.set_ticks(np.arange(0, 0.21, 0.025))
-  ax[1].yaxis.set_ticklabels(['', '', ''])
-  ax[1].set_xlim(0,0.21)
-  handles, labels = ax[0].get_legend_handles_labels()
+  ax.set_ylabel('')
+  ax.set_xlabel('Net Annual Revenues (M$/MWe/y)')
+  ax.get_legend().set_visible(False)
+  ax.xaxis.set_ticks(np.arange(-1, 1, 0.25))
+  ax.xaxis.grid(True)
+  handles, labels = ax.get_legend_handles_labels()
   fig.legend(handles, labels,  bbox_to_anchor=(.5,1.08),loc='upper center', ncol=3)
   fig.tight_layout()
   fig.savefig(save_path, bbox_inches='tight')
@@ -264,7 +252,7 @@ def compare_cogen_net_annual_revenues():
     sns.despine()
     topax[c].xaxis.grid(True)
     topax[c].set_ylabel(app)
-    topax[c].set_xlim(-1.1, 0.22)
+    topax[c].set_xlim(-1.1, 1)
     topax[c].get_legend().set_visible(False)
   h1, l1 = topax[1].get_legend_handles_labels()
   h2, l2 = topax[0].get_legend_handles_labels()
@@ -280,7 +268,7 @@ def compare_cogen_net_annual_revenues():
     sns.despine()
     botax[c].xaxis.grid(True)
     botax[c].set_ylabel(app)
-    botax[c].set_xlim(-1.1, 0.22)
+    botax[c].set_xlim(-1.1, 1)
     botax[c].get_legend().set_visible(False)
   h3, l3 = botax[1].get_legend_handles_labels()
   h4, l4 = botax[0].get_legend_handles_labels()
