@@ -34,7 +34,7 @@ def get_state(ref_id):
   return state
 
 
-def solve_refinery_deployment(ref_id, ANR_data, H2_data, BE):
+def solve_refinery_deployment(ref_id, ANR_data, H2_data):
   print(f'Start solve for {ref_id}')
   model = ConcreteModel(ref_id)
 
@@ -137,16 +137,9 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data, BE):
       + sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]*(model.pH2CAPEX[h]*(1-model.pITC_H2)*model.pH2CRF[h]+model.pH2FC[h]+model.pH2VOM[h]*365*24) for h in model.H) for g in model.G) for n in model.N) 
     return costs
 
-  def annualized_avoided_ng_costs(model):
-    if BE:
-      avoided_costs = 0
-    else:
-      ng_price = utils.get_ng_price_aeo(model.pState)
-      avoided_costs = ng_price*utils.smr_nrj_intensity*model.pRefDem*365
-    return avoided_costs
   
   def annualized_net_rev(model):
-    return annualized_avoided_ng_costs(model)-annualized_costs(model)
+    return -annualized_costs(model)
   model.NetRevenues = Objective(expr=annualized_net_rev, sense=maximize)  
 
 
@@ -192,12 +185,17 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data, BE):
   
   def get_deployed_cap(model):
     return sum(sum (model.vM[n,g]*model.pANRCap[g] for g in model.G) for n in model.N)
+  
+  def annualized_avoided_ng_costs(model):
+    ng_price = utils.get_ng_price_aeo(model.pState)
+    avoided_costs = ng_price*utils.smr_nrj_intensity*model.pRefDem*365
+    return avoided_costs
 
-
+  def get_eq_elec_dem_h2(model): return sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g] for h in model.H) for g in model.G) for n in model.N) 
   def compute_surplus_capacity(model):
     deployed_capacity = sum(sum (model.vM[n,g]*model.pANRCap[g] for g in model.G) for n in model.N)
-    aux_elec_demand = 0 # No auxiliary demand for refining
-    h2_elec_demand  = sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g] for h in model.H) for g in model.G) for n in model.N)
+    aux_elec_demand = 0/24
+    h2_elec_demand  = sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g] for g in model.G) for h in model.H) for n in model.N)
     return deployed_capacity - aux_elec_demand - h2_elec_demand
 
   #### SOLVE with CPLEX ####
@@ -224,8 +222,9 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data, BE):
     results_ref['Avoided NG costs ($/year)'] = value(annualized_avoided_ng_costs(model))
     results_ref['ANR CRF'] = value(get_crf(model))
     results_ref['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
+    results_ref['Depl. H2 Cap. (MWe)'] = value(get_eq_elec_dem_h2(model))
     results_ref['Surplus ANR Cap. (MWe)'] = value(compute_surplus_capacity(model))
-    results_ref['Net Annual Revenues ($/MWe/y)'] = results_ref['Net Revenues ($/year)']/results_ref['Depl. ANR Cap. (MWe)']
+    results_ref['Net Annual Revenues ($/MWe/y)'] = (results_ref['Avoided NG costs ($/year)']+results_ref['Net Revenues ($/year)'])/results_ref['Depl. ANR Cap. (MWe)']
     results_ref['Net Annual Revenues with H2 PTC ($/MWe/y)'] = results_ref['Net Revenues with H2 PTC ($/year)']/results_ref['Depl. ANR Cap. (MWe)']
     
     for g in model.G: 
@@ -251,7 +250,7 @@ def compute_breakeven_price(results_ref):
   return breakeven_price
 
 
-def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, BE=True):
+def main(anr_tag='FOAK', wacc=WACC, print_main_results=True):
   abspath = os.path.abspath(__file__)
   dname = os.path.dirname(abspath)
   os.chdir(dname)
@@ -261,11 +260,11 @@ def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, BE=True):
   ANR_data, H2_data = utils.load_data(anr_tag=anr_tag)
 
   with Pool(10) as pool: 
-    results = pool.starmap(solve_refinery_deployment, [(ref_id, ANR_data, H2_data, BE) for ref_id in ref_ids])
+    results = pool.starmap(solve_refinery_deployment, [(ref_id, ANR_data, H2_data) for ref_id in ref_ids])
   pool.close()
 
   df = pd.DataFrame(results)
-  excel_file = f'./results/raw_results_anr_{anr_tag}_h2_wacc_{str(wacc)}_BE_{BE}.xlsx'
+  excel_file = f'./results/raw_results_anr_{anr_tag}_h2_wacc_{str(wacc)}.xlsx'
   sheet_name = 'refining'
   if print_main_results:
     # Try to read the existing Excel file

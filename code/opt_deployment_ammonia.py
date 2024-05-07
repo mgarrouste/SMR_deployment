@@ -26,10 +26,10 @@ def get_ammonia_plant_demand(plant):
   h2_demand_kg_per_day = float(plant_df['H2 Dem. (kg/year)'].iloc[0])/365
   elec_demand_MWe = float(plant_df['Electricity demand (MWe)'].iloc[0])
   ammonia_capacity = float(plant_df['Capacity (tNH3/year)'].iloc[0])
-  state = plant_df['State'].iloc[0]
+  state = plant_df['State'].iloc[0].strip()
   return ammonia_capacity, h2_demand_kg_per_day, elec_demand_MWe, state
 
-def build_ammonia_plant_deployment(plant, ANR_data, H2_data, BE): 
+def build_ammonia_plant_deployment(plant, ANR_data, H2_data): 
   print(f'Ammonia plant {plant} : start solving')
   model = ConcreteModel(plant)
 
@@ -142,17 +142,9 @@ def build_ammonia_plant_deployment(plant, ANR_data, H2_data, BE):
     crf = model.pWACC / (1 - (1/(1+model.pWACC)**auxNucNH3LT) ) 
     costs =auxNucNH3CAPEX*crf*(1-model.pITC_H2)
     return costs
-  
-  def annualized_avoided_ng_costs(model):
-    if BE:
-      avoided_costs = 0
-    else:
-      ng_price = utils.get_ng_price_aeo(model.pState)
-      avoided_costs = utils.nh3_nrj_intensity*model.pNH3Cap*ng_price 
-    return avoided_costs
 
   def annualized_net_rev(model):
-    return annualized_avoided_ng_costs(model)-annualized_nuc_NH3_costs(model)-annualized_costs_anr_h2(model)
+    return -annualized_nuc_NH3_costs(model)-annualized_costs_anr_h2(model)
   model.NetRevenues = Objective(expr=annualized_net_rev, sense=maximize)  
 
 
@@ -186,8 +178,8 @@ def build_ammonia_plant_deployment(plant, ANR_data, H2_data, BE):
   return model
 
 
-def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results, BE):
-  model = build_ammonia_plant_deployment(plant, ANR_data, H2_data, BE)
+def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results):
+  model = build_ammonia_plant_deployment(plant, ANR_data, H2_data)
   ammonia_capacity, h2_dem_kg_per_day, elec_dem_MWh_per_day, state = get_ammonia_plant_demand(plant)
   # for carbon accounting
   def compute_annual_carbon_emissions(model):
@@ -217,17 +209,15 @@ def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results, BE):
     return sum(sum (model.vM[n,g]*model.pANRCap[g] for g in model.G) for n in model.N)
   
   def annualized_avoided_ng_costs(model):
-    if BE:
-      avoided_costs = 0
-    else:
-      ng_price = utils.get_ng_price_aeo(model.pState)
-      avoided_costs = utils.nh3_nrj_intensity*model.pNH3Cap*ng_price 
+    ng_price = utils.get_ng_price_aeo(model.pState)
+    avoided_costs = utils.nh3_nrj_intensity*model.pNH3Cap*ng_price 
     return avoided_costs
   
+  def get_eq_elec_dem_h2(model): return sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g] for h in model.H) for g in model.G) for n in model.N) 
   def compute_surplus_capacity(model):
     deployed_capacity = sum(sum (model.vM[n,g]*model.pANRCap[g] for g in model.G) for n in model.N)
     aux_elec_demand = elec_dem_MWh_per_day/24
-    h2_elec_demand  = sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g] for h in model.H) for g in model.G) for n in model.N)
+    h2_elec_demand  = sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g] for h in model.H) for g in model.G) for n in model.N) 
     return deployed_capacity - aux_elec_demand - h2_elec_demand
 
 
@@ -262,8 +252,10 @@ def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results, BE):
     results_ref['Avoided NG costs ($/year)'] = value(annualized_avoided_ng_costs(model))
     results_ref['ANR CRF'] = value(get_crf(model))
     results_ref['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
+    results_ref['Depl H2 Cap. (MWe)'] = value(get_eq_elec_dem_h2(model))
     results_ref['Surplus ANR Cap. (MWe)'] = value(compute_surplus_capacity(model))
-    results_ref['Net Annual Revenues ($/MWe/y)'] = results_ref['Net Revenues ($/year)']/results_ref['Depl. ANR Cap. (MWe)']
+    results_ref['Net Annual Revenues ($/MWe/y)'] = (results_ref['Avoided NG costs ($/year)']\
+                                                    + results_ref['Net Revenues ($/year)'])/results_ref['Depl. ANR Cap. (MWe)']
     results_ref['Net Annual Revenues with H2 PTC ($/MWe/y)'] = results_ref['Net Revenues with H2 PTC ($/year)']/results_ref['Depl. ANR Cap. (MWe)']
     for g in model.G: 
       if value(model.vS[g]) >=1: 
@@ -299,7 +291,7 @@ def compute_ammonia_capex_breakeven(results_ref, be_ng_price_foak, ng_price):
   return be_capex
 
 
-def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False, BE=True): 
+def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False): 
   # Go the present directory
   abspath = os.path.abspath(__file__)
   dname = os.path.dirname(abspath)
@@ -315,12 +307,12 @@ def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False
   # Build results dataset one by one
   
   with Pool(10) as pool:
-    results = pool.starmap(solve_ammonia_plant_deployment, [(ANR_data, H2_data, plant, print_results, BE) for plant in plant_ids])
+    results = pool.starmap(solve_ammonia_plant_deployment, [(ANR_data, H2_data, plant, print_results) for plant in plant_ids])
   pool.close()
 
   df = pd.DataFrame(results)
 
-  excel_file = f'./results/raw_results_anr_{anr_tag}_h2_wacc_{str(wacc)}_BE_{BE}.xlsx'
+  excel_file = f'./results/raw_results_anr_{anr_tag}_h2_wacc_{str(wacc)}.xlsx'
   sheet_name = 'ammonia'
   if print_main_results:
     # Try to read the existing Excel file

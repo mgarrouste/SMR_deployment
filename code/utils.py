@@ -70,13 +70,8 @@ def get_ng_price_current(state):
 
 
 def get_ng_price_aeo(state):
-  div_prices = pd.read_excel('./input_data/eia_aeo_industrial_sector_ng_prices.xlsx', sheet_name='prices_division')
-  div_prices = div_prices[div_prices['year'] == 2024]
-  div_prices = div_prices[['region', 'price 2020USD/MMBtu']]
-  map_div_state = pd.read_excel('./input_data/eia_aeo_industrial_sector_ng_prices.xlsx', sheet_name='map_census_division_state')
-  state_prices = map_div_state.merge(div_prices, on='region')
-  state_prices.set_index('state', inplace=True)
-  ng_price = float(state_prices.loc[state, 'price 2020USD/MMBtu'])
+  state_prices = pd.read_csv('./input_data/eia_aeo_industrial_sector_ng_prices_2024.csv', index_col='state')
+  ng_price = state_prices.loc[state, 'price']
   return ng_price
 
 
@@ -94,6 +89,5 @@ def load_data(anr_tag='FOAK'):
 
 
 if __name__ =='__main__':
-  anr_d, h2_d = load_data(0.1, 0.1)
-  print(anr_d[['CAPEX $/MWe']])
-  print(h2_d[['CAPEX ($/MWe)']])
+  print(get_ng_price_aeo('LA'))
+  print(type(get_ng_price_aeo('LA')))

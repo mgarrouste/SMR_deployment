@@ -34,7 +34,7 @@ def get_state(plant):
   state = plant_df['STATE'].iloc[0]
   return state
 
-def build_steel_plant_deployment(plant, ANR_data, H2_data, BE): 
+def build_steel_plant_deployment(plant, ANR_data, H2_data): 
   print(f'Start {plant}')
   model = ConcreteModel(plant)
 
@@ -156,16 +156,10 @@ def build_steel_plant_deployment(plant, ANR_data, H2_data, BE):
             model.pIronOre*model.pRatioIronOreDRI/model.pRatioSteelDRI)
     return costs
   
-  def annualized_avoided_ng_costs(model):
-    if BE:
-      avoided_costs = 0
-    else:
-      ng_price = utils.get_ng_price_aeo(model.pState)
-      avoided_costs = ng_price*steel_cap_ton_per_annum*utils.coal_to_steel_ratio_bau
-    return avoided_costs
+  
 
   def annualized_net_rev(model):
-    return annualized_avoided_ng_costs(model)-annualized_costs_anr_h2(model)-annualized_costs_dri_eaf(model)
+    return -annualized_costs_anr_h2(model)-annualized_costs_dri_eaf(model)
   model.NetRevenues = Objective(expr=annualized_net_rev, sense=maximize)  
 
 
@@ -199,10 +193,10 @@ def build_steel_plant_deployment(plant, ANR_data, H2_data, BE):
   return model
 
 
-def solve_steel_plant_deployment(plant, ANR_data, H2_data, BE):
+def solve_steel_plant_deployment(plant, ANR_data, H2_data):
   steel_cap_ton_per_annum, h2_dem_kg_per_day, elec_dem_MWh_per_day = get_steel_plant_demand(plant)
 
-  model = build_steel_plant_deployment(plant, ANR_data, H2_data, BE)
+  model = build_steel_plant_deployment(plant, ANR_data, H2_data)
   # for carbon accounting
   def compute_annual_carbon_emissions(model):
     return sum(sum(sum(model.pH2CarbonInt[h,g]*model.vQ[n,h,g]*model.pH2CapH2[h]*24*365 for g in model.G) for h in model.H) for n in model.N)+\
@@ -232,18 +226,18 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data, BE):
     return sum(sum (model.vM[n,g]*model.pANRCap[g] for g in model.G) for n in model.N)
   
   def annualized_avoided_ng_costs(model):
-    if BE:
-      avoided_costs = 0
-    else:
-      ng_price = utils.get_ng_price_aeo(model.pState)
-      avoided_costs = ng_price*steel_cap_ton_per_annum*utils.coal_to_steel_ratio_bau
+    ng_price = utils.get_ng_price_aeo(model.pState)
+    avoided_costs = ng_price*steel_cap_ton_per_annum*utils.coal_to_steel_ratio_bau
     return avoided_costs
   
   def compute_surplus_capacity(model):
     deployed_capacity = sum(sum (model.vM[n,g]*model.pANRCap[g] for g in model.G) for n in model.N)
     aux_elec_demand = elec_dem_MWh_per_day/24
-    h2_elec_demand  = sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g] for h in model.H) for g in model.G) for n in model.N)
+    h2_elec_demand  = sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g] for h in model.H) for g in model.G) for n in model.N) 
     return deployed_capacity - aux_elec_demand - h2_elec_demand
+
+  def get_eq_elec_dem_h2(model): return sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g] for h in model.H) for g in model.G) for n in model.N) 
+
 
   ############## SOLVE ###################
   solver = SolverFactory('cplex')
@@ -275,8 +269,10 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data, BE):
     results_dic['Avoided NG costs ($/year)'] = value(annualized_avoided_ng_costs(model))
     results_dic['ANR CRF'] = value(get_crf(model))
     results_dic['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
+    results_dic['Depl H2 Cap. (MWe)'] = value(get_eq_elec_dem_h2(model))
     results_dic['Surplus ANR Cap. (MWe)'] = value(compute_surplus_capacity(model))
-    results_dic['Net Annual Revenues ($/MWe/y)'] = results_dic['Net Revenues ($/year)']/results_dic['Depl. ANR Cap. (MWe)']
+    results_dic['Net Annual Revenues ($/MWe/y)'] = (results_dic['Avoided NG costs ($/year)']\
+                                                    +results_dic['Net Revenues ($/year)'])/results_dic['Depl. ANR Cap. (MWe)']
     results_dic['Net Annual Revenues with H2 PTC ($/MWe/y)'] = results_dic['Net Revenues with H2 PTC ($/year)']/results_dic['Depl. ANR Cap. (MWe)']
     for g in model.G: 
       if value(model.vS[g]) >=1: 
@@ -301,7 +297,7 @@ def compute_breakeven_price(results_ref):
   breakeven_price = breakeven_price_per_ton/utils.coal_heat_content
   return breakeven_price
 
-def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False, BE=True): 
+def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False): 
   # Go the present directory
   abspath = os.path.abspath(__file__)
   dname = os.path.dirname(abspath)
@@ -317,12 +313,12 @@ def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False
   # Build results dataset one by one
 
   with Pool(10) as pool:
-    results = pool.starmap(solve_steel_plant_deployment, [(plant, ANR_data, H2_data, BE) for plant in steel_ids])
+    results = pool.starmap(solve_steel_plant_deployment, [(plant, ANR_data, H2_data) for plant in steel_ids])
   pool.close()
 
   df = pd.DataFrame(results)
 
-  excel_file = f'./results/raw_results_anr_{anr_tag}_h2_wacc_{str(wacc)}_BE_{BE}.xlsx'
+  excel_file = f'./results/raw_results_anr_{anr_tag}_h2_wacc_{str(wacc)}.xlsx'
   sheet_name = 'steel'
   if print_main_results:
     # Try to read the existing Excel file
@@ -342,11 +338,6 @@ def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False
     except FileNotFoundError:
         # If the file doesn't exist, create a new one and write the DataFrame to it
         df.to_excel(excel_file, sheet_name=sheet_name, index=False)
-
-  """if print_main_results:
-    breakeven_df.sort_values(by=['Breakeven coal price ($/ton)'], inplace=True)
-    csv_path = './results/steel_anr_lr_'+str(learning_rate_anr_capex)+'_h2_lr_'+str(learning_rate_h2_capex)+'_wacc_'+str(wacc)+'.csv'
-    breakeven_df.to_csv(csv_path, header = True, index=False)"""
 
   # Median Breakeven price
   med_be = df['Breakeven price ($/MMBtu)'].median()
