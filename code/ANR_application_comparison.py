@@ -4,7 +4,7 @@ import numpy as np
 import seaborn as sns
 from utils import palette
 
-NOAK = True
+NOAK = False
 cogen = False
 if NOAK: anr_tag = 'NOAK'
 else: anr_tag = 'FOAK'
@@ -27,7 +27,7 @@ def load_elec_results(anr_tag):
 
 def load_h2_results(anr_tag):
   """"Loads all hydrogen results and returns results sorted by breakeven prices"""
-  h2_results_path = f'./results/clean_results_anr_{anr_tag}_h2_wacc_0.077_BE_False.xlsx'
+  h2_results_path = f'./results/clean_results_anr_{anr_tag}_h2_wacc_0.077.xlsx'
   industries = ['refining', 'steel', 'ammonia']
   list_df = []
   for ind in industries:
