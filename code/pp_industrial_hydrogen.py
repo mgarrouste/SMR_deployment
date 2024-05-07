@@ -1,12 +1,12 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-import utils
+from utils import cashflows_color_map
 import seaborn as sns
 
-OAK = 'FOAK'
+OAK = 'NOAK'
 
-cogen_tag = False
+cogen_tag = True
 industries = {'ammonia':'Ammonia', 
               'refining':'Refining', 
               'steel':'Steel'}
@@ -19,7 +19,7 @@ anr_design_palette = {'HTGR':'blue',
 def load_data(OAK):
   list_df = []
   for ind, ind_label in industries.items():
-    df = pd.read_excel(f'./results/raw_results_anr_{OAK}_h2_wacc_0.077.xlsx', sheet_name=ind)
+    df = pd.read_excel(f'./results/clean_results_anr_{OAK}_h2_wacc_0.077.xlsx', sheet_name=ind)
     df['Industry'] = ind_label
     list_df.append(df)
   total_df = pd.concat(list_df, ignore_index=True)
@@ -32,6 +32,7 @@ def compute_normalized_net_revenues(df, OAK):
   df = df.merge(anr_data, left_on='ANR type', right_on='Reactor')
   df['Net Annual Revenues (M$/MWe/y)'] = df['Net Annual Revenues ($/MWe/y)']/1e6
   df['Net Annual Revenues with H2 PTC (M$/MWe/y)'] = df['Net Annual Revenues with H2 PTC ($/MWe/y)']/1e6
+  df['Net Annual Revenues with H2 PTC with elec (M$/MWe/y)'] = df['Net Revenues with H2 PTC with elec ($/year)']/(df['Depl. ANR Cap. (MWe)']*1e6)
   return df
 
 
@@ -41,13 +42,16 @@ def plot_net_annual_revenues(df):
   print(f'Plot net annual revenues: {save_path}')
   fig, ax = plt.subplots(figsize=(6,4))
   df = df.replace({'Micro':'Microreactor'})
-  sns.boxplot(ax=ax, data=df, y='Industry', x='Net Annual Revenues with H2 PTC (M$/MWe/y)', color='black',\
-              fill=False, width=.5)
-  sns.stripplot(ax=ax, data=df, y='Industry', x='Net Annual Revenues with H2 PTC (M$/MWe/y)', hue='ANR type', \
-              palette = anr_design_palette)
+  print(df.columns)
+  if cogen_tag: x = 'Net Annual Revenues with H2 PTC with elec (M$/MWe/y)'
+  else: x = 'Net Annual Revenues with H2 PTC (M$/MWe/y)'
+  sns.boxplot(ax=ax, data=df, y='Industry', x=x, color='black',fill=False, width=.5)
+  sns.stripplot(ax=ax, data=df, y='Industry', x=x, hue='ANR type', palette = anr_design_palette)
   ax.set_ylabel('')
-  ax.set_xlabel('Net Annual Revenues (M$/MWt/y)')
+  ax.set_xlabel('Net Annual Revenues (M$/MWe/y)')
   ax.get_legend().set_visible(False)
+  ax.set_xlim(-0.8, 0.8)
+  ax.xaxis.set_ticks(np.arange(-0.75, 1, 0.25))
   sns.despine()
   ax.xaxis.grid(True)
   handles, labels = ax.get_legend_handles_labels()
@@ -67,23 +71,22 @@ def plot_mean_cashflows(df):
   df['H2 O&M'] = -df['H2 O&M ($/year)']/(1e6*df['Depl. ANR Cap. (MWe)'])
   df['Avoided Fossil Fuel Costs'] = df['Avoided NG costs ($/year)']/(1e6*df['Depl. ANR Cap. (MWe)'])
   df['H2 PTC'] = df['H2 PTC Revenues ($/year)']/(1e6*df['Depl. ANR Cap. (MWe)'])
-  design_df = df[['Industry','ANR type','ANR CAPEX', 'H2 CAPEX', 'ANR O&M', 'H2 O&M', 'Avoided Fossil Fuel Costs', 'H2 PTC']]
+  if cogen_tag:
+    df['Electricity'] = df['Electricity revenues ($/y)']/(1e6*df['Depl. ANR Cap. (MWe)'])
+    design_df = df[['Industry','ANR type','ANR CAPEX', 'H2 CAPEX', 'ANR O&M', 'H2 O&M', 'Avoided Fossil Fuel Costs', \
+                    'H2 PTC', 'Electricity']]
+  else:
+    design_df = df[['Industry','ANR type','ANR CAPEX', 'H2 CAPEX', 'ANR O&M', 'H2 O&M', 'Avoided Fossil Fuel Costs', 'H2 PTC']]
   design_df = design_df.groupby([ 'ANR type','Industry']).mean()
   design_df.to_excel( f'./results/industrial_hydrogen_anr_avg_cashflows_{OAK}_cogen_{cogen_tag}.xlsx')
-  color_map = {'ANR CAPEX': 'royalblue', 
-               'H2 CAPEX': 'lightsteelblue', 
-               'ANR O&M':'forestgreen', 
-               'H2 O&M':'palegreen',
-               'Avoided Fossil Fuel Costs':'darkorchid', 
-               'H2 PTC':'plum'}
   fig, ax = plt.subplots(figsize = (8,6))
-  design_df.plot(ax = ax, kind ='bar', stacked=True, color=color_map)
+  design_df.plot(ax = ax, kind ='bar', stacked=True, color=cashflows_color_map)
   ax.set_ylabel('Average Normalized Cashflows (M$/MWe/y)')
   ax.set_xlabel('')
   ax.axhline(y=0, color='grey', linestyle='--', linewidth=0.5)
   ax.set_xticks(ax.get_xticks(), ax.get_xticklabels(), rotation=50, ha='right')
-  ax.set_ylim(-0.42, 0.62)
-  ax.yaxis.set_ticks(np.arange(-0.4, 0.7, 0.1))
+  ax.set_ylim(-1.3, 2)
+  ax.yaxis.set_ticks(np.arange(-1.25, 2, 0.25))
   ax.get_legend().set_visible(False)
   handles, labels = ax.get_legend_handles_labels()
   fig.legend(handles, labels,  bbox_to_anchor=(.5,1.08),loc='upper center', ncol=3)
@@ -96,6 +99,8 @@ def main():
   total_df = load_data(OAK)
   total_df = compute_normalized_net_revenues(total_df, OAK)
   total_df.to_csv(f'./results/industrial_hydrogen_avg_cashflows_{OAK}_cogen_{cogen_tag}.csv')
+  total_df[['Industry', 'Net Annual Revenues with H2 PTC (M$/MWe/y)']].describe(\
+    percentiles=[.1,.25,.5,.75,.9]).to_csv(f'./results/industrial_hydrogen_avg_cashflows_stats_{OAK}_cogen_{cogen_tag}.csv')
   plot_net_annual_revenues(total_df)
   plot_mean_cashflows(total_df)
 
