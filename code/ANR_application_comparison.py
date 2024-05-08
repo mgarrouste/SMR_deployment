@@ -5,8 +5,9 @@ import seaborn as sns
 from utils import palette, letter_annotation
 
 
-color_map = {'Industrial Hydrogen':'blue', 'Direct Process Heat':'red', 'Total':'Green', 'FOAK':'limegreen', 
-             'NOAK':'forestgreen'}
+color_map = {'Industrial Hydrogen':'blue', 'Process Heat':'red', 'Total':'Green', 'FOAK':'limegreen', 
+             'NOAK':'forestgreen','FOAK\nNo-Cogeneration':'limegreen','FOAK\nCogeneration':'lightsteelblue', 
+           'NOAK\nNo-Cogeneration':'forestgreen','NOAK\nCogeneration':'slategrey'}
 
 def load_elec_results(anr_tag):
   elec_results_path = f'./results/price_taker_{anr_tag}_MidCase.xlsx'
@@ -19,7 +20,7 @@ def load_elec_results(anr_tag):
   return df
   
 
-def load_h2_results(anr_tag, cogen):
+def load_h2_results(anr_tag, cogen_tag):
   """"Loads all hydrogen results and returns results sorted by breakeven prices"""
   h2_results_path = f'./results/clean_results_anr_{anr_tag}_h2_wacc_0.077.xlsx'
   industries = ['refining', 'steel', 'ammonia']
@@ -34,7 +35,7 @@ def load_h2_results(anr_tag, cogen):
   all_df = pd.concat(list_df)
   all_df['Application'] = 'Industrial Hydrogen'
   all_df['ANR'] = all_df['ANR type']
-  if cogen: all_df['Annual Net Revenues (M$/MWe/y)'] = all_df['Net Revenues with H2 PTC with elec ($/year)']/(1e6*all_df['Depl. ANR Cap. (MWe)'])
+  if cogen_tag=='cogen': all_df['Annual Net Revenues (M$/MWe/y)'] = all_df['Net Revenues with H2 PTC with elec ($/year)']/(1e6*all_df['Depl. ANR Cap. (MWe)'])
   else: all_df['Annual Net Revenues (M$/MWe/y)'] = all_df['Net Annual Revenues with H2 PTC ($/MWe/y)']/(1e6)
   all_df.sort_values(by='Breakeven price ($/MMBtu)', inplace=True)
   return all_df 
@@ -46,7 +47,7 @@ def load_heat_results(anr_tag, cogen_tag):
   heat_df = pd.read_excel(heat_results_path, index_col='FACILITY_ID')
   heat_df['Annual Net Revenues (M$/MWe/y)']  = heat_df['Pathway Net Ann. Rev. (M$/y)']/heat_df['Depl. ANR Cap. (MWe)']
   heat_df.sort_values(by=['Breakeven NG price ($/MMBtu)', 'Annual Net Revenues (M$/MWe/y)'], inplace=True)
-  heat_df['Application'] = 'Direct Process Heat'
+  heat_df['Application'] = 'Process Heat'
   return heat_df
 
 
@@ -161,34 +162,29 @@ def compare_oak_net_annual_revenues(cogen_tag):
   fig.tight_layout()
   fig.savefig(save_path, bbox_inches='tight')
 
+
+
+def create_data_dict(oak, cogen_tag):
+  h2_df = load_h2_results(oak, cogen_tag)
+  h2_df = compute_cumulative_avoided_emissions(h2_df)
+  heat_df = load_heat_results(oak, cogen_tag)
+  heat_df = compute_cumulative_avoided_emissions(heat_df, emissions_label='Emissions_mmtco2/y')
+  results = {'Industrial Hydrogen':{'data':h2_df, 
+                                    'emissions_label':'Ann. avoided CO2 emissions (MMT-CO2/year)',
+                                    'price_label':'Breakeven price ($/MMBtu)'}
+            ,'Process Heat':{'data':heat_df, 
+                                      'emissions_label':'Emissions_mmtco2/y',
+                                      'price_label':'Breakeven NG price ($/MMBtu)'}}
+  return results
+
 def compare_oak_avoided_emissions(cogen_tag):
-  oak = 'FOAK'
-  h2_df = load_h2_results(oak, cogen=False)
-  h2_df = compute_cumulative_avoided_emissions(h2_df)
-  heat_df = load_heat_results(oak, cogen_tag)
-  heat_df = compute_cumulative_avoided_emissions(heat_df, emissions_label='Emissions_mmtco2/y')
-  foak_results = {'Industrial Hydrogen':{'data':h2_df, 
-                                                 'emissions_label':'Ann. avoided CO2 emissions (MMT-CO2/year)',
-                                                 'price_label':'Breakeven price ($/MMBtu)'}
-                          ,'Direct Process Heat':{'data':heat_df, 
-                                                   'emissions_label':'Emissions_mmtco2/y',
-                                                   'price_label':'Breakeven NG price ($/MMBtu)'}}
-  oak = 'NOAK'
-  h2_df = load_h2_results(oak, cogen=False)
-  h2_df = compute_cumulative_avoided_emissions(h2_df)
-  heat_df = load_heat_results(oak, cogen_tag)
-  heat_df = compute_cumulative_avoided_emissions(heat_df, emissions_label='Emissions_mmtco2/y')
-  noak_results = {'Industrial Hydrogen':{'data':h2_df, 
-                                                 'emissions_label':'Ann. avoided CO2 emissions (MMT-CO2/year)',
-                                                 'price_label':'Breakeven price ($/MMBtu)'}
-                          ,'Direct Process Heat':{'data':heat_df, 
-                                                   'emissions_label':'Emissions_mmtco2/y',
-                                                   'price_label':'Breakeven NG price ($/MMBtu)'}}
+  foak_results = create_data_dict('FOAK', cogen_tag) 
+  noak_results = create_data_dict('NOAK', cogen_tag)
   foak_results = combine_emissions(foak_results)
   noak_results = combine_emissions(noak_results)
   fig, ax = plt.subplots(figsize=(8,5))
   xmax = 70
-  # Total avoided emissions on top subplot
+
   values_foak = list(foak_results['Viable avoided emissions (MMt-CO2/y)'])
   values_foak += [values_foak[-1]]
   edges_foak = [0]+list(foak_results['NG price ($/MMBtu)'])+[xmax]
@@ -211,59 +207,92 @@ def compare_oak_avoided_emissions(cogen_tag):
   fig.savefig(f'./results/all_applications_viable_avoided_emissions_FOAK_vs_NOAK_{cogen_tag}.png')
 
 
-def compare_cogen_net_annual_revenues():
-  save_path = f'./results/ANR_application_comparison_cogen_vs_nocogen.png'
+def compare_cogen_net_annual_revenues(fig, dfs):
   # Load and prep data
+  
+  combined = pd.concat(dfs, ignore_index=True)
+  h2comb = combined[combined.Application == 'Industrial Hydrogen']
+  heatcomb = combined[combined.Application == 'Process Heat']
+
+  # Plot left H2, right Heat
+  (h2fig, heatfig) = fig.subfigures(1,2)
+
+  h2ax = h2fig.subplots()
+  sns.stripplot(ax=h2ax, data=h2comb, x='Annual Net Revenues (M$/MWe/y)', y='Case', palette=palette, hue='ANR', alpha=.6)
+  sns.boxplot(ax=h2ax, data=h2comb, x='Annual Net Revenues (M$/MWe/y)', y='Case', color='black', fill=False, width=0.5)
+  sns.despine()
+  h2ax.xaxis.grid(True)
+  h2ax.get_legend().set_visible(False)
+  h2ax.set_ylabel('')
+  letter_annotation(h2ax, -.25, 1, 'I')
+
+  heatax = heatfig.subplots()
+  sns.stripplot(ax=heatax, data=heatcomb, x='Annual Net Revenues (M$/MWe/y)', y = 'Case', palette=palette, hue='ANR', alpha=.6)
+  sns.boxplot(ax=heatax, data=heatcomb, x='Annual Net Revenues (M$/MWe/y)', y='Case', color='black', fill=False, width=0.5)
+  sns.despine()
+  heatax.xaxis.grid(True)
+  heatax.get_legend().set_visible(False)
+  heatax.set_ylabel('')
+  letter_annotation(heatax, -.25, 1, 'II')
+
+  #duplicate legend entries issue
+  h3, l3 = h2ax.get_legend_handles_labels()
+  h4, l4 = heatax.get_legend_handles_labels()
+  by_label = dict(zip(l3+l4, h3+h4))
+  fig.legend(by_label.values(), by_label.keys(),  bbox_to_anchor=(.5,1.03),loc='upper center', ncol=5)
+
+
+def combined_avoided_emissions_oak_cogen():
+  save_path = f'./results/all_applications_oak_cogen_emissions.png'
+  # Load data for net annual revenues
   noak_co = pd.read_excel(f'./results/ANR_application_comparison_NOAK_cogen.xlsx')
   noak_no = pd.read_excel(f'./results/ANR_application_comparison_NOAK_nocogen.xlsx')
   foak_no = pd.read_excel(f'./results/ANR_application_comparison_FOAK_nocogen.xlsx')
   foak_co = pd.read_excel(f'./results/ANR_application_comparison_FOAK_cogen.xlsx')
-  noak_co['Co'] = 'Cogeneration'
-  noak_no['Co'] = 'No Cogeneration'
-  foak_co['Co'] = 'Cogeneration'
-  foak_no['Co'] = 'No Cogeneration'
-  foak = pd.concat([foak_co, foak_no], ignore_index=True)
-  noak = pd.concat([noak_co, noak_no], ignore_index=True)
-  applications = ['Industrial Hydrogen', 'Direct Process Heat']
+  noak_co['Case'] = 'NOAK\nCogeneration'
+  noak_no['Case'] = 'NOAK\nNo-Cogeneration'
+  foak_co['Case'] = 'FOAK\nCogeneration'
+  foak_no['Case'] = 'FOAK\nNo-Cogeneration'
+  dfs = [foak_no, foak_co, noak_no, noak_co]
 
-  fig = plt.figure(figsize=(8,8))
-  (topfig, botfig) = fig.subfigures(2,1)
-  topfig.suptitle('FOAK')
-  botfig.suptitle('NOAK')
+  # Load data for cumulative emissions plot
+  foak_no_em = combine_emissions(create_data_dict('FOAK', 'nocogen'))
+  noak_no_em = combine_emissions(create_data_dict('NOAK', 'nocogen'))
+  foak_co_em = combine_emissions(create_data_dict('FOAK', 'cogen'))
+  noak_co_em = combine_emissions(create_data_dict('NOAK', 'cogen'))
+  emdfs = {'FOAK\nNo-Cogeneration':foak_no_em, 
+           'FOAK\nCogeneration':foak_co_em, 
+           'NOAK\nNo-Cogeneration':noak_no_em,
+            'NOAK\nCogeneration':noak_co_em}
 
-  # FOAK on top
-  topax = topfig.subplots(2,1,sharex=True)
-  for c, app in enumerate(applications):
-    sns.stripplot(ax=topax[c], data = foak[foak.Application == app], x='Annual Net Revenues (M$/MWe/y)', y = 'Co',\
-                   palette=palette, hue='ANR', alpha=0.5)
-    sns.boxplot(ax=topax[c], data =foak[foak.Application == app], x='Annual Net Revenues (M$/MWe/y)', y='Co', \
-                color='black', fill=False, width=0.5)
-    sns.despine()
-    topax[c].xaxis.grid(True)
-    topax[c].set_ylabel(app)
-    topax[c].set_xlim(-1.1, 1)
-    topax[c].get_legend().set_visible(False)
-  h1, l1 = topax[1].get_legend_handles_labels()
-  h2, l2 = topax[0].get_legend_handles_labels()
-  #topfig.legend(h1+h1, l1+l2,  bbox_to_anchor=(.5,1.08),loc='upper center', ncol=3)
+  # figure
+  fig = plt.figure(figsize=(10,10))
+  (topfig, emfig) = fig.subfigures(2,1, height_ratios=[1.5,1])
+  compare_cogen_net_annual_revenues(topfig, dfs=dfs)
 
-  #NOAK bottom
-  botax = botfig.subplots(2,1,sharex=True)
-  for c, app in enumerate(applications):
-    sns.stripplot(ax=botax[c], data = noak[noak.Application == app], x='Annual Net Revenues (M$/MWe/y)', y = 'Co',\
-                   palette=palette, hue='ANR', alpha=0.5)
-    sns.boxplot(ax=botax[c], data =noak[noak.Application == app], x='Annual Net Revenues (M$/MWe/y)', y='Co', \
-                color='black', fill=False, width=0.5)
-    sns.despine()
-    botax[c].xaxis.grid(True)
-    botax[c].set_ylabel(app)
-    botax[c].set_xlim(-1.1, 1)
-    botax[c].get_legend().set_visible(False)
-  h3, l3 = botax[1].get_legend_handles_labels()
-  h4, l4 = botax[0].get_legend_handles_labels()
-  by_label = dict(zip(l1+l2+l3+l4, h1+h2+h3+h4))
-  botfig.legend(by_label.values(), by_label.keys(),  bbox_to_anchor=(.5,-.08),loc='upper center', ncol=3)
-  fig.savefig(save_path, bbox_inches = 'tight')
+  # emissions
+  emax = emfig.subplots()
+  xmax = 50
+  for label, results in emdfs.items():
+    values = list(results['Viable avoided emissions (MMt-CO2/y)'])
+    values += [values[-1]]
+    edges = [0]+list(results['NG price ($/MMBtu)'])+[xmax]
+    emax.stairs(values, edges, label=label, color=color_map[label], baseline=None)
+  emax.set_xlim(-2,xmax)
+  emax.xaxis.set_ticks(np.arange(0, xmax+10, 5))
+  emax.yaxis.set_ticks(np.arange(0, 250, 25))
+  emax.set_xlabel('Breakeven NG price ($/MMBtu)')  
+  emax.spines['top'].set_visible(False)
+  emax.spines['right'].set_visible(False)
+  emax.grid(True)
+  letter_annotation(emax, -.25, 1, 'III')
+  emax.set_ylabel('Viable avoided emissions\n'r'$(MMt-{CO_2}/y)$')
+  lines_labels = [emax.get_legend_handles_labels() for ax in emfig.axes]
+  lines, labels = [sum(lol, []) for lol in zip(*lines_labels)]
+  emfig.legend(lines, labels, loc='upper right', ncol=1)
+  fig.savefig(save_path, bbox_inches='tight')
+
+
 
 
 def heat_abatement_plot(fig, df):
@@ -316,7 +345,7 @@ def run_case(oak, cogen):
   applications_results = {'Industrial Hydrogen':{'data':h2_df, 
                                                  'emissions_label':'Ann. avoided CO2 emissions (MMT-CO2/year)',
                                                  'price_label':'Breakeven price ($/MMBtu)'}
-                          ,'Direct Process Heat':{'data':heat_df, 
+                          ,'Process Heat':{'data':heat_df, 
                                                    'emissions_label':'Emissions_mmtco2/y',
                                                    'price_label':'Breakeven NG price ($/MMBtu)'}}
   plot_cumulative_avoided_emissions(applications_results, anr_tag, cogen_tag)
@@ -353,7 +382,7 @@ def main():
 
     compare_oak_net_annual_revenues(cogen_tag)
     compare_oak_avoided_emissions(cogen_tag)
-  compare_cogen_net_annual_revenues()
+  combined_avoided_emissions_oak_cogen()
 
 
 if __name__ == '__main__':
