@@ -1,12 +1,12 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-from utils import cashflows_color_map
+from utils import cashflows_color_map, palette, letter_annotation
 import seaborn as sns
 
-OAK = 'NOAK'
+OAK = 'FOAK'
 
-cogen_tag = True
+cogen_tag = False
 industries = {'ammonia':'Ammonia', 
               'refining':'Refining', 
               'steel':'Steel'}
@@ -64,7 +64,7 @@ def plot_net_annual_revenues(df):
 def plot_mean_cashflows(df):
   save_path = f'./results/industrial_hydrogen_anr_avg_cashflows_{OAK}_cogen_{cogen_tag}.png'
   print(f'Plot average cashflows: {save_path}')
-  # Cashflows in M$/MWt/y
+  # Cashflows in M$/MWe/y
   df['ANR CAPEX'] = -df['ANR CAPEX ($/year)']/(1e6*df['Depl. ANR Cap. (MWe)'])
   df['H2 CAPEX'] = -df['H2 CAPEX ($/year)']/(1e6*df['Depl. ANR Cap. (MWe)'])
   df['ANR O&M'] = -df['ANR O&M ($/year)']/(1e6*df['Depl. ANR Cap. (MWe)'])
@@ -92,7 +92,32 @@ def plot_mean_cashflows(df):
   fig.legend(handles, labels,  bbox_to_anchor=(.5,1.08),loc='upper center', ncol=3)
   fig.tight_layout()
   fig.savefig(save_path, bbox_inches='tight')
+  return fig
 
+
+def plot_abatement_cost(df):
+  save_path = f'./results/industrial_hydrogen_abatement_cost_{OAK}_cogen_{cogen_tag}.png'
+  print(f'Plot average cashflows: {save_path}')
+  print(df.columns)
+  df['Cost ANR ($/y)'] = df['ANR CAPEX ($/year)']+df['H2 CAPEX ($/year)']+df['ANR O&M ($/year)']+df['H2 O&M ($/year)']\
+                        +df['Conversion costs ($/year)']-df['Avoided NG costs ($/year)']
+  df['Abatement cost ($/tCO2)'] = df['Cost ANR ($/y)']/(df['Ann. avoided CO2 emissions (MMT-CO2/year)']*1e6)
+  df['Abatement potential (tCO2/y-MWe)'] = 1e6*df['Ann. avoided CO2 emissions (MMT-CO2/year)']/df['Depl. ANR Cap. (MWe)']
+  fig, ax = plt.subplots(2,1, figsize=(7,5))
+  sns.boxplot(ax=ax[0], data=df, y='Industry', x='Abatement cost ($/tCO2)',color='black',fill=False, width=.5)
+  sns.stripplot(ax=ax[0], data=df, y='Industry', x='Abatement cost ($/tCO2)', hue='ANR type', palette = palette)
+  letter_annotation(ax[0], -.25, 1, 'a')
+  ax[0].set_ylabel('')
+  sns.boxplot(ax=ax[1], data=df, y='Industry', x='Abatement potential (tCO2/y-MWe)',color='black', fill=False, width=.5)
+  sns.stripplot(ax=ax[1], data=df, y='Industry', x='Abatement potential (tCO2/y-MWe)', hue='ANR type', palette = palette)
+  letter_annotation(ax[1], -.25, 1, 'b')
+  ax[1].set_ylabel('')
+  ax[1].get_legend().set_visible(False)
+  ax[1].set_xlim(-10,7010)
+  sns.despine()
+  fig.tight_layout()
+  fig.savefig(save_path, bbox_inches='tight')
+  return fig
 
 
 def main():
@@ -103,6 +128,7 @@ def main():
     percentiles=[.1,.25,.5,.75,.9]).to_csv(f'./results/industrial_hydrogen_avg_cashflows_stats_{OAK}_cogen_{cogen_tag}.csv')
   plot_net_annual_revenues(total_df)
   plot_mean_cashflows(total_df)
+  plot_abatement_cost(total_df)
 
 
 if __name__ == '__main__':
