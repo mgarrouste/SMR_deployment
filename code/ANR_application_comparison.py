@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-from utils import palette
+from utils import palette, letter_annotation
 
 
 color_map = {'Industrial Hydrogen':'blue', 'Direct Process Heat':'red', 'Total':'Green', 'FOAK':'limegreen', 
@@ -73,43 +73,36 @@ def combine_emissions(applications_results):
   return total_df
 
 
-def plot_cumulative_avoided_emissions(applications_results, anr_tag, cogen_tag):
-  fig, ax = plt.subplots(2, 1, figsize=(8,5), sharex=True)
+def plot_cumulative_avoided_emissions(applications_results, anr_tag, cogen_tag, fig=None):
+  if fig: ax = fig.add_subplot()
+  else: fig, ax = plt.subplots(figsize=(7,3))
   xmax = 50
   # Total avoided emissions on top subplot
   total_df = combine_emissions(applications_results)
   values = list(total_df['Viable avoided emissions (MMt-CO2/y)'])
   values += [values[-1]]
   edges = [0]+list(total_df['NG price ($/MMBtu)'])+[xmax]
-  ax[0].stairs(values, edges, label='Total', color=color_map['Total'], baseline=None)
-  ax[0].set_xlim(-2,xmax)
-  ax[0].xaxis.set_ticks(np.arange(0, xmax+10, 5))
-  ax[0].yaxis.set_ticks(np.arange(0, 250, 25))
-  ax[0].set_xlabel('')
-  ax[0].set_ylabel('')
-  ax[0].grid(True)
-  ax[0].spines['top'].set_visible(False)
-  ax[0].spines['right'].set_visible(False)
+  ax.stairs(values, edges, label='Total', color=color_map['Total'], baseline=None)
   for app, app_results in applications_results.items():
     data = app_results['data']
     values = list(data['Viable avoided emissions (MMt-CO2/y)'])
     values += [values[-1]]
     edges = [0]+list(data[app_results['price_label']])+[xmax]
-    ax[1].stairs(values, edges, label=app, color=color_map[app], baseline=None)
-  ax[1].set_xlim(-2,xmax)
-  ax[1].xaxis.set_ticks(np.arange(0, xmax+10, 5))
-  ax[1].yaxis.set_ticks(np.arange(0, 150, 25))
-  ax[1].set_xlabel('Breakeven NG price ($/MMBtu)')
-  ax[1].set_ylabel('')
-  ax[1].grid(True)
-  ax[1].spines['top'].set_visible(False)
-  ax[1].spines['right'].set_visible(False)
-  
-  fig.text(0.04, 0.5, r'Viable avoided emissions $(MMt-{CO_2}/y)$', va='center', rotation='vertical')
+    ax.stairs(values, edges, label=app, color=color_map[app], baseline=None)
+  ax.set_xlim(-2,xmax)
+  ax.xaxis.set_ticks(np.arange(0, xmax+10, 5))
+  ax.yaxis.set_ticks(np.arange(0,250, 25))
+  ax.set_xlabel('Breakeven NG price ($/MMBtu)')
+  ax.set_ylabel('Viable avoided emissions\n'+r'$(MMt-{CO_2}/y)$')
+  ax.grid(True)
+  ax.spines['top'].set_visible(False)
+  ax.spines['right'].set_visible(False)
   lines_labels = [ax.get_legend_handles_labels() for ax in fig.axes]
   lines, labels = [sum(lol, []) for lol in zip(*lines_labels)]
   fig.legend(lines, labels, loc='upper right', ncol=1)
-  fig.savefig(f'./results/all_applications_viable_avoided_emissions_{anr_tag}_{cogen_tag}.png')
+  if not fig:
+    fig.savefig(f'./results/all_applications_viable_avoided_emissions_{anr_tag}_{cogen_tag}.png', bbox_inches='tight')
+  
 
 
 
@@ -273,6 +266,43 @@ def compare_cogen_net_annual_revenues():
   fig.savefig(save_path, bbox_inches = 'tight')
 
 
+def heat_abatement_plot(fig, df):
+  df['Cost ANR ($/y)'] = (df['CAPEX ($/y)']+df['O&M ($/y)']+df['Conversion']-df['Avoided NG Cost ($/y)'])
+  df['Abatement cost ($/tCO2)'] = df['Cost ANR ($/y)']/(df['Emissions_mmtco2/y']*1e6)
+  df['Abatement potential (tCO2/y-MWe)'] = 1e6*df['Emissions_mmtco2/y']/df['Depl. ANR Cap. (MWe)']
+  ax = fig.subplots(2,1)
+  sns.boxplot(ax=ax[0], data=df, y='Pathway', x='Abatement cost ($/tCO2)',color='black',fill=False, width=.5)
+  sns.stripplot(ax=ax[0], data=df, y='Pathway', x='Abatement cost ($/tCO2)', hue='ANR', palette = palette,alpha=.6)
+  letter_annotation(ax[0], -.25, 1, 'II-a')
+  ax[0].set_ylabel('')
+  ax[0].set_xlim(-50,5000)
+  ax[0].get_legend().set_visible(False)
+  sns.boxplot(ax=ax[1], data=df, y='Pathway', x='Abatement potential (tCO2/y-MWe)',color='black', fill=False, width=.5)
+  sns.stripplot(ax=ax[1], data=df, y='Pathway',x='Abatement potential (tCO2/y-MWe)',hue='ANR', palette=palette,alpha=.6)
+  letter_annotation(ax[1], -.25, 1, 'II-b')
+  ax[1].set_ylabel('')
+  ax[1].get_legend().set_visible(False)
+  ax[1].set_xlim(-10,5010)
+  ax[1].xaxis.set_ticks(np.arange(0, 7000, 1000))
+  lines, labels = ax[1].get_legend_handles_labels()
+  fig.legend(lines, labels, loc='upper right', ncol=1)
+  sns.despine()
+
+def combined_avoided_emissions_abatement(applications_results, anr_tag, cogen_tag):
+  save_path = f'./results/all_applications_emissions_abatement_{anr_tag}_{cogen_tag}.png'
+  fig = plt.figure(figsize=(10, 10))
+  (topfig, bottomfig) = fig.subfigures(2, 1, height_ratios=[1.5,1])
+  (h2fig, heatfig) = topfig.subfigures(1,2)
+  # Emissions
+  plot_cumulative_avoided_emissions(applications_results, anr_tag, cogen_tag, fig = bottomfig)
+  # Hydrogen
+  import pp_industrial_hydrogen
+  h2_data = pp_industrial_hydrogen.load_data(anr_tag)
+  pp_industrial_hydrogen.plot_abatement_cost(h2_data, fig=h2fig)
+  # Direct heat
+  heat_data = pd.read_excel(f'./results/process_heat/best_pathway_{anr_tag}_{cogen_tag}.xlsx')
+  heat_abatement_plot(fig = heatfig, df= heat_data)
+  fig.savefig(save_path, bbox_inches='tight')
 
 def run_case(oak, cogen):
   if oak: anr_tag = 'NOAK'
@@ -290,6 +320,7 @@ def run_case(oak, cogen):
                                                    'emissions_label':'Emissions_mmtco2/y',
                                                    'price_label':'Breakeven NG price ($/MMBtu)'}}
   plot_cumulative_avoided_emissions(applications_results, anr_tag, cogen_tag)
+  combined_avoided_emissions_abatement(applications_results, anr_tag, cogen_tag)
   elec_df = load_elec_results(anr_tag)
   applications_results['Electricity'] = {'data':elec_df, 
                                          'emissions_label':None, 
@@ -309,6 +340,7 @@ def run_case(oak, cogen):
       with pd.ExcelWriter(excel_file, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
         results_stats.to_excel(writer, sheet_name='stats')
   plot_net_annual_revenues_all_app(results,anr_tag, cogen_tag)
+  
 
 def main():
   for cogen in [True, False]:
@@ -322,6 +354,7 @@ def main():
     compare_oak_net_annual_revenues(cogen_tag)
     compare_oak_avoided_emissions(cogen_tag)
   compare_cogen_net_annual_revenues()
+
 
 if __name__ == '__main__':
   main()

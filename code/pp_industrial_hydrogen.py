@@ -95,7 +95,7 @@ def plot_mean_cashflows(df):
   return fig
 
 
-def plot_abatement_cost(df):
+def plot_abatement_cost(df, fig=None):
   save_path = f'./results/industrial_hydrogen_abatement_cost_{OAK}_cogen_{cogen_tag}.png'
   print(f'Plot average cashflows: {save_path}')
   print(df.columns)
@@ -103,21 +103,22 @@ def plot_abatement_cost(df):
                         +df['Conversion costs ($/year)']-df['Avoided NG costs ($/year)']
   df['Abatement cost ($/tCO2)'] = df['Cost ANR ($/y)']/(df['Ann. avoided CO2 emissions (MMT-CO2/year)']*1e6)
   df['Abatement potential (tCO2/y-MWe)'] = 1e6*df['Ann. avoided CO2 emissions (MMT-CO2/year)']/df['Depl. ANR Cap. (MWe)']
-  fig, ax = plt.subplots(2,1, figsize=(7,5))
+  if fig: ax = fig.subplots(2,1)
+  else: fig, ax = plt.subplots(2,1, figsize=(7,5))
   sns.boxplot(ax=ax[0], data=df, y='Industry', x='Abatement cost ($/tCO2)',color='black',fill=False, width=.5)
-  sns.stripplot(ax=ax[0], data=df, y='Industry', x='Abatement cost ($/tCO2)', hue='ANR type', palette = palette)
-  letter_annotation(ax[0], -.25, 1, 'a')
+  sns.stripplot(ax=ax[0], data=df, y='Industry', x='Abatement cost ($/tCO2)', hue='ANR type', palette = palette,alpha=.6)
+  letter_annotation(ax[0], -.25, 1, 'I-a')
   ax[0].set_ylabel('')
+  ax[0].get_legend().set_visible(False)
   sns.boxplot(ax=ax[1], data=df, y='Industry', x='Abatement potential (tCO2/y-MWe)',color='black', fill=False, width=.5)
-  sns.stripplot(ax=ax[1], data=df, y='Industry', x='Abatement potential (tCO2/y-MWe)', hue='ANR type', palette = palette)
-  letter_annotation(ax[1], -.25, 1, 'b')
+  sns.stripplot(ax=ax[1], data=df, y='Industry', x='Abatement potential (tCO2/y-MWe)', hue='ANR type', palette=palette, alpha=.6)
+  letter_annotation(ax[1], -.25, 1, 'I-b')
   ax[1].set_ylabel('')
   ax[1].get_legend().set_visible(False)
   ax[1].set_xlim(-10,7010)
   sns.despine()
-  fig.tight_layout()
-  fig.savefig(save_path, bbox_inches='tight')
-  return fig
+  if not fig:
+    fig.savefig(save_path, bbox_inches='tight')
 
 
 def main():

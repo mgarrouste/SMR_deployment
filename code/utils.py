@@ -72,7 +72,10 @@ ratio_ironore_DRI = 1.391 # tironore/tDRI
 bfbof_iron_cons = 1.226 #t_ironore/t_steel
 om_bfbof = 178.12 #$/t_steel
 
-
+def letter_annotation(ax, xoffset, yoffset, letter):
+  ax.text(xoffset, yoffset, letter, transform=ax.transAxes,
+         size=12, weight='bold')
+ 
 def compute_average_electricity_prices(cambium_scenario, year):
   folder = f'./input_data/cambium_{cambium_scenario.lower()}_state_hourly_electricity_prices'
   list_csv_files = glob.glob(folder+'/Cambium*.csv')
