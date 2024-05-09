@@ -161,23 +161,34 @@ def save_electricity_results(results_df, excel_file):
     results_df.to_excel(excel_file)
 
 
-def plot_results(excel_file, boxplot=True):
+def plot_results(anr_tag, boxplot=True):
   """ Plot Net Annual Revenues for each ANR design"""
-  fig, ax = plt.subplots(figsize=(6,3))
+  fig, ax = plt.subplots(figsize=(6,2))
+  excel_file = f'./results/price_taker_{anr_tag}_{cambium_scenario}.xlsx'
   df = pd.read_excel(excel_file, header=0, index_col=0)
   df['Annual Net Revenues (M$/year/MWe)'] = df['Annual Net Revenues ($/year/MWe)']/1e6
-  print(df.columns)
-  df.replace({'Micro':'Microreactor'}, inplace=True)
-  palette={'HTGR':'blue', 'iMSR':'orange', 'iPWR':'green', 'PBR-HTGR':'darkorchid', 'Microreactor':'darkgrey'}
+  stats = df[['ANR type', 'Annual Net Revenues (M$/year/MWe)']].describe(percentiles=[.1,.25,.5,.75,.9])
+  save_stats = f'./results/price_taker_{anr_tag}_{cambium_scenario}_stats.xlsx'
+  print('Statistics: {}'.format(save_stats))
+  stats.to_excel(save_stats)
   if boxplot:
-    sns.boxplot(ax=ax, data=df, x='Annual Net Revenues (M$/year/MWe)', y='ANR type', palette=palette, hue='ANR type')
+    sns.boxplot(ax=ax, data=df, x='Annual Net Revenues (M$/year/MWe)', color='black', fill=False, width=0.5)
+    sns.stripplot(ax=ax, data=df, x='Annual Net Revenues (M$/year/MWe)', palette=utils.palette, hue='ANR type',alpha=.6)
   else:
-    sns.stripplot(ax=ax, data=df, x='Annual Net Revenues (M$/year/MWe)', y='ANR type', palette=palette, \
+    sns.stripplot(ax=ax, data=df, x='Annual Net Revenues (M$/year/MWe)', y='ANR type', palette=utils.palette, \
                 hue='ANR type', marker='*', size=7)
   ax.axvline(x=0, color='grey', linestyle='--', linewidth=1)
-  ax.set_ylabel('')
+  ax.set_ylabel('Electricity')
+  ax.get_legend().set_visible(False)
+  sns.despine()
+  #duplicate legend entries issue
+  h3, l3 = ax.get_legend_handles_labels()
+  by_label = dict(zip(l3, h3))
+  fig.legend(by_label.values(), by_label.keys(),  bbox_to_anchor=(.5,1),loc='upper center', ncol=5)
   fig.tight_layout()
-  fig.savefig(f'./results/electricity_price_taker_net_annual_revenues_{anr_tag}_{cambium_scenario}.png')
+  save_plot = f'./results/electricity_price_taker_net_annual_revenues_{anr_tag}_{cambium_scenario}.png'
+  print(f'Plot: {save_plot}')
+  fig.savefig(save_plot, bbox_inches='tight')
 
 
 def main():
@@ -253,10 +264,18 @@ def add_vertical_line(ax, x, ymin, ymax, color):
 if __name__ == '__main__':
   os.chdir(os.path.dirname(os.path.abspath(__file__)))
   parser = argparse.ArgumentParser()
-  parser.add_argument('-p','--plot', required=False, help='Only plot results, does not run model')
+  parser.add_argument('-p','--plot', required=False, help='Only plot results, does not run model, indicate FOAK or NOAK for corresponding net revenues plot')
   parser.add_argument('-c', '--compare', required=False, help='Compare via a plot FOAK and NOAK results')
   args = parser.parse_args()
   if args.compare:
     compare_deployment_stages()
+  elif args.plot:
+    if args.plot == 'FOAK':
+      plot_results(anr_tag='FOAK')
+    elif args.plot == 'NOAK':
+      plot_results(anr_tag='NOAK')
+    else:
+      print('Specify FOAK or NOAK to print corresponding results')
+      exit()
   else:
     main()
