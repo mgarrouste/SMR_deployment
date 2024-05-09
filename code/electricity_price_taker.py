@@ -11,11 +11,7 @@ import argparse
 WACC = utils.WACC
 ITC_ANR = utils.ITC_ANR
 
-anr_tag = 'NOAK' # 'FOAK'
-
 cambium_scenario = 'MidCase'#'MidCaseTCExpire' # 'LowRECostTCExpire','MidCaseTCExpire', 'MidCase', 'LowRECost', 'HighRECost', 'HighNGPrice', 'LowNGPrice'
-
-excel_file = f'./results/price_taker_{anr_tag}_{cambium_scenario}.xlsx' 
 
 electricity_prices_partial_path = './input_data/cambium_'+cambium_scenario.lower()+'_state_hourly_electricity_prices/Cambium22_'+cambium_scenario+'_hourly_'
 
@@ -143,6 +139,11 @@ def solve_ED_electricity(state, ANRtype, ANR_data, year):
   def compute_avg_elec_price(model):
     return sum(model.pEPrice[t] for t in model.t)/8760
   results_dic['Avg price ($/MWhe)'] = value(compute_avg_elec_price(model))
+
+  def compute_be_capex(model):
+    return (sum((model.pEPrice[t]-model.pANRVOM)*model.vG[t] for t in model.t) -\
+            model.pANRFOM*model.pANRCap )/(model.pANRCap*model.pANRCRF*(1-model.pITC_ANR))
+  results_dic['BE CAPEX ($/MWe)'] = value(compute_be_capex(model))
   return results_dic
 
 def save_electricity_results(results_df, excel_file):
@@ -180,28 +181,27 @@ def plot_results(excel_file, boxplot=True):
 
 
 def main():
-  print(f'ANR costs: {anr_tag}')
-  ANR_data = pd.read_excel('./ANRs.xlsx', sheet_name=anr_tag, index_col=0)
-  # save path
-
   states = ['AL', 'AR', 'AZ', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'IA', 'ID', 'IL', 'IN', 'KS', 'KY', 'LA', 'MA', 'MD', \
             'ME', 'MI', 'MN', 'MO', 'MS', 'MT', 'NC', 'ND', 'NE', 'NH', 'NJ', 'NM', 'NV', 'NY', 'OH', 'OK', 'OR', 'PA', \
               'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VA', 'VT', 'WA', 'WI', 'WY']
   ANRtype_list = ['iPWR', 'HTGR', 'PBR-HTGR', 'iMSR', 'Micro']
-  years = [2024, 2030, 2040]
+  years = [2024]#, 2030, 2040]
   all_states_results_list = []
-  for year in years:
-    for state in states: 
-      
-      # Parallel solving
-      with Pool(5) as pool:
-        results = pool.starmap(solve_ED_electricity, [(state, ANRtype, ANR_data, year) for ANRtype in ANRtype_list])
-      pool.close()
+  for anr_tag in ['FOAK', 'NOAK']:
+    ANR_data = pd.read_excel('./ANRs.xlsx', sheet_name=anr_tag, index_col=0)
+    excel_file = f'./results/price_taker_{anr_tag}_{cambium_scenario}.xlsx'
+    for year in years:
+      for state in states: 
+        
+        # Parallel solving
+        with Pool(5) as pool:
+          results = pool.starmap(solve_ED_electricity, [(state, ANRtype, ANR_data, year) for ANRtype in ANRtype_list])
+        pool.close()
 
-      state_elec_results_df = pd.DataFrame(results)
-      all_states_results_list.append(state_elec_results_df)
-  all_states_elec_results_df = pd.concat(all_states_results_list, ignore_index=True)
-  save_electricity_results(all_states_elec_results_df, excel_file)
+        state_elec_results_df = pd.DataFrame(results)
+        all_states_results_list.append(state_elec_results_df)
+    all_states_elec_results_df = pd.concat(all_states_results_list, ignore_index=True)
+    save_electricity_results(all_states_elec_results_df, excel_file)
 
 
 def compare_deployment_stages():
@@ -209,27 +209,27 @@ def compare_deployment_stages():
   foak_results = f'./results/price_taker_FOAK_{cambium_scenario}.xlsx'
   assert os.path.isfile(noak_results), f'NOAK results not found: {noak_results}'
   assert os.path.isfile(foak_results), f'FOAK results not found: {foak_results}'
-  noak_df = pd.read_excel(noak_results, usecols="B:G")
-  foak_df = pd.read_excel(foak_results, usecols="B:G")
+  noak_df = pd.read_excel(noak_results, usecols="B:H")
+  foak_df = pd.read_excel(foak_results, usecols="B:H")
   # concatenate results
   noak_df['Deployment'] = 'NOAK'
   foak_df['Deployment'] = 'FOAK'
   total_df = pd.concat([foak_df, noak_df], ignore_index=True)
   # Formatting
-  total_df['Annual Net Revenues (M$/year/MWe)'] = total_df['Annual Net Revenues ($/year/MWe)']/1e6
-  total_df.replace({'Micro':'Microreactor'}, inplace=True)
+  total_df['Annual Net Revenues (M$/Mwe/year)'] = total_df['Annual Net Revenues ($/year/MWe)']/1e6
   # Plot
-  palette={'HTGR':'blue', 'iMSR':'orange', 'iPWR':'green', 'PBR-HTGR':'darkorchid', 'Microreactor':'darkgrey'}
-  fig, ax = plt.subplots(5,1, figsize=(6,6), sharex=True)
-  i = 0
-  for design, color in palette.items():
-    subset = total_df[total_df['ANR type']==design]
-    sns.boxplot(ax=ax[i], data=subset, x='Annual Net Revenues (M$/year/MWe)', y='Deployment', color=color)
-    ax[i].axvline(x=0, color='grey', linestyle='--', linewidth=1)
-    ax[i].set_ylabel(design)
-    i += 1
-  fig.tight_layout()
-  fig.savefig(f'./results/electricity_comparison_NOAK_FOAK_net_annual_revenues_{cambium_scenario}.png')
+  fig, ax = plt.subplots(2,1,figsize=(6,3))
+  sns.boxplot(ax=ax[0], data=total_df, x='Annual Net Revenues (M$/MWe/year)', y='Deployment', color='black', fill=False, width=.5)
+  sns.stripplot(ax=ax[0], data=total_df, x='Annual Net Revenues (M$/MWe/year)', y='Deployment', palette=utils.palette)
+  ax[0].axvline(x=0, color='grey', linestyle='--', linewidth=1)
+  sns.boxplot(ax=ax[1], data=total_df, x='BE CAPEX ($/MWe)', y='Deployment', color='black', fill=False, width=.5)
+  sns.stripplot(ax=ax[1], data=total_df, x='BE CAPEX ($/MWe)', y='Deployment', palette=utils.palette)
+  fig.savefig(f'./results/electricity_comparison_NOAK_FOAK_net_annual_revenues_{cambium_scenario}.png', bbox_inches='tight')
+
+
+def analyze_location_influence():
+  pass
+
 
 if __name__ == '__main__':
   os.chdir(os.path.dirname(os.path.abspath(__file__)))
