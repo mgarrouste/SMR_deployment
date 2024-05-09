@@ -2,7 +2,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-from utils import palette, letter_annotation
+from utils import palette, letter_annotation, cashflows_color_map 
+import warnings
 
 
 color_map = {'Industrial Hydrogen':'blue', 'Process Heat':'red', 'Total':'Green', 'FOAK':'limegreen', 
@@ -333,6 +334,120 @@ def combined_avoided_emissions_abatement(applications_results, anr_tag, cogen_ta
   heat_abatement_plot(fig = heatfig, df= heat_data)
   fig.savefig(save_path, bbox_inches='tight')
 
+
+
+def combined_heat_ff_plot(anr_tag, cogen_tag):
+  """Plot heat results: 
+  - TOP: left breakeven prices distribution (boxplot), right net annual revenues
+  - BOTTOM: average cashflows
+  """
+  save_path = f'./results/combined_heat_ff_{anr_tag}_{cogen_tag}.png'
+  fig = plt.figure(figsize=(8, 7))
+  (topfig, botfig) = fig.subfigures(2,1, height_ratios=[1,1.25])
+  (befig, revfig) = topfig.subfigures(1,2)
+  
+  # Breakeven prices distribution plot
+  # Load results
+  heat_df = pd.read_excel(f'./results/process_heat/best_pathway_{anr_tag}_{cogen_tag}.xlsx')
+  beax = befig.subplots()
+  sns.boxplot(ax=beax, data=heat_df, y='Pathway', x='Breakeven NG price ($/MMBtu)', color='black', fill=False, width=.5)
+  sns.stripplot(ax=beax, data=heat_df, x='Breakeven NG price ($/MMBtu)', y='Pathway', hue='ANR', palette=palette, alpha=.6)
+  beax.get_legend().set_visible(False)
+  beax.set_xlim(0,250)
+  beax.set_ylabel('')
+  beax.xaxis.grid(True)
+  sns.despine()
+  letter_annotation(beax, -.25, 1, 'I')
+
+  # NEt annual revenues plot
+  revax = revfig.subplots()
+  sns.boxplot(ax=revax, data=heat_df, y='Pathway', x='Pathway Net Ann. Rev. (M$/y/MWe)', color='black', fill=False, width=.5)
+  sns.stripplot(ax=revax, data=heat_df, x='Pathway Net Ann. Rev. (M$/y/MWe)', y='Pathway', hue='ANR', palette=palette, alpha=.6)
+  revax.get_legend().set_visible(False)
+  revax.set_xlabel('Net Annual Revenue (M$/MWe/y)')
+  revax.set_ylabel('')
+  revax.xaxis.grid(True)
+  sns.despine()
+  letter_annotation(revax, -.25, 1, 'II')
+
+  # Average cashflows on bottom figure
+  OAK = anr_tag
+  cashflows_df_anr_anrh2 = heat_df[heat_df.Pathway=='ANR+ANR-H2']
+  cashflows_df_anr_anrh2['ANR CAPEX'] = -cashflows_df_anr_anrh2[f'Annual_CAPEX_{OAK}']/(1e6*cashflows_df_anr_anrh2['Depl. ANR Cap. (MWe)'])
+  cashflows_df_anr_anrh2['ANR for H2 CAPEX'] = -cashflows_df_anr_anrh2['Annual ANR CAPEX']/(1e6*cashflows_df_anr_anrh2['Depl. ANR Cap. (MWe)'])
+  cashflows_df_anr_anrh2['H2 CAPEX'] = -cashflows_df_anr_anrh2['Annual H2 CAPEX']/(1e6*cashflows_df_anr_anrh2['Depl. ANR Cap. (MWe)'])
+  cashflows_df_anr_anrh2['ANR O&M'] = -(cashflows_df_anr_anrh2[f'FOPEX_{OAK}']+cashflows_df_anr_anrh2[f'VOPEX_{OAK}'])/(1e6*cashflows_df_anr_anrh2['Depl. ANR Cap. (MWe)'])
+  cashflows_df_anr_anrh2['ANR for H2 O&M'] = -(cashflows_df_anr_anrh2['ANR VOM']+cashflows_df_anr_anrh2['ANR FOM'])/(1e6*cashflows_df_anr_anrh2['Depl. ANR Cap. (MWe)'])
+  cashflows_df_anr_anrh2['H2 O&M'] = -(cashflows_df_anr_anrh2['H2 VOM']+cashflows_df_anr_anrh2['H2 FOM'])/(1e6*cashflows_df_anr_anrh2['Depl. ANR Cap. (MWe)'])
+  cashflows_df_anr_anrh2['Avoided Fossil Fuel Costs'] = cashflows_df_anr_anrh2['Avoided NG Cost ($/y)']/(1e6*cashflows_df_anr_anrh2['Depl. ANR Cap. (MWe)'])
+  cashflows_df_anr_anrh2['H2 PTC'] = cashflows_df_anr_anrh2['H2 PTC']/(1e6*cashflows_df_anr_anrh2['Depl. ANR Cap. (MWe)'])
+  if cogen_tag == 'cogen': cashflows_df_anr_anrh2['Electricity'] = cashflows_df_anr_anrh2['Electricity revenues ($/y)']/(1e6*cashflows_df_anr_anrh2['Depl. ANR Cap. (MWe)'])
+
+  cashflows_df_anrh2 = heat_df[heat_df.Pathway=='ANR-H2']
+  cashflows_df_anrh2['ANR CAPEX'] = 0
+  cashflows_df_anrh2['ANR for H2 CAPEX'] = -cashflows_df_anrh2['Annual ANR CAPEX']/(1e6*cashflows_df_anrh2['Depl. ANR Cap. (MWe)'])
+  cashflows_df_anrh2['H2 CAPEX'] = -cashflows_df_anrh2['Annual H2 CAPEX']/(1e6*cashflows_df_anrh2['Depl. ANR Cap. (MWe)'])
+  cashflows_df_anrh2['ANR O&M'] = 0
+  cashflows_df_anrh2['ANR for H2 O&M'] = -(cashflows_df_anrh2['ANR VOM']+cashflows_df_anrh2['ANR FOM'])/(1e6*cashflows_df_anrh2['Depl. ANR Cap. (MWe)'])
+  cashflows_df_anrh2['H2 O&M'] = -(cashflows_df_anrh2['H2 VOM']+cashflows_df_anrh2['H2 FOM'])/(1e6*cashflows_df_anrh2['Depl. ANR Cap. (MWe)'])
+  cashflows_df_anrh2['Avoided Fossil Fuel Costs'] = cashflows_df_anrh2['Avoided NG Cost ($/y)']/(1e6*cashflows_df_anrh2['Depl. ANR Cap. (MWe)'])
+  cashflows_df_anrh2['H2 PTC'] = cashflows_df_anrh2['H2 PTC']/(1e6*cashflows_df_anrh2['Depl. ANR Cap. (MWe)'])
+  if cogen_tag == 'cogen': cashflows_df_anrh2['Electricity'] = cashflows_df_anrh2['Electricity revenues ($/y)']/(1e6*cashflows_df_anrh2['Depl. ANR Cap. (MWe)'])
+  if cogen_tag =='cogen':
+    cashflows_df_anr_anrh2 = cashflows_df_anr_anrh2[['ANR', 'ANR CAPEX','ANR for H2 CAPEX','H2 CAPEX','ANR O&M','ANR for H2 O&M', 
+                                                  'H2 O&M','Avoided Fossil Fuel Costs','H2 PTC', 'Electricity']]
+    cashflows_df_anrh2 = cashflows_df_anrh2[['ANR', 'ANR CAPEX','ANR for H2 CAPEX','H2 CAPEX','ANR O&M','ANR for H2 O&M', 
+                                                  'H2 O&M','Avoided Fossil Fuel Costs','H2 PTC', 'Electricity']]
+  else:
+    cashflows_df_anr_anrh2 = cashflows_df_anr_anrh2[['ANR', 'ANR CAPEX','ANR for H2 CAPEX','H2 CAPEX','ANR O&M','ANR for H2 O&M', 
+                                                  'H2 O&M','Avoided Fossil Fuel Costs','H2 PTC']]
+    cashflows_df_anrh2 = cashflows_df_anrh2[['ANR', 'ANR CAPEX','ANR for H2 CAPEX','H2 CAPEX','ANR O&M','ANR for H2 O&M', 
+                                                    'H2 O&M','Avoided Fossil Fuel Costs','H2 PTC']]
+  cashflows_df_anr_anrh2 = cashflows_df_anr_anrh2.groupby(['ANR']).mean()
+  cashflows_df_anrh2 = cashflows_df_anrh2.groupby(['ANR']).mean()
+
+
+  ax = botfig.subplots(1,2,sharey=True)
+  axup = ax[0]
+  cashflows_df_anr_anrh2.plot(ax = axup, kind ='bar', stacked=True, color=cashflows_color_map, width=0.4)
+  axup.set_ylabel('Average Normalized\nCashflows (M$/MWe/y)')
+  axup.set_xlabel('')
+  axup.yaxis.grid(True)
+  axup.axhline(y=0, color='grey', linestyle='--', linewidth=0.5)
+  axup.set_xticks(axup.get_xticks(), axup.get_xticklabels(), rotation=0, ha='center')
+  axup.set_ylim(-1.02, 0.52)
+  axup.yaxis.set_ticks(np.arange(-1.75, 1, 0.25))
+  axup.get_legend().set_visible(False)
+  letter_annotation(axup, -.25, 1.04, 'III-a: ANR+ANR-H2')
+
+  lax = ax[1]
+  cashflows_df_anrh2.plot(ax = lax, kind ='bar', stacked=True, color=cashflows_color_map, width=0.25)
+  lax.set_ylabel('Average Normalized\nCashflows (M$/MWe/y)')
+  lax.set_xlabel('')
+  lax.yaxis.grid(True)
+  lax.axhline(y=0, color='grey', linestyle='--', linewidth=0.5)
+  lax.set_xticks(lax.get_xticks(), lax.get_xticklabels(), rotation=0, ha='center')
+  lax.set_ylim(-1.02, 0.52)
+  lax.yaxis.set_ticks(np.arange(-1.75, 1, 0.25))
+  lax.get_legend().set_visible(False)
+  letter_annotation(lax, -.25, 1.04, 'III-b: ANR-H2')
+
+
+  #Common legend for whole figure
+  h3, l3 = revax.get_legend_handles_labels()
+  h4, l4 = beax.get_legend_handles_labels()
+  
+ 
+  h, l = lax.get_legend_handles_labels()
+  by_label = dict(zip(l3+l4+l, h3+h4+h))
+  fig.legend(by_label.values(), by_label.keys(),  bbox_to_anchor=(.5,-.01),loc='upper center', ncol=4)
+
+
+  fig.savefig(save_path, bbox_inches='tight')
+
+
+
+
 def run_case(oak, cogen):
   if oak: anr_tag = 'NOAK'
   else: anr_tag = 'FOAK'
@@ -369,9 +484,11 @@ def run_case(oak, cogen):
       with pd.ExcelWriter(excel_file, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
         results_stats.to_excel(writer, sheet_name='stats')
   plot_net_annual_revenues_all_app(results,anr_tag, cogen_tag)
+  combined_heat_ff_plot(cogen_tag=cogen_tag, anr_tag=anr_tag)
   
 
 def main():
+  warnings.simplefilter(action='ignore', category=pd.errors.SettingWithCopyWarning)
   for cogen in [True, False]:
     
     if cogen: cogen_tag = 'cogen'
@@ -382,6 +499,7 @@ def main():
 
     compare_oak_net_annual_revenues(cogen_tag)
     compare_oak_avoided_emissions(cogen_tag)
+    
   combined_avoided_emissions_oak_cogen()
 
 
