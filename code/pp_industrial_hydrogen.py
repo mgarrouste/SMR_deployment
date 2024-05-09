@@ -41,12 +41,10 @@ def plot_net_annual_revenues(df):
   save_path = f'./results/industrial_hydrogen_anr_net_annual_revenues_{OAK}_cogen_{cogen_tag}.png'
   print(f'Plot net annual revenues: {save_path}')
   fig, ax = plt.subplots(figsize=(6,4))
-  df = df.replace({'Micro':'Microreactor'})
-  print(df.columns)
   if cogen_tag: x = 'Net Annual Revenues with H2 PTC with elec (M$/MWe/y)'
   else: x = 'Net Annual Revenues with H2 PTC (M$/MWe/y)'
   sns.boxplot(ax=ax, data=df, y='Industry', x=x, color='black',fill=False, width=.5)
-  sns.stripplot(ax=ax, data=df, y='Industry', x=x, hue='ANR type', palette = anr_design_palette)
+  sns.stripplot(ax=ax, data=df, y='Industry', x=x, hue='ANR type', palette=palette)
   ax.set_ylabel('')
   ax.set_xlabel('Net Annual Revenues (M$/MWe/y)')
   ax.get_legend().set_visible(False)
@@ -98,7 +96,6 @@ def plot_mean_cashflows(df):
 def plot_abatement_cost(df, fig=None):
   save_path = f'./results/industrial_hydrogen_abatement_cost_{OAK}_cogen_{cogen_tag}.png'
   print(f'Plot average cashflows: {save_path}')
-  print(df.columns)
   df['Cost ANR ($/y)'] = df['ANR CAPEX ($/year)']+df['H2 CAPEX ($/year)']+df['ANR O&M ($/year)']+df['H2 O&M ($/year)']\
                         +df['Conversion costs ($/year)']-df['Avoided NG costs ($/year)']
   df['Abatement cost ($/tCO2)'] = df['Cost ANR ($/y)']/(df['Ann. avoided CO2 emissions (MMT-CO2/year)']*1e6)
@@ -106,7 +103,7 @@ def plot_abatement_cost(df, fig=None):
   if fig: ax = fig.subplots(2,1)
   else: fig, ax = plt.subplots(2,1, figsize=(7,5))
   sns.boxplot(ax=ax[0], data=df, y='Industry', x='Abatement cost ($/tCO2)',color='black',fill=False, width=.5)
-  sns.stripplot(ax=ax[0], data=df, y='Industry', x='Abatement cost ($/tCO2)', hue='ANR type', palette = palette,alpha=.6)
+  sns.stripplot(ax=ax[0], data=df, y='Industry', x='Abatement cost ($/tCO2)', hue='ANR type', palette=palette,alpha=.6)
   letter_annotation(ax[0], -.25, 1, 'I-a')
   ax[0].set_ylabel('')
   ax[0].get_legend().set_visible(False)

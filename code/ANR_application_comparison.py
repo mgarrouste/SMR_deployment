@@ -4,6 +4,7 @@ import numpy as np
 import seaborn as sns
 from utils import palette, letter_annotation, cashflows_color_map 
 import warnings
+import pp_industrial_hydrogen
 
 
 color_map = {'Industrial Hydrogen':'blue', 'Process Heat':'red', 'Total':'Green', 'FOAK':'limegreen', 
@@ -292,6 +293,7 @@ def combined_avoided_emissions_oak_cogen():
   lines, labels = [sum(lol, []) for lol in zip(*lines_labels)]
   emfig.legend(lines, labels, loc='upper right', ncol=1)
   fig.savefig(save_path, bbox_inches='tight')
+  plt.close()
 
 
 
@@ -333,6 +335,7 @@ def combined_avoided_emissions_abatement(applications_results, anr_tag, cogen_ta
   heat_data = pd.read_excel(f'./results/process_heat/best_pathway_{anr_tag}_{cogen_tag}.xlsx')
   heat_abatement_plot(fig = heatfig, df= heat_data)
   fig.savefig(save_path, bbox_inches='tight')
+  plt.close()
 
 
 
@@ -444,7 +447,110 @@ def combined_heat_ff_plot(anr_tag, cogen_tag):
 
 
   fig.savefig(save_path, bbox_inches='tight')
+  plt.close()
 
+
+def combined_h2_ff_plot(anr_tag, cogen_tag):
+  """Plot heat results: 
+  - TOP: left breakeven prices distribution (boxplot), right net annual revenues
+  - BOTTOM: average cashflows
+  """
+  save_path = f'./results/combined_h2_ff_{anr_tag}_{cogen_tag}.png'
+  fig = plt.figure(figsize=(8, 7))
+  (topfig, botfig) = fig.subfigures(2,1, height_ratios=[1,1.25])
+  (befig, revfig) = topfig.subfigures(1,2)
+
+  h2_data = pp_industrial_hydrogen.load_data(OAK=anr_tag)
+  # Breakeven prices
+  beax = befig.subplots()
+  sns.boxplot(ax=beax, data=h2_data, y='Industry', x='Breakeven price ($/MMBtu)', color='black', fill=False, width=.5)
+  sns.stripplot(ax=beax, data=h2_data, y='Industry', x='Breakeven price ($/MMBtu)', hue='ANR type', palette=palette, alpha=.6)
+  beax.get_legend().set_visible(False)
+  #beax.set_xlim(0,250)
+  beax.set_ylabel('')
+  beax.xaxis.grid(True)
+  sns.despine()
+  letter_annotation(beax, -.25, 1, 'I')
+
+  # Net annual revenues
+  revax = revfig.subplots()
+  h2_data = pp_industrial_hydrogen.compute_normalized_net_revenues(h2_data, OAK=anr_tag)
+  if cogen_tag=='cogen': x = 'Net Annual Revenues with H2 PTC with elec (M$/MWe/y)'
+  elif cogen_tag == 'nocogen': x = 'Net Annual Revenues with H2 PTC (M$/MWe/y)'
+  sns.boxplot(ax=revax, data=h2_data, y='Industry', x=x, color='black',fill=False, width=.5)
+  sns.stripplot(ax=revax, data=h2_data, y='Industry', x=x, hue='ANR type', palette=palette)
+  revax.set_ylabel('')
+  revax.set_xlabel('Net Annual Revenues (M$/MWe/y)')
+  revax.get_legend().set_visible(False)
+  revax.set_xlim(-0.8, 0.8)
+  revax.xaxis.set_ticks(np.arange(-0.75, 1, 0.25))
+  sns.despine()
+  revax.xaxis.grid(True)
+  letter_annotation(revax, -.25, 1.04, 'II')
+
+  #Average cashflows
+  # Cashflows in M$/MWe/y
+  df = h2_data.copy()
+  df['ANR CAPEX'] = -df['ANR CAPEX ($/year)']/(1e6*df['Depl. ANR Cap. (MWe)'])
+  df['H2 CAPEX'] = -df['H2 CAPEX ($/year)']/(1e6*df['Depl. ANR Cap. (MWe)'])
+  df['ANR O&M'] = -df['ANR O&M ($/year)']/(1e6*df['Depl. ANR Cap. (MWe)'])
+  df['H2 O&M'] = -df['H2 O&M ($/year)']/(1e6*df['Depl. ANR Cap. (MWe)'])
+  df['Avoided Fossil Fuel Costs'] = df['Avoided NG costs ($/year)']/(1e6*df['Depl. ANR Cap. (MWe)'])
+  df['H2 PTC'] = df['H2 PTC Revenues ($/year)']/(1e6*df['Depl. ANR Cap. (MWe)'])
+  if cogen_tag:
+    df['Electricity'] = df['Electricity revenues ($/y)']/(1e6*df['Depl. ANR Cap. (MWe)'])
+    design_df = df[['Industry','ANR type','ANR CAPEX', 'H2 CAPEX', 'ANR O&M', 'H2 O&M', 'Avoided Fossil Fuel Costs', \
+                    'H2 PTC', 'Electricity']]
+  else:
+    design_df = df[['Industry','ANR type','ANR CAPEX', 'H2 CAPEX', 'ANR O&M', 'H2 O&M', 'Avoided Fossil Fuel Costs', 'H2 PTC']]
+  am_df = design_df[design_df.Industry == 'Ammonia']
+  am_df = am_df.drop(columns=['Industry'])
+  am_df = am_df.groupby('ANR type').mean()
+  ref_df = design_df[design_df.Industry == 'Refining']
+  ref_df = ref_df.drop(columns=['Industry'])
+  ref_df = ref_df.groupby(['ANR type']).mean()
+  st_df = design_df[design_df.Industry == 'Steel']
+  st_df = st_df.drop(columns=['Industry'])
+  st_df = st_df.groupby(['ANR type']).mean()
+  cax = botfig.subplots(1,3, sharey=True)
+  am_df.plot(ax=cax[0], kind='bar', stacked=True, color=cashflows_color_map)
+  ref_df.plot(ax=cax[1], kind='bar', stacked=True, color=cashflows_color_map)
+  st_df.plot(ax=cax[2], kind='bar', stacked=True, color=cashflows_color_map)
+  cax[0].set_ylabel('Average Normalized Cashflows (M$/MWe/y)')
+  cax[0].set_xlabel('')
+  cax[0].set_ylim(-1.3, 2)
+  cax[0].yaxis.set_ticks(np.arange(-1.25, 2, 0.25))
+  cax[0].set_xticks(cax[0].get_xticks(), cax[0].get_xticklabels(), rotation=0, ha='center')
+  cax[0].get_legend().set_visible(False)
+  cax[0].yaxis.grid(True)
+  letter_annotation(cax[0], -.2, 1.04, 'III-a: Ammonia')
+  cax[1].set_xlabel('')
+  cax[1].set_ylim(-1.3, 2)
+  cax[1].yaxis.set_ticks(np.arange(-1.25, 2, 0.25))
+  cax[1].set_xticks(cax[1].get_xticks(), cax[1].get_xticklabels(), rotation=0, ha='center')
+  cax[1].get_legend().set_visible(False)
+  cax[1].yaxis.grid(True)
+  letter_annotation(cax[1], -.1, 1.04, 'b: Refining')
+  cax[2].set_xlabel('')
+  cax[2].set_ylim(-1.3, 2)
+  cax[2].yaxis.set_ticks(np.arange(-1.25, 2, 0.25))
+  cax[2].set_xticks(cax[2].get_xticks(), cax[2].get_xticklabels(), rotation=0, ha='center')
+  cax[2].get_legend().set_visible(False)
+  cax[2].yaxis.grid(True)
+  letter_annotation(cax[2], -.1, 1.04, 'c: Steel')
+  
+  #Common legend for whole figure
+  h3, l3 = revax.get_legend_handles_labels()
+  h4, l4 = beax.get_legend_handles_labels()
+  
+ 
+  h00, l00 = cax[0].get_legend_handles_labels()
+  h01, l01 = cax[1].get_legend_handles_labels()
+  h02, l02 = cax[2].get_legend_handles_labels()
+  by_label = dict(zip(l3+l4+l00+l01+l02, h3+h4+h00+h01+h02))
+  fig.legend(by_label.values(), by_label.keys(),  bbox_to_anchor=(.5,-.01),loc='upper center', ncol=4)
+
+  fig.savefig(save_path, bbox_inches='tight')
 
 
 
@@ -485,6 +591,7 @@ def run_case(oak, cogen):
         results_stats.to_excel(writer, sheet_name='stats')
   plot_net_annual_revenues_all_app(results,anr_tag, cogen_tag)
   combined_heat_ff_plot(cogen_tag=cogen_tag, anr_tag=anr_tag)
+  combined_h2_ff_plot(cogen_tag=cogen_tag, anr_tag=anr_tag)
   
 
 def main():
