@@ -330,7 +330,7 @@ def combined_avoided_emissions_abatement(applications_results, anr_tag, cogen_ta
   # Hydrogen
   import pp_industrial_hydrogen
   h2_data = pp_industrial_hydrogen.load_data(anr_tag)
-  pp_industrial_hydrogen.plot_abatement_cost(h2_data, fig=h2fig)
+  pp_industrial_hydrogen.plot_abatement_cost(h2_data, OAK=anr_tag, fig=h2fig)
   # Direct heat
   heat_data = pd.read_excel(f'./results/process_heat/best_pathway_{anr_tag}_{cogen_tag}.xlsx')
   heat_abatement_plot(fig = heatfig, df= heat_data)
@@ -482,8 +482,8 @@ def combined_h2_ff_plot(anr_tag, cogen_tag):
   revax.set_ylabel('')
   revax.set_xlabel('Net Annual Revenues (M$/MWe/y)')
   revax.get_legend().set_visible(False)
-  revax.set_xlim(-0.8, 0.8)
-  revax.xaxis.set_ticks(np.arange(-0.75, 1, 0.25))
+  revax.set_xlim(-1.3, 0.8)
+  revax.xaxis.set_ticks(np.arange(-1.25, 1, 0.25))
   sns.despine()
   revax.xaxis.grid(True)
   letter_annotation(revax, -.25, 1.04, 'II')
@@ -495,14 +495,15 @@ def combined_h2_ff_plot(anr_tag, cogen_tag):
   df['H2 CAPEX'] = -df['H2 CAPEX ($/year)']/(1e6*df['Depl. ANR Cap. (MWe)'])
   df['ANR O&M'] = -df['ANR O&M ($/year)']/(1e6*df['Depl. ANR Cap. (MWe)'])
   df['H2 O&M'] = -df['H2 O&M ($/year)']/(1e6*df['Depl. ANR Cap. (MWe)'])
+  df['Conversion'] = -df['Conversion costs ($/year)']/(1e6*df['Depl. ANR Cap. (MWe)'])
   df['Avoided Fossil Fuel Costs'] = df['Avoided NG costs ($/year)']/(1e6*df['Depl. ANR Cap. (MWe)'])
   df['H2 PTC'] = df['H2 PTC Revenues ($/year)']/(1e6*df['Depl. ANR Cap. (MWe)'])
   if cogen_tag:
     df['Electricity'] = df['Electricity revenues ($/y)']/(1e6*df['Depl. ANR Cap. (MWe)'])
-    design_df = df[['Industry','ANR type','ANR CAPEX', 'H2 CAPEX', 'ANR O&M', 'H2 O&M', 'Avoided Fossil Fuel Costs', \
+    design_df = df[['Industry','ANR type','ANR CAPEX', 'H2 CAPEX', 'ANR O&M', 'H2 O&M', 'Conversion', 'Avoided Fossil Fuel Costs', \
                     'H2 PTC', 'Electricity']]
   else:
-    design_df = df[['Industry','ANR type','ANR CAPEX', 'H2 CAPEX', 'ANR O&M', 'H2 O&M', 'Avoided Fossil Fuel Costs', 'H2 PTC']]
+    design_df = df[['Industry','ANR type','ANR CAPEX', 'H2 CAPEX', 'ANR O&M', 'H2 O&M', 'Conversion', 'Avoided Fossil Fuel Costs', 'H2 PTC']]
   am_df = design_df[design_df.Industry == 'Ammonia']
   am_df = am_df.drop(columns=['Industry'])
   am_df = am_df.groupby('ANR type').mean()
@@ -518,22 +519,22 @@ def combined_h2_ff_plot(anr_tag, cogen_tag):
   st_df.plot(ax=cax[2], kind='bar', stacked=True, color=cashflows_color_map)
   cax[0].set_ylabel('Average Normalized Cashflows (M$/MWe/y)')
   cax[0].set_xlabel('')
-  cax[0].set_ylim(-1.3, 2)
-  cax[0].yaxis.set_ticks(np.arange(-1.25, 2, 0.25))
+  cax[0].set_ylim(-2.75, 1.8)
+  cax[0].yaxis.set_ticks(np.arange(-2.75, 2, 0.25))
   cax[0].set_xticks(cax[0].get_xticks(), cax[0].get_xticklabels(), rotation=0, ha='center')
   cax[0].get_legend().set_visible(False)
   cax[0].yaxis.grid(True)
   letter_annotation(cax[0], -.2, 1.04, 'III-a: Ammonia')
   cax[1].set_xlabel('')
-  cax[1].set_ylim(-1.3, 2)
-  cax[1].yaxis.set_ticks(np.arange(-1.25, 2, 0.25))
+  cax[1].set_ylim(-2.75, 1.8)
+  cax[1].yaxis.set_ticks(np.arange(-2.75, 2, 0.25))
   cax[1].set_xticks(cax[1].get_xticks(), cax[1].get_xticklabels(), rotation=0, ha='center')
   cax[1].get_legend().set_visible(False)
   cax[1].yaxis.grid(True)
   letter_annotation(cax[1], -.1, 1.04, 'b: Refining')
   cax[2].set_xlabel('')
-  cax[2].set_ylim(-1.3, 2)
-  cax[2].yaxis.set_ticks(np.arange(-1.25, 2, 0.25))
+  cax[2].set_ylim(-2.75, 1.8)
+  cax[2].yaxis.set_ticks(np.arange(-2.75, 2, 0.25))
   cax[2].set_xticks(cax[2].get_xticks(), cax[2].get_xticklabels(), rotation=0, ha='center')
   cax[2].get_legend().set_visible(False)
   cax[2].yaxis.grid(True)
