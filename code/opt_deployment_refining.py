@@ -226,7 +226,7 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data):
     results_ref['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
     results_ref['Depl. H2 Cap. (MWe)'] = value(get_eq_elec_dem_h2(model))
     results_ref['Surplus ANR Cap. (MWe)'] = value(compute_surplus_capacity(model))
-    results_ref['Net Annual Revenues ($/MWe/y)'] = (results_ref['Avoided NG costs ($/year)']+results_ref['Net Revenues ($/year)'])/results_ref['Depl. ANR Cap. (MWe)']
+    results_ref['Net Annual Revenues ($/MWe/y)'] = (results_ref['Net Revenues ($/year)'])/results_ref['Depl. ANR Cap. (MWe)']
     results_ref['Net Annual Revenues with H2 PTC ($/MWe/y)'] = results_ref['Net Revenues with H2 PTC ($/year)']/results_ref['Depl. ANR Cap. (MWe)']
     
     for g in model.G: 

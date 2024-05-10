@@ -8,13 +8,11 @@ from multiprocessing import Pool
 """ Version 0"""
 
 MaxANRMod = 20
-NAT_GAS_PRICE = 6.45 #$/MMBTU
-CONV_MJ_TO_MMBTU = 1/1055.05585 #MMBTU/MJ
-COAL_CONS_RATE = 0.663 #ton-coal/ton-steel for conventional BF/BOF plant
+COAL_CONS_RATE = utils.coal_to_steel_ratio_bau
 
-iron_ore_cost = 100 #$/t_ironore
-bfbof_iron_cons = 1.226 #t_ironore/t_steel
-om_bfbof = 178.12 #$/t_steel
+iron_ore_cost = utils.iron_ore_cost
+bfbof_iron_cons = utils.bfbof_iron_cons
+om_bfbof = utils.om_bfbof
 
 WACC = utils.WACC
 
@@ -66,13 +64,13 @@ def build_steel_plant_deployment(plant, ANR_data, H2_data):
 
   ### Steel ###
   # Carbon emissions from DRI process at 95% H2 concentration
-  model.pDRICO2Intensity = 40 # kgCO2/ton-DRI`````````````````
-  model.pShaftFCAPEX = 250 # $/tDRI/year
-  model.pEAFCAPEX = 160 # $/tsteel/year
-  model.pEAFOM  = 24.89 # $/tsteel (EAF and casting)
+  model.pDRICO2Intensity = utils.dri_co2_intensity # kgCO2/ton-DRI`````````````````
+  model.pShaftFCAPEX = utils.shaft_CAPEX # $/tDRI/year
+  model.pEAFCAPEX = utils.eaf_CAPEX # $/tsteel/year
+  model.pEAFOM  = utils.eaf_OM # $/tsteel (EAF and casting)
   model.pIronOre = iron_ore_cost # $/tironore
-  model.pRatioSteelDRI = 0.9311 # tsteel/tDRI
-  model.pRatioIronOreDRI = 1.391 # tironore/tDRI
+  model.pRatioSteelDRI = utils.steel_to_dri_ratio # tsteel/tDRI
+  model.pRatioIronOreDRI = utils.ratio_ironore_DRI # tironore/tDRI
 
 
   ### H2 ###
@@ -152,7 +150,7 @@ def build_steel_plant_deployment(plant, ANR_data, H2_data):
   
   def annualized_costs_dri_eaf(model):
     crf = model.pWACC / (1 - (1/(1+model.pWACC)**20) )# assumes 20 years lifetime for shaft and eaf
-    costs = steel_cap_ton_per_annum*(model.pEAFCAPEX*crf*(1-model.pITC_H2) + model.pShaftFCAPEX*(1-model.pITC_H2)*crf/model.pRatioSteelDRI + model.pEAFOM +\
+    costs = steel_cap_ton_per_annum*(model.pEAFCAPEX*(1-model.pITC_H2) + model.pShaftFCAPEX*(1-model.pITC_H2)/model.pRatioSteelDRI + model.pEAFOM +\
             model.pIronOre*model.pRatioIronOreDRI/model.pRatioSteelDRI)
     return costs
   
@@ -218,18 +216,17 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
     return sum(model.vS[g]*model.pANRCRF[g] for g in model.G)
   
   def compute_conv_costs(model):
-    crf = model.pWACC / (1 - (1/(1+model.pWACC)**20) )# assumes 20 years lifetime for shaft and eaf
-    costs = steel_cap_ton_per_annum*(model.pEAFCAPEX*(1-model.pITC_H2)*crf + model.pShaftFCAPEX*(1-model.pITC_H2)*crf/model.pRatioSteelDRI )
+    costs = steel_cap_ton_per_annum*(model.pEAFCAPEX*(1-model.pITC_H2) + model.pShaftFCAPEX*(1-model.pITC_H2)/model.pRatioSteelDRI + model.pEAFOM +\
+            model.pIronOre*model.pRatioIronOreDRI/model.pRatioSteelDRI)
     return costs
-  
   def get_deployed_cap(model):
     return sum(sum (model.vM[n,g]*model.pANRCap[g] for g in model.G) for n in model.N)
   
-  def annualized_avoided_ng_costs(model):
-    ng_price = utils.get_ng_price_aeo(model.pState)
-    avoided_costs = ng_price*steel_cap_ton_per_annum*utils.coal_to_steel_ratio_bau
+  def annualized_avoided_ng_costs():
+    coal_price = utils.get_met_coal_eia_aeo_price()
+    avoided_costs = coal_price*steel_cap_ton_per_annum*utils.coal_to_steel_ratio_bau*utils.coal_heat_content
     return avoided_costs
-  
+
   def compute_surplus_capacity(model):
     deployed_capacity = sum(sum (model.vM[n,g]*model.pANRCap[g] for g in model.G) for n in model.N)
     aux_elec_demand = elec_dem_MWh_per_day/24
@@ -266,16 +263,14 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
     results_dic['ANR O&M ($/year)'] = value(compute_anr_om(model))
     results_dic['H2 O&M ($/year)'] = value(compute_h2_om(model))
     results_dic['Conversion costs ($/year)'] = value(compute_conv_costs(model))
-    results_dic['Avoided NG costs ($/year)'] = value(annualized_avoided_ng_costs(model))
+    results_dic['Avoided NG costs ($/year)'] = value(annualized_avoided_ng_costs())
     results_dic['Breakeven price ($/MMBtu)'] = compute_breakeven_price(results_dic) # Compute BE price before adding avoided ng costs!
-    results_dic['Net Revenues ($/year)'] +=results_dic['Avoided NG costs ($/year)']
     results_dic['ANR CRF'] = value(get_crf(model))
     results_dic['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
     results_dic['Depl H2 Cap. (MWe)'] = value(get_eq_elec_dem_h2(model))
     results_dic['Surplus ANR Cap. (MWe)'] = value(compute_surplus_capacity(model))
-    results_dic['Net Annual Revenues ($/MWe/y)'] = (results_dic['Avoided NG costs ($/year)']\
-                                                    +results_dic['Net Revenues ($/year)'])/results_dic['Depl. ANR Cap. (MWe)']
-    results_dic['Net Annual Revenues with H2 PTC ($/MWe/y)'] = results_dic['Net Revenues with H2 PTC ($/year)']/results_dic['Depl. ANR Cap. (MWe)']
+    results_dic['Net Annual Revenues ($/MWe/y)'] = (results_dic['Net Revenues ($/year)']+results_dic['Avoided NG costs ($/year)'])/results_dic['Depl. ANR Cap. (MWe)']
+    results_dic['Net Annual Revenues with H2 PTC ($/MWe/y)'] = (results_dic['Net Revenues with H2 PTC ($/year)']+results_dic['Avoided NG costs ($/year)'])/results_dic['Depl. ANR Cap. (MWe)']
     for g in model.G: 
       if value(model.vS[g]) >=1: 
         results_dic['ANR type'] = g
@@ -292,9 +287,9 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
     return None
 
 def compute_breakeven_price(results_ref):
-  revenues = results_ref['Net Revenues ($/year)']
+  costs = -1*results_ref['Net Revenues ($/year)'] # NEt revenues Negative by convention
   plant_cap = results_ref['Steel prod. (ton/year)']
-  breakeven_price_per_ton = ( -revenues - iron_ore_cost*bfbof_iron_cons*plant_cap - om_bfbof*plant_cap)/(COAL_CONS_RATE*plant_cap)
+  breakeven_price_per_ton = (costs - iron_ore_cost*bfbof_iron_cons*plant_cap - om_bfbof*plant_cap)/(COAL_CONS_RATE*plant_cap)
   breakeven_price = breakeven_price_per_ton/utils.coal_heat_content
   return breakeven_price
 
