@@ -4,8 +4,6 @@ import numpy as np
 from utils import cashflows_color_map, palette, letter_annotation
 import seaborn as sns
 
-OAK = 'FOAK'
-
 cogen_tag = False
 industries = {'ammonia':'Ammonia', 
               'refining':'Refining', 
@@ -37,7 +35,7 @@ def compute_normalized_net_revenues(df, OAK):
 
 
 
-def plot_net_annual_revenues(df):
+def plot_net_annual_revenues(df, OAK):
   save_path = f'./results/industrial_hydrogen_anr_net_annual_revenues_{OAK}_cogen_{cogen_tag}.png'
   print(f'Plot net annual revenues: {save_path}')
   fig, ax = plt.subplots(figsize=(6,4))
@@ -59,7 +57,7 @@ def plot_net_annual_revenues(df):
 
 
 
-def plot_mean_cashflows(df):
+def plot_mean_cashflows(df, OAK):
   save_path = f'./results/industrial_hydrogen_anr_avg_cashflows_{OAK}_cogen_{cogen_tag}.png'
   print(f'Plot average cashflows: {save_path}')
   # Cashflows in M$/MWe/y
@@ -93,7 +91,7 @@ def plot_mean_cashflows(df):
   return fig
 
 
-def plot_abatement_cost(df, fig=None):
+def plot_abatement_cost(df, OAK, fig=None):
   save_path = f'./results/industrial_hydrogen_abatement_cost_{OAK}_cogen_{cogen_tag}.png'
   print(f'Plot average cashflows: {save_path}')
   df['Cost ANR ($/y)'] = df['ANR CAPEX ($/year)']+df['H2 CAPEX ($/year)']+df['ANR O&M ($/year)']+df['H2 O&M ($/year)']\
@@ -119,14 +117,15 @@ def plot_abatement_cost(df, fig=None):
 
 
 def main():
-  total_df = load_data(OAK)
-  total_df = compute_normalized_net_revenues(total_df, OAK)
-  total_df.to_csv(f'./results/industrial_hydrogen_avg_cashflows_{OAK}_cogen_{cogen_tag}.csv')
-  total_df[['Industry', 'Net Annual Revenues with H2 PTC (M$/MWe/y)']].describe(\
-    percentiles=[.1,.25,.5,.75,.9]).to_csv(f'./results/industrial_hydrogen_avg_cashflows_stats_{OAK}_cogen_{cogen_tag}.csv')
-  plot_net_annual_revenues(total_df)
-  plot_mean_cashflows(total_df)
-  plot_abatement_cost(total_df)
+  for OAK in ['FOAK', 'NOAK']:
+    total_df = load_data(OAK)
+    total_df = compute_normalized_net_revenues(total_df, OAK)
+    total_df.to_csv(f'./results/industrial_hydrogen_avg_cashflows_{OAK}_cogen_{cogen_tag}.csv')
+    total_df[['Industry', 'Net Annual Revenues with H2 PTC (M$/MWe/y)']].describe(\
+      percentiles=[.1,.25,.5,.75,.9]).to_csv(f'./results/industrial_hydrogen_avg_cashflows_stats_{OAK}_cogen_{cogen_tag}.csv')
+    plot_net_annual_revenues(total_df, OAK)
+    plot_mean_cashflows(total_df, OAK)
+    plot_abatement_cost(total_df, OAK)
 
 
 if __name__ == '__main__':
