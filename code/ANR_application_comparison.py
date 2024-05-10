@@ -382,6 +382,7 @@ def combined_heat_ff_plot(anr_tag, cogen_tag):
   cashflows_df_anr_anrh2['ANR O&M'] = -(cashflows_df_anr_anrh2[f'FOPEX_{OAK}']+cashflows_df_anr_anrh2[f'VOPEX_{OAK}'])/(1e6*cashflows_df_anr_anrh2['Depl. ANR Cap. (MWe)'])
   cashflows_df_anr_anrh2['ANR for H2 O&M'] = -(cashflows_df_anr_anrh2['ANR VOM']+cashflows_df_anr_anrh2['ANR FOM'])/(1e6*cashflows_df_anr_anrh2['Depl. ANR Cap. (MWe)'])
   cashflows_df_anr_anrh2['H2 O&M'] = -(cashflows_df_anr_anrh2['H2 VOM']+cashflows_df_anr_anrh2['H2 FOM'])/(1e6*cashflows_df_anr_anrh2['Depl. ANR Cap. (MWe)'])
+  cashflows_df_anr_anrh2['Conversion'] = -(cashflows_df_anr_anrh2['Conversion'])/(1e6*cashflows_df_anr_anrh2['Depl. ANR Cap. (MWe)'])
   cashflows_df_anr_anrh2['Avoided Fossil Fuel Costs'] = cashflows_df_anr_anrh2['Avoided NG Cost ($/y)']/(1e6*cashflows_df_anr_anrh2['Depl. ANR Cap. (MWe)'])
   cashflows_df_anr_anrh2['H2 PTC'] = cashflows_df_anr_anrh2['H2 PTC']/(1e6*cashflows_df_anr_anrh2['Depl. ANR Cap. (MWe)'])
   if cogen_tag == 'cogen': cashflows_df_anr_anrh2['Electricity'] = cashflows_df_anr_anrh2['Electricity revenues ($/y)']/(1e6*cashflows_df_anr_anrh2['Depl. ANR Cap. (MWe)'])
@@ -393,19 +394,20 @@ def combined_heat_ff_plot(anr_tag, cogen_tag):
   cashflows_df_anrh2['ANR O&M'] = 0
   cashflows_df_anrh2['ANR for H2 O&M'] = -(cashflows_df_anrh2['ANR VOM']+cashflows_df_anrh2['ANR FOM'])/(1e6*cashflows_df_anrh2['Depl. ANR Cap. (MWe)'])
   cashflows_df_anrh2['H2 O&M'] = -(cashflows_df_anrh2['H2 VOM']+cashflows_df_anrh2['H2 FOM'])/(1e6*cashflows_df_anrh2['Depl. ANR Cap. (MWe)'])
+  cashflows_df_anrh2['Conversion'] = -(cashflows_df_anrh2['Conversion'])/(1e6*cashflows_df_anrh2['Depl. ANR Cap. (MWe)'])
   cashflows_df_anrh2['Avoided Fossil Fuel Costs'] = cashflows_df_anrh2['Avoided NG Cost ($/y)']/(1e6*cashflows_df_anrh2['Depl. ANR Cap. (MWe)'])
   cashflows_df_anrh2['H2 PTC'] = cashflows_df_anrh2['H2 PTC']/(1e6*cashflows_df_anrh2['Depl. ANR Cap. (MWe)'])
   if cogen_tag == 'cogen': cashflows_df_anrh2['Electricity'] = cashflows_df_anrh2['Electricity revenues ($/y)']/(1e6*cashflows_df_anrh2['Depl. ANR Cap. (MWe)'])
   if cogen_tag =='cogen':
     cashflows_df_anr_anrh2 = cashflows_df_anr_anrh2[['ANR', 'ANR CAPEX','ANR for H2 CAPEX','H2 CAPEX','ANR O&M','ANR for H2 O&M', 
-                                                  'H2 O&M','Avoided Fossil Fuel Costs','H2 PTC', 'Electricity']]
+                                                  'H2 O&M','Conversion','Avoided Fossil Fuel Costs','H2 PTC', 'Electricity']]
     cashflows_df_anrh2 = cashflows_df_anrh2[['ANR', 'ANR CAPEX','ANR for H2 CAPEX','H2 CAPEX','ANR O&M','ANR for H2 O&M', 
-                                                  'H2 O&M','Avoided Fossil Fuel Costs','H2 PTC', 'Electricity']]
+                                                  'H2 O&M','Conversion','Avoided Fossil Fuel Costs','H2 PTC', 'Electricity']]
   else:
     cashflows_df_anr_anrh2 = cashflows_df_anr_anrh2[['ANR', 'ANR CAPEX','ANR for H2 CAPEX','H2 CAPEX','ANR O&M','ANR for H2 O&M', 
-                                                  'H2 O&M','Avoided Fossil Fuel Costs','H2 PTC']]
+                                                  'H2 O&M','Conversion','Avoided Fossil Fuel Costs','H2 PTC']]
     cashflows_df_anrh2 = cashflows_df_anrh2[['ANR', 'ANR CAPEX','ANR for H2 CAPEX','H2 CAPEX','ANR O&M','ANR for H2 O&M', 
-                                                    'H2 O&M','Avoided Fossil Fuel Costs','H2 PTC']]
+                                                    'H2 O&M','Conversion','Avoided Fossil Fuel Costs','H2 PTC']]
   cashflows_df_anr_anrh2 = cashflows_df_anr_anrh2.groupby(['ANR']).mean()
   cashflows_df_anrh2 = cashflows_df_anrh2.groupby(['ANR']).mean()
 
