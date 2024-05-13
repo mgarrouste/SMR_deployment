@@ -246,7 +246,7 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data):
 
 
 def compute_breakeven_price(results_ref):
-  revenues = results_ref['Net Revenues ($/year)']
+  revenues = results_ref['Net Revenues with H2 PTC ($/year)']
   breakeven_price = -revenues/(EFF_H2_SMR * CONV_MJ_TO_MMBTU * results_ref['H2 Dem. (kg/day)']*365)
   return breakeven_price
 

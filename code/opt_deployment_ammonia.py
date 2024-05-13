@@ -276,7 +276,7 @@ def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results):
   
 
 def compute_ng_breakeven_price(results_ref):
-  net_rev = results_ref['Net Revenues ($/year)']
+  net_rev = results_ref['Net Revenues with H2 PTC ($/year)']
   capacity = results_ref['Ammonia capacity (tNH3/year)']
   elec_costs = ELEC_PRICE*ngNH3ElecCons*capacity # $/year
   be_price = (-net_rev-elec_costs)/(ngNH3ConsRate*capacity)

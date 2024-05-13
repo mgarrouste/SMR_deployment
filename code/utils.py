@@ -16,12 +16,13 @@ cashflows_color_map = {'ANR CAPEX': 'navy',
                'ANR O&M':'darkgreen', 
                'ANR for H2 O&M':'forestgreen', 
                'H2 O&M':'palegreen',
+               'Conversion':'grey',
                'Avoided Fossil Fuel Costs':'darkorchid', 
                'H2 PTC':'plum', 
                'Electricity':'pink'}
 #INflation
 conversion_2021usd_to_2020usd = 0.99 #2020$/2021$ source: data.bls.gov
-
+conversion_2022usd_to_2020usd = 1/1.09 #2020$/2022$
 # CCUS costs
 ccus_cost = 150#$/ton CO2
 
@@ -56,7 +57,7 @@ mmbtu_to_mj = 1055.06 #mj/MmBtu
 GFCAPEX = 1340000 #$/MWth
 GFLT = 12 # years
 # Steel
-coal_to_steel_ratio_bau = 0.474 # tcoal/tsteel
+coal_to_steel_ratio_bau = 0.663 # tcoal/tsteel
 co2_to_steel_ratio_bau = 1.990 #tco2/tsteel
 h2_to_dri_ratio = 67.095 #kgh2/tdri
 steel_to_dri_ratio = 0.9311 # tsteel/tdri
@@ -71,6 +72,13 @@ iron_ore_cost = 100 #$/t_ironore # $/tironore
 ratio_ironore_DRI = 1.391 # tironore/tDRI
 bfbof_iron_cons = 1.226 #t_ironore/t_steel
 om_bfbof = 178.12 #$/t_steel
+
+def get_met_coal_eia_aeo_price():
+  price2024 = 5.679083 # 2022$/MMBtu
+  price = price2024*conversion_2022usd_to_2020usd
+  return price
+
+
 
 def letter_annotation(ax, xoffset, yoffset, letter):
   ax.text(xoffset, yoffset, letter, transform=ax.transAxes,
