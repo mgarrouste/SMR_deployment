@@ -4,7 +4,7 @@ import numpy as np
 from utils import cashflows_color_map, palette, letter_annotation
 import seaborn as sns
 
-cogen_tag = True
+cogen_tag = False
 industries = {'ammonia':'Ammonia', 
               'refining':'Refining', 
               'steel':'Steel'}
@@ -98,6 +98,11 @@ def plot_abatement_cost(df, OAK, fig=None):
                         +df['Conversion costs ($/year)']-df['Avoided NG costs ($/year)']
   df['Abatement cost ($/tCO2)'] = df['Cost ANR ($/y)']/(df['Ann. avoided CO2 emissions (MMT-CO2/year)']*1e6)
   df['Abatement potential (tCO2/y-MWe)'] = 1e6*df['Ann. avoided CO2 emissions (MMT-CO2/year)']/df['Depl. ANR Cap. (MWe)']
+  for ind in df['Industry'].unique():
+    print_stats(ind, f'./results/industrial_hydrogen_abatement_cost_stats_{OAK}_cogen_{cogen_tag}.xlsx', \
+                    df[df['Industry']==ind], column_name='Abatement cost ($/tCO2)')
+    print_stats(ind, f'./results/industrial_hydrogen_abatement_pot_stats_{OAK}_cogen_{cogen_tag}.xlsx', \
+                    df[df['Industry']==ind], column_name='Abatement potential (tCO2/y-MWe)')
   if fig: 
     ax = fig.subplots(2,1)
     plt.subplots_adjust(hspace=0.3)
@@ -118,8 +123,8 @@ def plot_abatement_cost(df, OAK, fig=None):
     fig.savefig(save_path, bbox_inches='tight')
 
 
-def print_stats_net_annual_rev(industry, excel_file, df):
-  df = df[['Net Annual Revenues with H2 PTC (M$/MWe/y)']].describe(percentiles=[.1,.25,.5,.75,.9])
+def print_stats(industry, excel_file, df, column_name):
+  df = df[[column_name]].describe(percentiles=[.1,.25,.5,.75,.9])
   try:
     with pd.ExcelFile(excel_file, engine='openpyxl') as xls:
       with pd.ExcelWriter(excel_file, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
@@ -133,8 +138,8 @@ def main():
     total_df = compute_normalized_net_revenues(total_df, OAK)
     total_df.to_csv(f'./results/industrial_hydrogen_avg_cashflows_{OAK}_cogen_{cogen_tag}.csv')
     for ind in total_df['Industry'].unique():
-      print_stats_net_annual_rev(ind, f'./results/industrial_hydrogen_revenues_stats_{OAK}_cogen_{cogen_tag}.xlsx', \
-                                 total_df[total_df['Industry']==ind])
+      print_stats(ind, f'./results/industrial_hydrogen_revenues_stats_{OAK}_cogen_{cogen_tag}.xlsx', \
+                                 total_df[total_df['Industry']==ind], column_name='Net Annual Revenues with H2 PTC (M$/MWe/y)')
     plot_net_annual_revenues(total_df, OAK)
     plot_mean_cashflows(total_df, OAK)
     plot_abatement_cost(total_df, OAK)
