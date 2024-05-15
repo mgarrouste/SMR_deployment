@@ -322,8 +322,8 @@ def heat_abatement_plot(fig, df):
 
 def combined_avoided_emissions_abatement(applications_results, anr_tag, cogen_tag):
   save_path = f'./results/all_applications_emissions_abatement_{anr_tag}_{cogen_tag}.png'
-  fig = plt.figure(figsize=(10, 10))
-  (topfig, bottomfig) = fig.subfigures(2, 1, height_ratios=[1.5,1])
+  fig = plt.figure(figsize=(8, 8))
+  (topfig, bottomfig) = fig.subfigures(2, 1, height_ratios=[2,1])
   (h2fig, heatfig) = topfig.subfigures(1,2)
   # Emissions
   plot_cumulative_avoided_emissions(applications_results, anr_tag, cogen_tag, fig = bottomfig)

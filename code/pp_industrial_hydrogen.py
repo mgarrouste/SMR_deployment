@@ -98,7 +98,9 @@ def plot_abatement_cost(df, OAK, fig=None):
                         +df['Conversion costs ($/year)']-df['Avoided NG costs ($/year)']
   df['Abatement cost ($/tCO2)'] = df['Cost ANR ($/y)']/(df['Ann. avoided CO2 emissions (MMT-CO2/year)']*1e6)
   df['Abatement potential (tCO2/y-MWe)'] = 1e6*df['Ann. avoided CO2 emissions (MMT-CO2/year)']/df['Depl. ANR Cap. (MWe)']
-  if fig: ax = fig.subplots(2,1)
+  if fig: 
+    ax = fig.subplots(2,1)
+    plt.subplots_adjust(hspace=0.3)
   else: fig, ax = plt.subplots(2,1, figsize=(7,5))
   sns.boxplot(ax=ax[0], data=df, y='Industry', x='Abatement cost ($/tCO2)',color='black',fill=False, width=.5)
   sns.stripplot(ax=ax[0], data=df, y='Industry', x='Abatement cost ($/tCO2)', hue='ANR type', palette=palette,alpha=.6)
