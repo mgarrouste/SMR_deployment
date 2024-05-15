@@ -4,7 +4,7 @@ import numpy as np
 from utils import cashflows_color_map, palette, letter_annotation
 import seaborn as sns
 
-cogen_tag = False
+cogen_tag = True
 industries = {'ammonia':'Ammonia', 
               'refining':'Refining', 
               'steel':'Steel'}
@@ -118,13 +118,23 @@ def plot_abatement_cost(df, OAK, fig=None):
     fig.savefig(save_path, bbox_inches='tight')
 
 
+def print_stats_net_annual_rev(industry, excel_file, df):
+  df = df[['Net Annual Revenues with H2 PTC (M$/MWe/y)']].describe(percentiles=[.1,.25,.5,.75,.9])
+  try:
+    with pd.ExcelFile(excel_file, engine='openpyxl') as xls:
+      with pd.ExcelWriter(excel_file, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
+        df.to_excel(writer, sheet_name=industry)
+  except FileNotFoundError:
+    df.to_excel(excel_file, sheet_name=industry)
+
 def main():
   for OAK in ['FOAK', 'NOAK']:
     total_df = load_data(OAK)
     total_df = compute_normalized_net_revenues(total_df, OAK)
     total_df.to_csv(f'./results/industrial_hydrogen_avg_cashflows_{OAK}_cogen_{cogen_tag}.csv')
-    total_df[['Industry', 'Net Annual Revenues with H2 PTC (M$/MWe/y)']].describe(\
-      percentiles=[.1,.25,.5,.75,.9]).to_csv(f'./results/industrial_hydrogen_avg_cashflows_stats_{OAK}_cogen_{cogen_tag}.csv')
+    for ind in total_df['Industry'].unique():
+      print_stats_net_annual_rev(ind, f'./results/industrial_hydrogen_revenues_stats_{OAK}_cogen_{cogen_tag}.xlsx', \
+                                 total_df[total_df['Industry']==ind])
     plot_net_annual_revenues(total_df, OAK)
     plot_mean_cashflows(total_df, OAK)
     plot_abatement_cost(total_df, OAK)
