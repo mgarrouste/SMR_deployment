@@ -229,29 +229,33 @@ def compare_deployment_stages():
   # Formatting
   total_df['Annual Net Revenues (M$/MWe/year)'] = total_df['Annual Net Revenues ($/year/MWe)']/1e6
   # Plot
-  fig, ax = plt.subplots(2,1,figsize=(8,6))
-  sns.boxplot(ax=ax[0], data=total_df, x='Annual Net Revenues (M$/MWe/year)', y='Deployment', color='black', fill=False, width=.5)
-  sns.stripplot(ax=ax[0], data=total_df, x='Annual Net Revenues (M$/MWe/year)', y='Deployment', hue='ANR type', palette=utils.palette, alpha=.6)
-  total_df['BE CAPEX (M$/MWe)'] = total_df['BE CAPEX ($/MWe)']/1e6
-  sns.boxplot(ax=ax[1], data=total_df, x='BE CAPEX (M$/MWe)', y='Deployment', color='black', fill=False, width=.5)
-  sns.stripplot(ax=ax[1], data=total_df, x='BE CAPEX (M$/MWe)', y='Deployment', hue='ANR type', palette=utils.palette, alpha=.6)
-  ax[0].set_ylabel('')
-  ax[1].set_ylabel('')
-  ax[0].get_legend().set_visible(False)
-  ax[1].get_legend().set_visible(False)
+  fig = plt.figure(figsize=(8,4))
+  topfig, botfig = fig.subfigures(2,1,height_ratios=[2,1])
+  topax = topfig.subplots()
+  sns.boxplot(ax=topax, data=total_df, x='Annual Net Revenues (M$/MWe/year)', y='Deployment', color='black', fill=False, width=.5)
+  sns.stripplot(ax=topax, data=total_df, x='Annual Net Revenues (M$/MWe/year)', y='Deployment', hue='ANR type', palette=utils.palette, alpha=.6)
+  botax = botfig.subplots()
+  foak_df['BE CAPEX (M$/MWe)'] = foak_df['BE CAPEX ($/MWe)']/1e6
+  sns.boxplot(ax=botax, data=foak_df, x='BE CAPEX (M$/MWe)', color='black', fill=False, width=.5)
+  sns.stripplot(ax=botax, data=foak_df, x='BE CAPEX (M$/MWe)', hue='ANR type', palette=utils.palette, alpha=.6)
+  topax.set_ylabel('')
+  botax.set_ylabel('')
+  topax.get_legend().set_visible(False)
+  botax.get_legend().set_visible(False)
   sns.despine()
   #duplicate legend entries issue
-  h3, l3 = ax[0].get_legend_handles_labels()
-  h4, l4 = ax[1].get_legend_handles_labels()
+  h3, l3 = topax.get_legend_handles_labels()
+  h4, l4 = botax.get_legend_handles_labels()
   by_label = dict(zip(l3+l4, h3+h4))
-  fig.legend(by_label.values(), by_label.keys(),  bbox_to_anchor=(.5,0.95),loc='upper center', ncol=5)
+  fig.legend(by_label.values(), by_label.keys(),  bbox_to_anchor=(.5,1.05),loc='upper center', ncol=5)
   # Add vertical lines with values of FOAK and NOAK CAPEX for the 5 designs
   anr_foak_capex = pd.read_excel('./ANRs.xlsx', sheet_name='FOAK', index_col='Reactor')[['CAPEX $/MWe']].to_dict()['CAPEX $/MWe']
-  anr_noak_capex = pd.read_excel('./ANRs.xlsx', sheet_name='NOAK', index_col='Reactor')[['CAPEX $/MWe']].to_dict()['CAPEX $/MWe']
+  #anr_noak_capex = pd.read_excel('./ANRs.xlsx', sheet_name='NOAK', index_col='Reactor')[['CAPEX $/MWe']].to_dict()['CAPEX $/MWe']
   for reactor, capex in anr_foak_capex.items():
-    add_vertical_line(ax[1], capex/1e6, ymin=0.5, ymax=1, color=utils.palette[reactor])
-  for reactor, capex in anr_noak_capex.items():
-    add_vertical_line(ax[1], capex/1e6, ymin=0, ymax=.5, color=utils.palette[reactor])
+    add_vertical_line(botax, capex/1e6, ymin=0, ymax=1, color=utils.palette[reactor])
+  
+  #for reactor, capex in anr_noak_capex.items():
+   # add_vertical_line(ax[1], capex/1e6, ymin=0, ymax=.5, color=utils.palette[reactor])
 
 
   fig.savefig(f'./results/electricity_comparison_NOAK_FOAK_net_annual_revenues_{cambium_scenario}.png', bbox_inches='tight')
