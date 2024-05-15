@@ -84,16 +84,16 @@ def plot_cumulative_avoided_emissions(applications_results, anr_tag, cogen_tag, 
   total_df = combine_emissions(applications_results)
   values = list(total_df['Viable avoided emissions (MMt-CO2/y)'])
   values += [values[-1]]
-  edges = [0]+list(total_df['NG price ($/MMBtu)'])+[xmax]
+  edges = [-50]+list(total_df['NG price ($/MMBtu)'])+[xmax]
   ax.stairs(values, edges, label='Total', color=color_map['Total'], baseline=None)
   for app, app_results in applications_results.items():
     data = app_results['data']
     values = list(data['Viable avoided emissions (MMt-CO2/y)'])
     values += [values[-1]]
-    edges = [0]+list(data[app_results['price_label']])+[xmax]
+    edges = [-50]+list(data[app_results['price_label']])+[xmax]
     ax.stairs(values, edges, label=app, color=color_map[app], baseline=None)
   ax.set_xlim(-2,xmax)
-  ax.xaxis.set_ticks(np.arange(0, xmax+10, 5))
+  ax.xaxis.set_ticks(np.arange(0, xmax, 5))
   ax.yaxis.set_ticks(np.arange(0,250, 25))
   ax.set_xlabel('Breakeven NG price ($/MMBtu)')
   ax.set_ylabel('Viable avoided emissions\n'+r'$(MMt-{CO_2}/y)$')
@@ -278,7 +278,7 @@ def combined_avoided_emissions_oak_cogen():
   for label, results in emdfs.items():
     values = list(results['Viable avoided emissions (MMt-CO2/y)'])
     values += [values[-1]]
-    edges = [0]+list(results['NG price ($/MMBtu)'])+[xmax]
+    edges = [-50]+list(results['NG price ($/MMBtu)'])+[xmax]
     emax.stairs(values, edges, label=label, color=color_map[label], baseline=None)
   emax.set_xlim(-2,xmax)
   emax.xaxis.set_ticks(np.arange(0, xmax+10, 5))
