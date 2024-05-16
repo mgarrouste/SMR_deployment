@@ -13,7 +13,7 @@ color_map = {'Industrial Hydrogen':'blue', 'Process Heat':'red', 'Total':'Green'
 
 def load_elec_results(anr_tag):
   elec_results_path = f'./results/price_taker_{anr_tag}_MidCase.xlsx'
-  elec_df = pd.read_excel(elec_results_path, index_col=0)
+  elec_df = pd.read_excel(elec_results_path)
   elec_df['Annual Net Revenues (M$/MWe/y)'] = elec_df['Annual Net Revenues ($/year/MWe)']/1e6
   # Only keep the best design for each state and year
   df = elec_df.loc[elec_df.groupby('state')['Annual Net Revenues (M$/MWe/y)'].transform(max) == elec_df['Annual Net Revenues (M$/MWe/y)']]
@@ -257,6 +257,12 @@ def combined_avoided_emissions_oak_cogen():
   foak_no['Case'] = 'FOAK\nNo-Cogeneration'
   dfs = [foak_no, foak_co, noak_no, noak_co]
 
+  for key,df in {'FOAK_no':foak_no, 'FOAK_co':foak_co, 'NOAK_no':noak_no, 'NOAK_co':noak_co }.items():
+    file = f'./results/all_applications_{key}_rev_stats.xlsx'
+    for app in df.Application.unique():
+      app_df = df[df.Application == app]
+      pp_industrial_hydrogen.print_stats(app, excel_file=file, df=app_df, column_name='Annual Net Revenues (M$/MWe/y)')
+
   # Load data for cumulative emissions plot
   foak_no_em = combine_emissions(create_data_dict('FOAK', 'nocogen'))
   noak_no_em = combine_emissions(create_data_dict('NOAK', 'nocogen'))
@@ -298,10 +304,15 @@ def combined_avoided_emissions_oak_cogen():
 
 
 
-def heat_abatement_plot(fig, df):
+def heat_abatement_plot(fig, df, anr_tag, cogen_tag):
   df['Cost ANR ($/y)'] = (df['CAPEX ($/y)']+df['O&M ($/y)']+df['Conversion']-df['Avoided NG Cost ($/y)'])
   df['Abatement cost ($/tCO2)'] = df['Cost ANR ($/y)']/(df['Emissions_mmtco2/y']*1e6)
   df['Abatement potential (tCO2/y-MWe)'] = 1e6*df['Emissions_mmtco2/y']/df['Depl. ANR Cap. (MWe)']
+  for ind in df['Pathway'].unique():
+    pp_industrial_hydrogen.print_stats(ind, f'./results/process_heat/heat_abatement_cost_stats_{anr_tag}_cogen_{cogen_tag}.xlsx', \
+                    df[df['Pathway']==ind], column_name='Abatement cost ($/tCO2)')
+    pp_industrial_hydrogen.print_stats(ind, f'./results/process_heat/heat_abatement_pot_stats_{anr_tag}_cogen_{cogen_tag}.xlsx', \
+                    df[df['Pathway']==ind], column_name='Abatement potential (tCO2/y-MWe)')
   ax = fig.subplots(2,1)
   sns.boxplot(ax=ax[0], data=df, y='Pathway', x='Abatement cost ($/tCO2)',color='black',fill=False, width=.5)
   sns.stripplot(ax=ax[0], data=df, y='Pathway', x='Abatement cost ($/tCO2)', hue='ANR', palette = palette,alpha=.6)
@@ -333,7 +344,7 @@ def combined_avoided_emissions_abatement(applications_results, anr_tag, cogen_ta
   pp_industrial_hydrogen.plot_abatement_cost(h2_data, OAK=anr_tag, fig=h2fig)
   # Direct heat
   heat_data = pd.read_excel(f'./results/process_heat/best_pathway_{anr_tag}_{cogen_tag}.xlsx')
-  heat_abatement_plot(fig = heatfig, df= heat_data)
+  heat_abatement_plot(fig = heatfig, df= heat_data, anr_tag=anr_tag, cogen_tag=cogen_tag)
   fig.savefig(save_path, bbox_inches='tight')
   plt.close()
 
