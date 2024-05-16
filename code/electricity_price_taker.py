@@ -225,7 +225,7 @@ def compare_deployment_stages():
   assert os.path.isfile(noak_results), f'NOAK results not found: {noak_results}'
   assert os.path.isfile(foak_results), f'FOAK results not found: {foak_results}'
   noak_df = pd.read_excel(noak_results, usecols="B:H")
-  foak_df = pd.read_excel(foak_results, usecols="B:H")
+  foak_df = pd.read_excel(foak_results)
   # concatenate results
   noak_df['Deployment'] = 'NOAK'
   foak_df['Deployment'] = 'FOAK'
@@ -233,13 +233,44 @@ def compare_deployment_stages():
   # Formatting
   total_df['Annual Net Revenues (M$/MWe/year)'] = total_df['Annual Net Revenues ($/year/MWe)']/1e6
   # Plot
-  fig = plt.figure(figsize=(8,4))
-  topfig, botfig = fig.subfigures(2,1,height_ratios=[2,1])
+  fig = plt.figure(figsize=(5,4))
+  topfig, botfig = fig.subfigures(1,2, width_ratios=[1,1.7])
   topax = topfig.subplots()
-  sns.boxplot(ax=topax, data=total_df, x='Annual Net Revenues (M$/MWe/year)', y='Deployment', color='black', fill=False, width=.5)
-  sns.stripplot(ax=topax, data=total_df, x='Annual Net Revenues (M$/MWe/year)', y='Deployment', hue='ANR type', palette=utils.palette, alpha=.6)
+  sns.boxplot(ax=topax, data=total_df, y='Annual Net Revenues (M$/MWe/year)', x='Deployment', color='black', fill=False, width=.5)
+  sns.stripplot(ax=topax, data=total_df, y='Annual Net Revenues (M$/MWe/year)', x='Deployment', hue='ANR type', palette=utils.palette, alpha=.6)
+
+  # Scatterplot CAPEX against FOM, ANR hue, marker FOAK or BE
   botax = botfig.subplots()
-  foak_df['BE CAPEX (M$/MWe)'] = foak_df['BE CAPEX ($/MWe)']/1e6
+  foak_df['capex (M$/MWe)'] = foak_df['BE CAPEX ($/MWe)']/1e6
+  foak_df['Type'] = 'Breakeven'
+
+  anr_foak_capex_fom = pd.read_excel('./ANRs.xlsx', sheet_name='FOAK')[['Reactor', 'CAPEX $/MWe', 'FOPEX $/MWe-y']]
+  
+  anr_foak_fom = anr_foak_capex_fom[['Reactor', 'FOPEX $/MWe-y']]
+  foak_df = foak_df.merge(anr_foak_fom, left_on='ANR type', right_on='Reactor')
+
+  anr_foak_capex_fom['capex (M$/MWe)'] = anr_foak_capex_fom['CAPEX $/MWe']/1e6
+  anr_foak_capex_fom['Type'] = 'FOAK'
+
+  anr_foak_capex_fom['FOM (M$/MWe-y)'] = anr_foak_capex_fom['FOPEX $/MWe-y']/1e6
+  anr_foak_capex_fom = anr_foak_capex_fom[['Reactor', 'capex (M$/MWe)', 'FOM (M$/MWe-y)', 'Type']]
+  foak_df['FOM (M$/MWe-y)'] = foak_df['FOPEX $/MWe-y']/1e6
+  foak_df = foak_df[['Reactor', 'capex (M$/MWe)', 'FOM (M$/MWe-y)', 'Type']]
+  df = pd.concat([anr_foak_capex_fom, foak_df])
+  sns.scatterplot(ax=botax, data=df, x='FOM (M$/MWe-y)', y='capex (M$/MWe)', style='Type',\
+                   hue='Reactor', palette=utils.palette)
+  botax.set_ylabel('CAPEX (M$/MWe)')
+
+  sns.despine()
+
+  topax.get_legend().set_visible(False)
+  botax.get_legend().set_visible(False)
+  h4, l4 = botax.get_legend_handles_labels()
+  by_label = dict(zip(l4, h4))
+  fig.legend(by_label.values(), by_label.keys(),  bbox_to_anchor=(.5,1.1),loc='upper center', ncol=3)
+  
+
+  """
   sns.boxplot(ax=botax, data=foak_df, x='BE CAPEX (M$/MWe)', color='black', fill=False, width=.5)
   sns.stripplot(ax=botax, data=foak_df, x='BE CAPEX (M$/MWe)', hue='ANR type', palette=utils.palette, alpha=.6)
   topax.set_ylabel('')
@@ -254,13 +285,9 @@ def compare_deployment_stages():
   fig.legend(by_label.values(), by_label.keys(),  bbox_to_anchor=(.5,1.05),loc='upper center', ncol=5)
   # Add vertical lines with values of FOAK and NOAK CAPEX for the 5 designs
   anr_foak_capex = pd.read_excel('./ANRs.xlsx', sheet_name='FOAK', index_col='Reactor')[['CAPEX $/MWe']].to_dict()['CAPEX $/MWe']
-  #anr_noak_capex = pd.read_excel('./ANRs.xlsx', sheet_name='NOAK', index_col='Reactor')[['CAPEX $/MWe']].to_dict()['CAPEX $/MWe']
   for reactor, capex in anr_foak_capex.items():
     add_vertical_line(botax, capex/1e6, ymin=0, ymax=1, color=utils.palette[reactor])
-  
-  #for reactor, capex in anr_noak_capex.items():
-   # add_vertical_line(ax[1], capex/1e6, ymin=0, ymax=.5, color=utils.palette[reactor])
-
+  """
 
   fig.savefig(f'./results/electricity_comparison_NOAK_FOAK_net_annual_revenues_{cambium_scenario}.png', bbox_inches='tight')
 
