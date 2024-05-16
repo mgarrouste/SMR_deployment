@@ -24,7 +24,7 @@ cashflows_color_map = {'ANR CAPEX': 'navy',
 conversion_2021usd_to_2020usd = 0.99 #2020$/2021$ source: data.bls.gov
 conversion_2022usd_to_2020usd = 1/1.09 #2020$/2022$
 # CCUS costs
-ccus_cost = 150#$/ton CO2
+ccus_cost = 50#$/ton CO2
 
 # Energy conversion
 mmbtu_to_mwh = 0.293071 # MWh/MMBtu
