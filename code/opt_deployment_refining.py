@@ -33,6 +33,13 @@ def get_state(ref_id):
   state= select_df['state'].iloc[0]
   return state
 
+def get_lat_lon(ref_id):
+  ref_df = pd.read_excel('h2_demand_refineries.xlsx', sheet_name='processed')
+  select_df = ref_df[ref_df['refinery_id']==ref_id]
+  lat = select_df['latitude'].iloc[0]
+  lon = select_df['longitude'].iloc[0]
+  return lat, lon
+
 
 def solve_refinery_deployment(ref_id, ANR_data, H2_data):
   print(f'Start solve for {ref_id}')
@@ -204,6 +211,9 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data):
   results = opt.solve(model, tee = False)
   results_ref = {}
   results_ref['id'] = ref_id
+  lat, lon = get_lat_lon(ref_id)
+  results_ref['latitude'] = lat 
+  results_ref['longitude'] = lon
   results_ref['state'] = value(model.pState)
   results_ref['H2 Dem. (kg/day)'] = value(model.pRefDem)
   results_ref['Net Revenues ($/year)'] = value(model.NetRevenues)
@@ -221,7 +231,9 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data):
     results_ref['Conversion costs ($/year)'] = 0 # no conversion costs
     results_ref['Avoided NG costs ($/year)'] = value(annualized_avoided_ng_costs(model))
     results_ref['Breakeven price ($/MMBtu)'] = compute_breakeven_price(results_ref) # Compute BE prices before adding avoided NG costs!
+    results_ref['BE wo PTC ($/MMBtu)'] = compute_ng_be_wo_PTC(results_ref)
     results_ref['Net Revenues ($/year)'] +=results_ref['Avoided NG costs ($/year)']
+    results_ref['Net Revenues with H2 PTC ($/year)'] = results_ref['Net Revenues ($/year)']+results_ref['H2 PTC Revenues ($/year)']
     results_ref['ANR CRF'] = value(get_crf(model))
     results_ref['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
     results_ref['Depl. H2 Cap. (MWe)'] = value(get_eq_elec_dem_h2(model))
@@ -247,6 +259,11 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data):
 
 def compute_breakeven_price(results_ref):
   revenues = results_ref['Net Revenues with H2 PTC ($/year)']
+  breakeven_price = -revenues/(EFF_H2_SMR * CONV_MJ_TO_MMBTU * results_ref['H2 Dem. (kg/day)']*365)
+  return breakeven_price
+
+def compute_ng_be_wo_PTC(results_ref):
+  revenues = results_ref['Net Revenues ($/year)']
   breakeven_price = -revenues/(EFF_H2_SMR * CONV_MJ_TO_MMBTU * results_ref['H2 Dem. (kg/day)']*365)
   return breakeven_price
 

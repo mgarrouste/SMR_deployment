@@ -27,7 +27,9 @@ def get_ammonia_plant_demand(plant):
   elec_demand_MWe = float(plant_df['Electricity demand (MWe)'].iloc[0])
   ammonia_capacity = float(plant_df['Capacity (tNH3/year)'].iloc[0])
   state = plant_df['State'].iloc[0].strip()
-  return ammonia_capacity, h2_demand_kg_per_day, elec_demand_MWe, state
+  lat = plant_df['latitude'].iloc[0]
+  lon = plant_df['longitude'].iloc[0]
+  return ammonia_capacity, h2_demand_kg_per_day, elec_demand_MWe, state, lat, lon
 
 def build_ammonia_plant_deployment(plant, ANR_data, H2_data): 
   print(f'Ammonia plant {plant} : start solving')
@@ -35,7 +37,7 @@ def build_ammonia_plant_deployment(plant, ANR_data, H2_data):
 
   ############### DATA ####################
   ### Hydrogen and electricity demand
-  ammonia_capacity, h2_dem_kg_per_day, elec_dem_MWe, state = get_ammonia_plant_demand(plant)
+  ammonia_capacity, h2_dem_kg_per_day, elec_dem_MWe, state, lat, lon = get_ammonia_plant_demand(plant)
   model.pNH3Cap = Param(initialize = ammonia_capacity)
   model.pH2Dem = Param(initialize = h2_dem_kg_per_day) # kg/day
   model.pElecDem = Param(initialize = elec_dem_MWe) #MW-e
@@ -180,7 +182,7 @@ def build_ammonia_plant_deployment(plant, ANR_data, H2_data):
 
 def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results):
   model = build_ammonia_plant_deployment(plant, ANR_data, H2_data)
-  ammonia_capacity, h2_dem_kg_per_day, elec_dem_MWh_per_day, state = get_ammonia_plant_demand(plant)
+  ammonia_capacity, h2_dem_kg_per_day, elec_dem_MWh_per_day, state, lat, lon = get_ammonia_plant_demand(plant)
   # for carbon accounting
   def compute_annual_carbon_emissions(model):
     return sum(sum(sum(model.pH2CarbonInt[h,g]*model.vQ[n,h,g]*model.pH2CapH2[h]*24*365 for g in model.G) for h in model.H) for n in model.N)
@@ -233,6 +235,8 @@ def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results):
   results_ref = {}
   results_ref['id'] = plant
   results_ref['state'] = value(model.pState)
+  results_ref['latitude'] = lat
+  results_ref['longitude'] = lon
   results_ref['Ammonia capacity (tNH3/year)'] = ammonia_capacity
   results_ref['H2 Dem. (kg/day)'] = h2_dem_kg_per_day
   results_ref['Aux Elec Dem. (MWe)'] = elec_dem_MWh_per_day/24
@@ -251,7 +255,10 @@ def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results):
     results_ref['Conversion costs ($/year)'] = value(compute_conv_costs(model))
     results_ref['Avoided NG costs ($/year)'] = value(annualized_avoided_ng_costs(model))
     results_ref['Breakeven price ($/MMBtu)'] = compute_ng_breakeven_price(results_ref) # Compute BE price before adding avoided ng costs!
+    results_ref['BE wo PTC ($/MMBtu)'] = compute_ng_be_without_ptc(results_ref)
     results_ref['Net Revenues ($/year)'] +=results_ref['Avoided NG costs ($/year)']
+    # Recalculate revenues with H2 PTC: add revenues from avoided NG costs
+    results_ref['Net Revenues with H2 PTC ($/year)'] = results_ref['Net Revenues ($/year)']+results_ref['H2 PTC Revenues ($/year)']
     results_ref['ANR CRF'] = value(get_crf(model))
     results_ref['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
     results_ref['Depl H2 Cap. (MWe)'] = value(get_eq_elec_dem_h2(model))
@@ -277,6 +284,13 @@ def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results):
 
 def compute_ng_breakeven_price(results_ref):
   net_rev = results_ref['Net Revenues with H2 PTC ($/year)']
+  capacity = results_ref['Ammonia capacity (tNH3/year)']
+  elec_costs = ELEC_PRICE*ngNH3ElecCons*capacity # $/year
+  be_price = (-net_rev-elec_costs)/(ngNH3ConsRate*capacity)
+  return be_price
+
+def compute_ng_be_without_ptc(results_ref):
+  net_rev = results_ref['Net Revenues ($/year)']
   capacity = results_ref['Ammonia capacity (tNH3/year)']
   elec_costs = ELEC_PRICE*ngNH3ElecCons*capacity # $/year
   be_price = (-net_rev-elec_costs)/(ngNH3ConsRate*capacity)

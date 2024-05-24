@@ -32,6 +32,13 @@ def get_state(plant):
   state = plant_df['STATE'].iloc[0]
   return state
 
+def get_lat_lon(plant):
+  steel_df = pd.read_excel('./h2_demand_bfbof_steel_us_2022.xlsx', sheet_name='processed')
+  plant_df = steel_df[steel_df['Plant'] == plant]
+  lat = plant_df['latitude'].iloc[0]
+  lon = plant_df['longitude'].iloc[0]
+  return lat, lon
+
 def build_steel_plant_deployment(plant, ANR_data, H2_data): 
   print(f'Start {plant}')
   model = ConcreteModel(plant)
@@ -247,6 +254,8 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
   results_dic = {}
   results_dic['id'] = plant
   results_dic['state'] = value(model.pState)
+  lat, lon = get_lat_lon(plant)
+  results_dic['latitude'], results_dic['longitude'] = lat, lon
   results_dic['Steel prod. (ton/year)'] = steel_cap_ton_per_annum
   results_dic['H2 Dem. (kg/day)'] = value(model.pH2Dem)
   results_dic['Aux Elec Dem. (MWe)'] = value(model.pElecDem)
@@ -265,6 +274,9 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
     results_dic['Conversion costs ($/year)'] = value(compute_conv_costs(model))
     results_dic['Avoided NG costs ($/year)'] = value(annualized_avoided_ng_costs())
     results_dic['Breakeven price ($/MMBtu)'] = compute_breakeven_price(results_dic) # Compute BE price before adding avoided ng costs!
+    results_dic['BE wo PTC ($/MMBtu)'] = compute_be_wo_PTC(results_dic)
+    results_dic['Net Revenues ($/year)'] += results_dic['Avoided NG costs ($/year)']
+    results_dic['Net Revenues with H2 PTC ($/year)'] = results_dic['Net Revenues ($/year)']+results_dic['H2 PTC Revenues ($/year)']
     results_dic['ANR CRF'] = value(get_crf(model))
     results_dic['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
     results_dic['Depl H2 Cap. (MWe)'] = value(get_eq_elec_dem_h2(model))
@@ -287,6 +299,14 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
     return None
 
 def compute_breakeven_price(results_ref):
+  costs = -1*results_ref['Net Revenues with H2 PTC ($/year)'] # NEt revenues Negative by convention
+  plant_cap = results_ref['Steel prod. (ton/year)']
+  COAL_CONS_RATE = 0.463
+  breakeven_price_per_ton = (costs - iron_ore_cost*bfbof_iron_cons*plant_cap - om_bfbof*plant_cap)/(COAL_CONS_RATE*plant_cap)
+  breakeven_price = breakeven_price_per_ton/utils.coal_heat_content
+  return breakeven_price
+
+def compute_be_wo_PTC(results_ref):
   costs = -1*results_ref['Net Revenues ($/year)'] # NEt revenues Negative by convention
   plant_cap = results_ref['Steel prod. (ton/year)']
   breakeven_price_per_ton = (costs - iron_ore_cost*bfbof_iron_cons*plant_cap - om_bfbof*plant_cap)/(COAL_CONS_RATE*plant_cap)
