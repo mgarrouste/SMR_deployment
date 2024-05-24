@@ -6,6 +6,7 @@ epa_df = pd.read_excel('./epa_flight_iron_and_steel_2022_emissions.xls', skiprow
 epa_df['FACILITY NAME'] = epa_df['FACILITY NAME'].apply(lambda x: x.upper().replace('U.S.','US'))
 epa_df['Latitude rounded'] = epa_df['LATITUDE'].apply(lambda x: np.round(x,1))
 epa_df['Longitude rounded'] = epa_df['LONGITUDE'].apply(lambda x: np.round(x,1))
+epa_df.rename(columns={'LATITUDE':'latitude', 'LONGITUDE':'longitude'}, inplace=True)
 
 
 # global tracker data: main production process mapping, select bf/bof
@@ -36,11 +37,11 @@ merged['Steel production capacity (ttpa)'] = (
 ))
 
 # Check matching between the two dataset
-merged = merged[['Plant name (English)', 'FACILITY NAME_x', 'FACILITY NAME_y', 'Coordinates', 'LATITUDE', 'LONGITUDE', 
+merged = merged[['Plant name (English)', 'FACILITY NAME_x', 'FACILITY NAME_y', 'Coordinates', 'latitude', 'longitude', 
                  'Location address', 'REPORTED ADDRESS', 'CITY NAME', 'COUNTY NAME', 'STATE', 'Subnational unit (province/state)','ZIP CODE',
                  'Status','Main production process', 'Main production equipment','GHG QUANTITY (METRIC TONS CO2e)','Steel production capacity (ttpa)']]
 # Select relevant columns for final dataset
-clean_df = merged[['Plant name (English)', 'Coordinates', 'REPORTED ADDRESS', 'CITY NAME', 'COUNTY NAME', 'ZIP CODE', 'STATE',
+clean_df = merged[['Plant name (English)', 'latitude', 'longitude', 'REPORTED ADDRESS', 'CITY NAME', 'COUNTY NAME', 'ZIP CODE', 'STATE',
                     'Status', 'Main production process', 'GHG QUANTITY (METRIC TONS CO2e)', 
                    'Steel production capacity (ttpa)']]
 
