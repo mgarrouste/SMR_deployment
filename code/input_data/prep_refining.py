@@ -1,5 +1,6 @@
 import pandas as pd
-import numpy as np 
+from geopy.geocoders import Nominatim
+from geopy.extra.rate_limiter import RateLimiter
 
 # Data from the EIA: Captive h2 production at refineries
 eia_df = pd.read_excel('./hydrogen_production_capacities_at_US_refineries_EIA_2022.xlsx', skiprows=3,header=0)
@@ -112,6 +113,22 @@ abbrev_states['state'] = abbrev_states.apply(lambda x:x['state'].upper(), axis=1
 ref_ratio = ref_ratio.merge(abbrev_states,left_on='State', right_on='state')
 ref_ratio.drop(columns=['State', 'state'], inplace=True)
 ref_ratio.rename(columns={'abbrev':'state'}, inplace=True)
+
+# Initialize the Nominatim geocoder with the rate limiter
+geolocator = Nominatim(user_agent="your_app_name")
+geocode = RateLimiter(geolocator.geocode, min_delay_seconds=1)
+
+# Function to apply geocoding
+def geocode_location(row):
+    # Try to geocode using city and state, else return NaN
+    try:
+        location = geocode(f"{row['City']}, {row['state']}, USA")
+        return location.latitude, location.longitude
+    except:
+        return pd.NA, pd.NA
+
+# Apply the geocoding function to each row
+ref_ratio['latitude'], ref_ratio['longitude'] = zip(*ref_ratio.apply(geocode_location, axis=1))
 
 # SAve results
 ref_ratio.to_excel('../h2_demand_refineries.xlsx', sheet_name='processed', index=False)
