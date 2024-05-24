@@ -1,10 +1,28 @@
 import pandas as pd
-import numpy as np
+from geopy.geocoders import Nominatim
+from geopy.extra.rate_limiter import RateLimiter
 
 ammonia_df = pd.read_excel('./statistic_id1266392_ammonia-plant-production-capacity-in-the-us-2022.xlsx', sheet_name='Data', header=None, skiprows=5, usecols=[1,2])
 ammonia_df.rename(columns={1:'Plant',2:'Capacity'}, inplace=True)
 ammonia_df['City'] = ammonia_df.apply(lambda x:x['Plant'].split('(')[1].split(',')[0], axis=1)
 ammonia_df['State'] = ammonia_df.apply(lambda x:x['Plant'].split('(')[1][:-1].split(',')[1], axis=1)
+
+# Initialize the Nominatim geocoder with the rate limiter
+geolocator = Nominatim(user_agent="your_app_name")
+geocode = RateLimiter(geolocator.geocode, min_delay_seconds=1)
+
+# Function to apply geocoding
+def geocode_location(row):
+    # Try to geocode using city and state, else return NaN
+    try:
+        location = geocode(f"{row['City']}, {row['State']}, USA")
+        return location.latitude, location.longitude
+    except:
+        return pd.NA, pd.NA
+
+# Apply the geocoding function to each row
+ammonia_df['latitude'], ammonia_df['longitude'] = zip(*ammonia_df.apply(geocode_location, axis=1))
+
 ammonia_df['Plant'] = ammonia_df.apply(lambda x:x['Plant'].split('(')[0][:-1], axis=1)
 ammonia_df['Capacity (tNH3/year)'] = ammonia_df['Capacity']*1e3 # Original data in thousands MT
 ammonia_df.drop(columns=['Capacity'], inplace=True)
