@@ -7,8 +7,6 @@ import ANR_application_comparison
 # Create figure
 fig = go.Figure()
 
-
-
 # List of the state abbreviations you want to color
 nuclear_restrictions = ['CA', 'CT', 'VT', 'MA', 'IL', 'OR', 'NJ', 'HI', 'ME', 'RI', 'VT']
 nuclear_ban = ['MN', 'NY']
@@ -46,7 +44,7 @@ foak_positive = pd.concat([h2_data, heat_data], ignore_index=True)
 foak_positive = foak_positive[foak_positive['Annual Net Revenues (M$/MWe/y)'] >=0]
 
 
-scaler =50
+scaler = 40
 
     
 # Set marker symbol based on the application's type
@@ -116,12 +114,19 @@ for app, marker in markers_applications.items():
 
 # Update layout
 fig.update_layout(
-    title_text='FOAK',
     geo=dict(
         scope='usa',
         projection_type='albers usa',
         showlakes=True,
         lakecolor='rgb(255, 255, 255)',
+    ),
+    width=1000,  # Set the width of the figure
+    height=600,  # Set the height of the figure
+    margin=go.layout.Margin(
+        l=20,  # left margin
+        r=20,  # right margin
+        b=20,  # bottom margin
+        t=20  # top margin
     ),
     legend=dict(
         title="<b>Application & ANR</b>",
@@ -132,5 +137,7 @@ fig.update_layout(
     ),
 )
 
+# Save
+fig.write_image('./results/map_FOAK.png')
 # Show figure
 fig.show()
