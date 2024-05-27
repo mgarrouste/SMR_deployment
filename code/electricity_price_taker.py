@@ -144,6 +144,18 @@ def solve_ED_electricity(state, ANRtype, ANR_data, year):
     return (sum((model.pEPrice[t]-model.pANRVOM)*model.vG[t] for t in model.t) -\
             model.pANRFOM*model.pANRCap )/(model.pANRCap*model.pANRCRF*(1-model.pITC_ANR))
   results_dic['BE CAPEX ($/MWe)'] = value(compute_be_capex(model))
+
+  def compute_capacity_factor(model):
+    return sum(model.vG[t] for t in model.t)/(model.pANRCap*8760)
+  results_dic['Capacity factor'] = value(compute_capacity_factor(model))
+
+  def compute_be_electricity_price(model):
+    """Computes the breakeven price of electricity assuming a 95% capacity factor"""
+    return ((model.pANRCAPEX*model.pANRCRF*(1-model.pITC_ANR) + model.pANRFOM)*model.pANRCap \
+            + model.pANRVOM*model.pANRCap*0.95*8760)/(model.pANRCap*8760)
+  
+  results_dic['BE electricity ($/MWhe)'] = value(compute_be_electricity_price(model))
+    
   return results_dic
 
 def save_electricity_results(results_df, excel_file):
