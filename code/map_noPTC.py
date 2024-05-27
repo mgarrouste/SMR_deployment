@@ -109,7 +109,7 @@ fig.add_trace(go.Scattergeo(
         colorbar = dict(
             title='Breakeven NG price ($/MMBtu)',
             orientation='v',  
-            x=1, 
+            x=0.8, 
             y=0.5,  
             lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
             len=0.8,  # Length of the colorbar (80% of figure width)
@@ -118,6 +118,7 @@ fig.add_trace(go.Scattergeo(
         ),
         symbol=marker_symbols,
     ),
+    showlegend=False
 ))
 
 
@@ -141,15 +142,6 @@ fig.add_trace(go.Scattergeo(
 ))
 
 
-
-
-
-
-
-
-
-
-
 # Update layout
 fig.update_layout(
     geo=dict(
@@ -161,118 +153,14 @@ fig.update_layout(
     width=1200,  # Set the width of the figure
     height=600,  # Set the height of the figure
     margin=go.layout.Margin(
-        l=20,  # left margin
+        l=0,  # left margin
         r=20,  # right margin
         b=20,  # bottom margin
-        t=20  # top margin
-    ),
-    legend=dict(
-        title="<b>Application & ANR</b>",
-        x=1,
-        y=1,
-        traceorder="normal",
-        bgcolor="rgba(255, 255, 255, 0.5)"  # semi-transparent background
+        t=10  # top margin
     ),
 )
 
-fig.show()
-exit()
 
-
-
-
-scaler = 40
-
-    
-# Set marker symbol based on the application's type
-markers_applications = {'Process Heat':'square', 'Industrial Hydrogen':'circle'}
-marker_symbols = noak_positive['Application'].map(markers_applications).to_list()
-
-# Get colors for each marker
-line_colors = [palette[anr] for anr in noak_positive['ANR']]
-
-fig.add_trace(go.Scattergeo(
-    lon=noak_positive['longitude'],
-    lat=noak_positive['latitude'],
-    text="Capacity: " + noak_positive['Depl. ANR Cap. (MWe)'].astype(str) + " MWe",
-    mode='markers',
-    marker=dict(
-        size=noak_positive['Annual Net Revenues (M$/MWe/y)']*scaler,
-        color=noak_positive['Annual Net Revenues (M$/MWe/y)'],
-        colorscale='Greys',
-        colorbar = dict(
-            title='Annual Net Revenues (M$/MWe/y)',
-            orientation='h',  # Set the orientation to 'h' for horizontal
-            x=0.5,  # Center the colorbar horizontally
-            y=-0.1,  # Position the colorbar below the x-axis
-            xanchor='center',
-            yanchor='bottom',
-            lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
-            len=0.8  # Length of the colorbar (80% of figure width)
-        ),
-        symbol=marker_symbols,
-        line_color=line_colors,
-        line_width=5,
-        sizemode='diameter'
-    ),
-    showlegend=False
-))
-
-# Create symbol and color legend traces
-for anr, color in palette.items():
-    fig.add_trace(go.Scattergeo(
-        lon=[None],
-        lat=[None],
-        marker=dict(
-            size=15,
-            color='white',
-            line_color=color,
-            line_width=5,
-        ),
-        name=anr
-    ))
-
-# Create symbol and color legend traces
-for app, marker in markers_applications.items():
-    fig.add_trace(go.Scattergeo(
-        lon=[None],
-        lat=[None],
-        marker=dict(
-            size=15,
-            color='white',
-            symbol=marker,
-            line_color='black',
-            line_width=2,
-        ),
-        name=app
-    ))
-
-
-
-# Update layout
-fig.update_layout(
-    geo=dict(
-        scope='usa',
-        projection_type='albers usa',
-        showlakes=True,
-        lakecolor='rgb(255, 255, 255)',
-    ),
-    width=1200,  # Set the width of the figure
-    height=600,  # Set the height of the figure
-    margin=go.layout.Margin(
-        l=20,  # left margin
-        r=20,  # right margin
-        b=20,  # bottom margin
-        t=20  # top margin
-    ),
-    legend=dict(
-        title="<b>Application & ANR</b>",
-        x=1,
-        y=1,
-        traceorder="normal",
-        bgcolor="rgba(255, 255, 255, 0.5)"  # semi-transparent background
-    ),
-)
-
-# Show figure
+# Save
+fig.write_image('./results/map_noPTC.png')
 fig.show()
