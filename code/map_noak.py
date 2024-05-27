@@ -116,7 +116,7 @@ for name, cm in custom_legend.items():
               size=15,
               color='white',
               line_color=cm[0],
-              line_width=5,
+              line_width=4,
               symbol=cm[1]
           ),
           name=name
