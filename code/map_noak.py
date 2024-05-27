@@ -48,9 +48,7 @@ noak_positive = pd.concat([h2_data, heat_data], ignore_index=True)
 noak_positive = noak_positive[noak_positive['Annual Net Revenues (M$/MWe/y)'] >=0]
 
 
-
-
-scaler = 40
+scaler = 30
 
     
 # Set marker symbol based on the application's type
@@ -66,7 +64,7 @@ fig.add_trace(go.Scattergeo(
     text="Capacity: " + noak_positive['Depl. ANR Cap. (MWe)'].astype(str) + " MWe",
     mode='markers',
     marker=dict(
-        size=noak_positive['Annual Net Revenues (M$/MWe/y)']*scaler,
+        size=noak_positive['Annual Net Revenues (M$/MWe/y)']*scaler+5,
         color=noak_positive['Annual Net Revenues (M$/MWe/y)'],
         colorscale='Greys',
         colorbar = dict(
@@ -77,17 +75,55 @@ fig.add_trace(go.Scattergeo(
             xanchor='center',
             yanchor='bottom',
             lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
-            len=0.8  # Length of the colorbar (80% of figure width)
+            len=0.7,  # Length of the colorbar (80% of figure width)
+            tickvals = [0.1,0.25,0.5,0.75,1,1.25],
+            ticktext = [0.1,0.25,0.5,0.75,1,1.25],
+            tickmode='array'
+            #dtick=0.1,
+            #tick0=0.1
         ),
         symbol=marker_symbols,
         line_color=line_colors,
-        line_width=5,
+        line_width=3,
         sizemode='diameter'
     ),
     showlegend=False
 ))
 
+
+# Create custom legend
+custom_legend = {'iMSR - Process Heat':[palette['iMSR'], 'square'],
+                 'HTGR - Process Heat':[palette['HTGR'], 'square'],
+                 'iPWR - Process Heat':[palette['iPWR'], 'square'],
+                 'PBR-HTGR - Process Heat':[palette['PBR-HTGR'], 'square'],
+                 'Micro - Process Heat':[palette['Micro'], 'square'],
+                 'iMSR - Industrial H2':[palette['iMSR'], 'circle'],
+                 'HTGR - Industrial H2':[palette['HTGR'], 'circle'],
+                 'iPWR - Industrial H2':[palette['iPWR'], 'circle'],
+                 'PBR-HTGR - Industrial H2':[palette['PBR-HTGR'], 'circle'],
+                 'Micro - Industrial H2':[palette['Micro'], 'circle']}
+
+reactors_used = noak_positive['ANR'].unique()
+
 # Create symbol and color legend traces
+for name, cm in custom_legend.items():
+    reactor = name.split(' - ')[0].strip()
+    if reactor in reactors_used:
+      fig.add_trace(go.Scattergeo(
+          lon=[None],
+          lat=[None],
+          marker=dict(
+              size=15,
+              color='white',
+              line_color=cm[0],
+              line_width=5,
+              symbol=cm[1]
+          ),
+          name=name
+      ))
+
+# Create symbol and color legend traces
+"""
 for anr, color in palette.items():
     fig.add_trace(go.Scattergeo(
         lon=[None],
@@ -115,7 +151,7 @@ for app, marker in markers_applications.items():
         ),
         name=app
     ))
-
+"""
 
 
 # Update layout
