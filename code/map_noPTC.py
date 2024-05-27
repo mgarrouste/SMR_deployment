@@ -109,14 +109,16 @@ fig.add_trace(go.Scattergeo(
         colorbar = dict(
             title='Breakeven NG price ($/MMBtu)',
             orientation='v',  
-            x=0.8, 
-            y=0.5,  
+            x=0.87, 
+            y=0.45,  
             lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
             len=0.8,  # Length of the colorbar (80% of figure width)
             tickvals=colorbar_ticks,  # Custom tick values
             ticktext=colorbar_texts,
         ),
         symbol=marker_symbols,
+        line_color='black',
+        line_width=1,
     ),
     showlegend=False
 ))
@@ -137,9 +139,26 @@ fig.add_trace(go.Scattergeo(
         size=8,
         color='#4E0B0B',
         symbol=marker_symbols,
+        line_color='black',
+        line_width=1,
     ),
     showlegend=False
 ))
+
+# Create symbol and color legend traces
+for app, marker in markers_applications.items():
+    fig.add_trace(go.Scattergeo(
+        lon=[None],
+        lat=[None],
+        marker=dict(
+            size=15,
+            color='white',
+            symbol=marker,
+            line_color='black',
+            line_width=2,
+        ),
+        name=app
+    ))
 
 
 # Update layout
@@ -157,6 +176,13 @@ fig.update_layout(
         r=20,  # right margin
         b=20,  # bottom margin
         t=10  # top margin
+    ),
+    legend=dict(
+        title="<b>Application</b>",
+        x=0.9,
+        y=1,
+        traceorder="normal",
+        bgcolor="rgba(255, 255, 255, 0.5)"  # semi-transparent background
     ),
 )
 
