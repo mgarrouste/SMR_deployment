@@ -202,6 +202,9 @@ def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results):
   def get_crf(model):
     return sum(model.vS[g]*model.pANRCRF[g] for g in model.G)
   
+  def get_anr_capex(model):
+    return sum(model.pANRCAPEX[g]*model.vS[g] for g in model.G)
+  
   def compute_conv_costs(model):
     crf = model.pWACC / (1 - (1/(1+model.pWACC)**auxNucNH3LT) ) 
     costs =auxNucNH3CAPEX*crf*(1-model.pITC_H2)
@@ -239,6 +242,7 @@ def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results):
   results_ref['longitude'] = lon
   results_ref['Ammonia capacity (tNH3/year)'] = ammonia_capacity
   results_ref['H2 Dem. (kg/day)'] = h2_dem_kg_per_day
+  results_ref['ANR CAPEX ($/MWe)'] = value(get_anr_capex(model))
   results_ref['Aux Elec Dem. (MWe)'] = elec_dem_MWh_per_day/24
   results_ref['Net Revenues ($/year)'] = value(model.NetRevenues)
   results_ref['H2 PTC Revenues ($/year)'] = h2_dem_kg_per_day*365*utils.h2_ptc
@@ -249,6 +253,9 @@ def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results):
     model.solutions.load_from(results)
     results_ref['Ann. CO2 emissions (kgCO2eq/year)'] = value(compute_annual_carbon_emissions(model))
     results_ref['ANR CAPEX ($/year)'] = value(compute_anr_capex(model))
+    results_ref['ANR CRF'] = value(get_crf(model))
+    results_ref['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
+    results_ref['Depl H2 Cap. (MWe)'] = value(get_eq_elec_dem_h2(model))
     results_ref['H2 CAPEX ($/year)'] = value(compute_h2_capex(model))
     results_ref['ANR O&M ($/year)'] = value(compute_anr_om(model))
     results_ref['H2 O&M ($/year)'] = value(compute_h2_om(model))
@@ -256,12 +263,10 @@ def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results):
     results_ref['Avoided NG costs ($/year)'] = value(annualized_avoided_ng_costs(model))
     results_ref['Breakeven price ($/MMBtu)'] = compute_ng_breakeven_price(results_ref) # Compute BE price before adding avoided ng costs!
     results_ref['BE wo PTC ($/MMBtu)'] = compute_ng_be_without_ptc(results_ref)
+    results_ref['Breakeven CAPEX ($/MWe)'], results_ref['Cost red CAPEX BE'] = compute_ammonia_capex_breakeven(results_ref)
     results_ref['Net Revenues ($/year)'] +=results_ref['Avoided NG costs ($/year)']
     # Recalculate revenues with H2 PTC: add revenues from avoided NG costs
     results_ref['Net Revenues with H2 PTC ($/year)'] = results_ref['Net Revenues ($/year)']+results_ref['H2 PTC Revenues ($/year)']
-    results_ref['ANR CRF'] = value(get_crf(model))
-    results_ref['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
-    results_ref['Depl H2 Cap. (MWe)'] = value(get_eq_elec_dem_h2(model))
     results_ref['Surplus ANR Cap. (MWe)'] = value(compute_surplus_capacity(model))
     results_ref['Net Annual Revenues ($/MWe/y)'] = (results_ref['Net Revenues ($/year)'])/results_ref['Depl. ANR Cap. (MWe)']
     results_ref['Net Annual Revenues with H2 PTC ($/MWe/y)'] = results_ref['Net Revenues with H2 PTC ($/year)']/results_ref['Depl. ANR Cap. (MWe)']
@@ -296,13 +301,16 @@ def compute_ng_be_without_ptc(results_ref):
   be_price = (-net_rev-elec_costs)/(ngNH3ConsRate*capacity)
   return be_price
 
-def compute_ammonia_capex_breakeven(results_ref, be_ng_price_foak, ng_price):
-  alpha = results_ref['Ammonia capacity (tNH3/year)'][0]*ngNH3ConsRate
-  foak_anr_capex = results_ref['ANR CAPEX ($/year)'][0]
-  anr_crf = results_ref['ANR CRF'][0]
-  deployed_anr_cap = results_ref['Depl. ANR Cap. (MWe)'][0]
-  be_capex = (alpha*(ng_price - be_ng_price_foak) + foak_anr_capex)/(anr_crf*deployed_anr_cap)
-  return be_capex
+def compute_ammonia_capex_breakeven(results_ref):
+  alpha = results_ref['ANR CRF']*results_ref['Depl. ANR Cap. (MWe)']*(1-ITC_ANR)
+  # ANRH2 costs
+  anrh2_costs = results_ref['Net Revenues ($/year)'] + results_ref['ANR CAPEX ($/year)'] # costs wo anr capex
+  # BE CAPEX $/MWe
+  be_capex = (results_ref['Avoided NG costs ($/year)'] + results_ref['H2 PTC Revenues ($/year)'] - anrh2_costs)/alpha
+  # Cost reduction compared to capex 
+  if be_capex >= results_ref['ANR CAPEX ($/MWe)']: cost_red = 0
+  else: cost_red = 1-(be_capex/results_ref['ANR CAPEX ($/MWe)'])
+  return be_capex, cost_red
 
 
 def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False): 

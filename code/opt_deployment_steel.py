@@ -222,6 +222,9 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
   def get_crf(model):
     return sum(model.vS[g]*model.pANRCRF[g] for g in model.G)
   
+  def get_anr_capex(model):
+    return sum(model.pANRCAPEX[g]*model.vS[g] for g in model.G)
+  
   def compute_conv_costs(model):
     costs = steel_cap_ton_per_annum*(model.pEAFCAPEX*(1-model.pITC_H2) + model.pShaftFCAPEX*(1-model.pITC_H2)/model.pRatioSteelDRI + model.pEAFOM +\
             model.pIronOre*model.pRatioIronOreDRI/model.pRatioSteelDRI)
@@ -258,6 +261,7 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
   results_dic['latitude'], results_dic['longitude'] = lat, lon
   results_dic['Steel prod. (ton/year)'] = steel_cap_ton_per_annum
   results_dic['H2 Dem. (kg/day)'] = value(model.pH2Dem)
+  results_dic['ANR CAPEX ($/MWe)'] = value(get_anr_capex(model))
   results_dic['Aux Elec Dem. (MWe)'] = value(model.pElecDem)
   results_dic['Net Revenues ($/year)'] = value(model.NetRevenues)
   results_dic['H2 PTC Revenues ($/year)'] = value(model.pH2Dem)*365*utils.h2_ptc
@@ -271,15 +275,16 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
     results_dic['H2 CAPEX ($/year)'] = value(compute_h2_capex(model))
     results_dic['ANR O&M ($/year)'] = value(compute_anr_om(model))
     results_dic['H2 O&M ($/year)'] = value(compute_h2_om(model))
+    results_dic['ANR CRF'] = value(get_crf(model))
+    results_dic['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
+    results_dic['Depl H2 Cap. (MWe)'] = value(get_eq_elec_dem_h2(model))
     results_dic['Conversion costs ($/year)'] = value(compute_conv_costs(model))
     results_dic['Avoided NG costs ($/year)'] = value(annualized_avoided_ng_costs())
     results_dic['Breakeven price ($/MMBtu)'] = compute_breakeven_price(results_dic) # Compute BE price before adding avoided ng costs!
     results_dic['BE wo PTC ($/MMBtu)'] = compute_be_wo_PTC(results_dic)
+    results_dic['Breakeven CAPEX ($/MWe)'], results_dic['Cost red CAPEX BE'] = compute_breakeven_capex(results_dic)
     results_dic['Net Revenues ($/year)'] += results_dic['Avoided NG costs ($/year)']
     results_dic['Net Revenues with H2 PTC ($/year)'] = results_dic['Net Revenues ($/year)']+results_dic['H2 PTC Revenues ($/year)']
-    results_dic['ANR CRF'] = value(get_crf(model))
-    results_dic['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))
-    results_dic['Depl H2 Cap. (MWe)'] = value(get_eq_elec_dem_h2(model))
     results_dic['Surplus ANR Cap. (MWe)'] = value(compute_surplus_capacity(model))
     results_dic['Net Annual Revenues ($/MWe/y)'] = (results_dic['Net Revenues ($/year)']+results_dic['Avoided NG costs ($/year)'])/results_dic['Depl. ANR Cap. (MWe)']
     results_dic['Net Annual Revenues with H2 PTC ($/MWe/y)'] = (results_dic['Net Revenues with H2 PTC ($/year)']+results_dic['Avoided NG costs ($/year)'])/results_dic['Depl. ANR Cap. (MWe)']
@@ -305,6 +310,21 @@ def compute_breakeven_price(results_ref):
   breakeven_price_per_ton = (costs - iron_ore_cost*bfbof_iron_cons*plant_cap - om_bfbof*plant_cap)/(COAL_CONS_RATE*plant_cap)
   breakeven_price = breakeven_price_per_ton/utils.coal_heat_content
   return breakeven_price
+
+def compute_breakeven_capex(results_ref):
+  alpha = results_ref['ANR CRF']*results_ref['Depl. ANR Cap. (MWe)']*(1-utils.ITC_ANR)
+   # ANRH2 costs
+  anrh2_costs = results_ref['Conversion costs ($/year)'] + results_ref['H2 CAPEX ($/year)'] \
+    + results_ref['ANR O&M ($/year)']+ results_ref['H2 O&M ($/year)']  # costs wo anr capex
+  # BE CAPEX $/MWe
+  be_capex = (results_ref['Avoided NG costs ($/year)'] + results_ref['H2 PTC Revenues ($/year)'] - anrh2_costs)/alpha
+  # Cost reduction compared to capex 
+  if be_capex >= results_ref['ANR CAPEX ($/MWe)']: cost_red = 0
+  else: cost_red = 1-(be_capex/results_ref['ANR CAPEX ($/MWe)'])
+  return be_capex, cost_red
+
+
+
 
 def compute_be_wo_PTC(results_ref):
   costs = -1*results_ref['Net Revenues ($/year)'] # NEt revenues Negative by convention
