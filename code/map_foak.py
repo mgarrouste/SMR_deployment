@@ -1,14 +1,8 @@
 import pandas as pd
-import numpy as np
 import plotly.graph_objects as go
-import matplotlib.pyplot as plt
 from utils import palette
 import ANR_application_comparison
 
-fig = plt.figure(figsize=(20, 10))
-(figfoak, fig20, fig40, fig60) = fig.subfigures(4,1)
-main_figures = [figfoak, fig20, fig40, fig60]
-(mapf, abatf) = figfoak.subfigures(1,2)
 
 # Create figure
 fig = go.Figure()
