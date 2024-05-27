@@ -81,8 +81,73 @@ heat_data.rename(columns={'Emissions_mmtco2/y':'Ann. avoided CO2 emissions (MMT-
 heat_data.reset_index(inplace=True, names=['id'])
 
 noptc_be = pd.concat([h2_data, heat_data], ignore_index=True)
-print(noptc_be)
-print(noptc_be['BE wo PTC ($/MMBtu)'].describe(percentiles = [.1,.25,.5,.75,.9]))
+
+#print(noptc_be['BE wo PTC ($/MMBtu)'].describe(percentiles = [.1,.25,.5,.75,.9]))
+
+max_be = 200 # show only up to 275$/MMBtu
+
+above_max = noptc_be[noptc_be['BE wo PTC ($/MMBtu)']>max_be]
+noptc_be = noptc_be[noptc_be['BE wo PTC ($/MMBtu)']<=max_be]
+
+
+# Set marker symbol based on the application's type
+markers_applications = {'Process Heat':'square', 'Industrial Hydrogen':'circle'}
+marker_symbols = noptc_be['Application'].map(markers_applications).to_list()
+
+colorbar_ticks = [6.20, 16.44, 22.81, 55.48, 129.75]
+colorbar_texts = ['Minimum: 6.20', '25th: 16.44', 'Median: 22.81', '75th: 55.48', '90th: 129.75']
+
+fig.add_trace(go.Scattergeo(
+    lon=noptc_be['longitude'],
+    lat=noptc_be['latitude'],
+    text="Breakeven price: " + noptc_be['BE wo PTC ($/MMBtu)'].astype(str) + " $/MMBtu",
+    mode='markers',
+    marker=dict(
+        size=8,
+        color=noptc_be['BE wo PTC ($/MMBtu)'],
+        colorscale='Reds',
+        colorbar = dict(
+            title='Breakeven NG price ($/MMBtu)',
+            orientation='v',  
+            x=1, 
+            y=0.5,  
+            lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
+            len=0.8,  # Length of the colorbar (80% of figure width)
+            tickvals=colorbar_ticks,  # Custom tick values
+            ticktext=colorbar_texts,
+        ),
+        symbol=marker_symbols,
+    ),
+))
+
+
+
+# Set marker symbol based on the application's type
+markers_applications = {'Process Heat':'square', 'Industrial Hydrogen':'circle'}
+marker_symbols = above_max['Application'].map(markers_applications).to_list()
+
+
+fig.add_trace(go.Scattergeo(
+    lon=above_max['longitude'],
+    lat=above_max['latitude'],
+    text="Breakeven price: " + above_max['BE wo PTC ($/MMBtu)'].astype(str) + " $/MMBtu",
+    mode='markers',
+    marker=dict(
+        size=8,
+        color='#4E0B0B',
+        symbol=marker_symbols,
+    ),
+    showlegend=False
+))
+
+
+
+
+
+
+
+
+
 
 
 # Update layout
