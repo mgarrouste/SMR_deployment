@@ -44,15 +44,14 @@ heat_data.rename(columns={'Breakeven NG price ($/MMBtu)':'Breakeven price ($/MMB
                         'Emissions_mmtco2/y':'Ann. avoided CO2 emissions (MMT-CO2/year)'}, inplace=True)
 heat_data.reset_index(inplace=True, names=['id'])
 
-noak_positive = pd.concat([h2_data, heat_data], ignore_index=True)
+noak_positive = pd.concat([heat_data, h2_data], ignore_index=True)
 noak_positive = noak_positive[noak_positive['Annual Net Revenues (M$/MWe/y)'] >=0]
 
 
 scaler = 30
 
-    
 # Set marker symbol based on the application's type
-markers_applications = {'Process Heat':'square', 'Industrial Hydrogen':'circle'}
+markers_applications = {'Industrial Hydrogen':'circle','Process Heat':'square' }
 marker_symbols = noak_positive['Application'].map(markers_applications).to_list()
 
 # Get colors for each marker
