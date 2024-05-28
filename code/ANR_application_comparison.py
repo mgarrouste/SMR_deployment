@@ -29,9 +29,13 @@ def load_h2_results(anr_tag, cogen_tag):
   list_df = []
   for ind in industries:
     df = pd.read_excel(h2_results_path, sheet_name=ind, index_col='id')
-    df = df[['state', 'latitude', 'longitude','H2 Dem. (kg/day)', 'Net Annual Revenues with H2 PTC ($/MWe/y)', 'HTSE', 'Depl. ANR Cap. (MWe)', 'ANR type', \
-             '# ANR modules', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 'Electricity revenues ($/y)', \
-             'Net Revenues with H2 PTC with elec ($/year)']]
+    list_cols = ['state', 'latitude', 'longitude','H2 Dem. (kg/day)', 'Net Annual Revenues with H2 PTC ($/MWe/y)', 'HTSE', 'Depl. ANR Cap. (MWe)', 'ANR type', \
+             '# ANR modules', 'Breakeven price ($/MMBtu)', 'BE wo PTC ($/MMBtu)','Ann. avoided CO2 emissions (MMT-CO2/year)', 'Electricity revenues ($/y)', \
+             'Net Revenues with H2 PTC with elec ($/year)']
+    if anr_tag == 'FOAK':
+      list_cols.append('Breakeven CAPEX ($/MWe)')
+      list_cols.append('Cost red CAPEX BE')
+    df = df[list_cols]
     df['Industry'] = ind 
     list_df.append(df)
   all_df = pd.concat(list_df)
