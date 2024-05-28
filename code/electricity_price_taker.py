@@ -207,6 +207,16 @@ def plot_results(anr_tag, boxplot=False):
   fig.savefig(save_plot, bbox_inches='tight')
 
 
+
+def compute_cost_reduction():
+  for anr_tag in ['FOAK', 'NOAK']:
+    ANR_data = pd.read_excel('./ANRs.xlsx', sheet_name=anr_tag)
+    excel_file = f'./results/price_taker_{anr_tag}_{cambium_scenario}.xlsx'
+    df = pd.read_excel(excel_file, index_col=0)
+    df = df.merge(ANR_data[['Reactor', 'CAPEX $/MWe']], left_on='ANR type', right_on='Reactor', how='left')
+    df['Cost red CAPEX BE'] = df.apply(lambda x: max(0,1-(x['BE CAPEX ($/MWe)']/x['CAPEX $/MWe'])), axis=1)
+    df.to_excel(excel_file)
+
 def main():
   states = ['AL', 'AR', 'AZ', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'IA', 'ID', 'IL', 'IN', 'KS', 'KY', 'LA', 'MA', 'MD', \
             'ME', 'MI', 'MN', 'MO', 'MS', 'MT', 'NC', 'ND', 'NE', 'NH', 'NJ', 'NM', 'NV', 'NY', 'OH', 'OK', 'OR', 'PA', \
@@ -313,6 +323,7 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument('-p','--plot', required=False, help='Only plot results, does not run model, indicate FOAK or NOAK for corresponding net revenues plot')
   parser.add_argument('-c', '--compare', required=False, help='Compare via a plot FOAK and NOAK results')
+  parser.add_argument('-b', '--breakeven', required=False, help='Compute cost reduction needed for breakeven')
   args = parser.parse_args()
   if args.compare:
     compare_deployment_stages()
@@ -324,5 +335,7 @@ if __name__ == '__main__':
     else:
       print('Specify FOAK or NOAK to print corresponding results')
       exit()
+  elif args.breakeven:
+    compute_cost_reduction()
   else:
     main()
