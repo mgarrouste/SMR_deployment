@@ -69,12 +69,12 @@ fig.add_trace(
 
 
 # FOAK data with no PTC
-h2_data = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='nocogen')
+h2_data = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='cogen')
 h2_data = h2_data[['latitude', 'longitude', 'State price ($/MMBtu)','Depl. ANR Cap. (MWe)', 'BE wo PTC ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
                    'Industry', 'Application', 'ANR' ]]
 h2_data.reset_index(inplace=True)
 
-heat_data = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='nocogen')
+heat_data = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen')
 heat_data = heat_data[['latitude', 'longitude', 'NG price ($/MMBtu)', 'Emissions_mmtco2/y', 'ANR',
                        'Depl. ANR Cap. (MWe)', 'Industry','BE wo PTC ($/MMBtu)', 'Application']]
 heat_data.rename(columns={'Emissions_mmtco2/y':'Ann. avoided CO2 emissions (MMT-CO2/year)',
@@ -83,9 +83,9 @@ heat_data.reset_index(inplace=True, names=['id'])
 
 noptc_be = pd.concat([heat_data,h2_data], ignore_index=True)
 
-#print(noptc_be['BE wo PTC ($/MMBtu)'].describe(percentiles = [.1,.25,.5,.75,.9]))
+print(noptc_be['BE wo PTC ($/MMBtu)'].describe(percentiles = [.1,.25,.5,.75,.9]))
 
-max_be = 23 # show only up to median BE
+max_be = 17.4 # show only up to median BE
 
 profitable = noptc_be[noptc_be['BE wo PTC ($/MMBtu)']<noptc_be['State price ($/MMBtu)']]
 print('Number of facilities profitable with the hydrogen PTC : ',len(profitable))
@@ -97,8 +97,8 @@ noptc_be = noptc_be[noptc_be['BE wo PTC ($/MMBtu)']>noptc_be['State price ($/MMB
 markers_applications = {'Process Heat':'cross', 'Industrial Hydrogen':'circle'}
 marker_symbols = noptc_be['Application'].map(markers_applications).to_list()
 
-colorbar_ticks = [6.21,12.57, 16.4, 22.8]
-colorbar_texts = ['Minimum: 6.2', '10th: 12.6', '25th: 16.4', 'Median: 22.8']
+colorbar_ticks = [6.21, 9.9, 12.11, 17.3]
+colorbar_texts = ['Minimum: 6.2', '10th: 9.9', '25th: 12.1', 'Median: 17.3']
 
 fig.add_trace(go.Scattergeo(
     lon=noptc_be['longitude'],
