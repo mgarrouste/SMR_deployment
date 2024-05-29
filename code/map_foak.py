@@ -3,6 +3,7 @@ import plotly.graph_objects as go
 from utils import palette, app_palette
 import matplotlib.pyplot as plt
 import ANR_application_comparison
+from plotly.subplots import make_subplots
 import numpy as np
 
 
@@ -56,33 +57,60 @@ def plot_waterfall(foak_positive):
 	df = df.groupby('App').sum()
 	df = df.reset_index()
 	total_emissions = df['Emissions'].sum()
-	total_row = pd.DataFrame({'App': ['FOAK'], 'Emissions': [total_emissions]})
+	total_capacity = df['Capacity'].sum()
+	total_row = pd.DataFrame({'App': ['FOAK'], 'Emissions': [total_emissions], 'Capacity':[total_capacity]})
 	df = pd.concat([df, total_row], ignore_index=True)
+
+	fig = make_subplots(rows=1, cols=2, horizontal_spacing=0.25)
+
+
 	# Get measures list with all "relative" and the last one as "total"
 	measures = ["relative"] * (len(df['Emissions']) - 1) + ["total"]
-	df['text'] = df.apply(lambda x: int(x['Emissions']), axis=1)
+	df['text_em'] = df.apply(lambda x: int(x['Emissions']), axis=1)
+	
 	# Create waterfall chart
-	fig = go.Figure(go.Waterfall(
+	fig.add_trace(go.Waterfall(
 		orientation = "v",
     measure = measures,
     x = df['App'],
-    textposition = "outside",
-    text = df['text'],
+    textposition = "inside",
+    text = df['text_em'],
     y = df['Emissions'],
     connector = {"line":{"color":"rgb(63, 63, 63)"}},
     increasing = {"marker":{"color": "paleGreen"}},
     totals = {"marker":{"color": "limeGreen"}}
-	))
-
+		),
+		row=1, col=1
+	)
+	# Get measures list with all "relative" and the last one as "total"
+	measures = ["relative"] * (len(df['Capacity']) - 1) + ["total"]
+	df['text_cap'] = df.apply(lambda x: int(x['Capacity']), axis=1)
+	# Create waterfall chart
+	fig.add_trace(go.Waterfall(
+		orientation = "v",
+    measure = measures,
+    x = df['App'],
+    textposition = "inside",
+    text = df['text_cap'],
+    y = df['Capacity'],
+    connector = {"line":{"color":"rgb(63, 63, 63)"}},
+    increasing = {"marker":{"color": "paleGreen"}},
+    totals = {"marker":{"color": "limeGreen"}}
+		),
+		row=1, col=2
+	)
+	# Set y-axis titles
+	fig.update_yaxes(title_text='Avoided emissions (MMtCO2/y)', row=1, col=1)
+	fig.update_yaxes(title_text='ANR Capacity (GWe)', row=1, col=2)
+	fig.update_xaxes(tickangle=270)
 	# Set chart layout
 	fig.update_layout(
-		title = "Avoided Emissions",
 		showlegend = False,
-		width=300,  # Set the width of the figure
+		width=450,  # Set the width of the figure
 		height=550,  # Set the height of the figure
 	)
 
-	fig.write_image('./results/foak_positive_emissions.png')
+	fig.write_image('./results/foak_positive_emissions_capacity.png')
 
 plot_waterfall(foak_positive)
 
