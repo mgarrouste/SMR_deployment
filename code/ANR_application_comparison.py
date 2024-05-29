@@ -29,7 +29,9 @@ def load_h2_results(anr_tag, cogen_tag):
   list_df = []
   for ind in industries:
     df = pd.read_excel(h2_results_path, sheet_name=ind, index_col='id')
-    list_cols = ['state', 'latitude', 'longitude','H2 Dem. (kg/day)', 'Net Annual Revenues with H2 PTC ($/MWe/y)', 'HTSE', 'Depl. ANR Cap. (MWe)', 'ANR type', \
+    list_cols = ['state', 'latitude', 'longitude','H2 Dem. (kg/day)','Net Revenues with H2 PTC ($/year)',\
+                 'Net Revenues ($/year)','Electricity revenues ($/y)',\
+                  'Net Annual Revenues with H2 PTC ($/MWe/y)', 'HTSE', 'Depl. ANR Cap. (MWe)', 'ANR type', \
              '# ANR modules', 'Breakeven price ($/MMBtu)', 'BE wo PTC ($/MMBtu)','Ann. avoided CO2 emissions (MMT-CO2/year)', 'Electricity revenues ($/y)', \
              'Net Revenues with H2 PTC with elec ($/year)']
     if anr_tag == 'FOAK':
@@ -42,8 +44,15 @@ def load_h2_results(anr_tag, cogen_tag):
   all_df = pd.concat(list_df)
   all_df['Application'] = 'Industrial Hydrogen'
   all_df['ANR'] = all_df['ANR type']
-  if cogen_tag=='cogen': all_df['Annual Net Revenues (M$/MWe/y)'] = all_df['Net Revenues with H2 PTC with elec ($/year)']/(1e6*all_df['Depl. ANR Cap. (MWe)'])
-  else: all_df['Annual Net Revenues (M$/MWe/y)'] = all_df['Net Annual Revenues with H2 PTC ($/MWe/y)']/(1e6)
+  if cogen_tag=='cogen': 
+    all_df['Annual Net Revenues (M$/MWe/y)'] = all_df['Net Revenues with H2 PTC with elec ($/year)']/(1e6*all_df['Depl. ANR Cap. (MWe)'])
+    all_df['Annual Net Revenues (M$/y)'] = all_df['Net Revenues with H2 PTC with elec ($/year)']/1e6
+    #all_df['Annual Net Revenues wo PTC (M$/y)'] = all_df.apply(lambda x: x['Net Revenues ($/year)'])+float(x['Electricity revenues ($/y)']))/1e6, axis=1)
+    # Net revenues includes costs and avoided ng costs
+  else: 
+    all_df['Annual Net Revenues (M$/MWe/y)'] = all_df['Net Annual Revenues with H2 PTC ($/MWe/y)']/(1e6)
+    all_df['Annual Net Revenues (M$/y)'] = all_df['Net Revenues with H2 PTC ($/year)']
+    all_df['Annual Net Revenues wo PTC (M$/y)'] = all_df['Net Revenues ($/year)']/1e6 # Net revenues includes costs and avoided ng costs
   all_df.sort_values(by='Breakeven price ($/MMBtu)', inplace=True)
   return all_df 
 
@@ -53,6 +62,7 @@ def load_heat_results(anr_tag, cogen_tag):
   heat_results_path = f'./results/process_heat/best_pathway_{anr_tag}_{cogen_tag}.xlsx'
   heat_df = pd.read_excel(heat_results_path, index_col='FACILITY_ID')
   heat_df['Annual Net Revenues (M$/MWe/y)']  = heat_df['Pathway Net Ann. Rev. (M$/y)']/heat_df['Depl. ANR Cap. (MWe)']
+  heat_df['Annual Net Revenues (M$/y)'] = heat_df['Pathway Net Ann. Rev. (M$/y)']
   heat_df.sort_values(by=['Breakeven NG price ($/MMBtu)', 'Annual Net Revenues (M$/MWe/y)'], inplace=True)
   heat_df['Application'] = 'Process Heat'
   return heat_df
