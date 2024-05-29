@@ -218,6 +218,7 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data):
   results_ref['latitude'] = lat 
   results_ref['longitude'] = lon
   results_ref['state'] = value(model.pState)
+  results_ref['State price ($/MMBtu)'] = utils.get_ng_price_aeo(results_ref['state'])
   results_ref['ANR CAPEX ($/MWe)'] = value(get_anr_capex(model))
   results_ref['H2 Dem. (kg/day)'] = value(model.pRefDem)
   results_ref['Net Revenues ($/year)'] = value(model.NetRevenues)

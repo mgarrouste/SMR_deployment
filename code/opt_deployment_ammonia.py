@@ -238,6 +238,7 @@ def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results):
   results_ref = {}
   results_ref['id'] = plant
   results_ref['state'] = value(model.pState)
+  results_ref['State price ($/MMBtu)'] = utils.get_ng_price_aeo(results_ref['state'])
   results_ref['latitude'] = lat
   results_ref['longitude'] = lon
   results_ref['Ammonia capacity (tNH3/year)'] = ammonia_capacity

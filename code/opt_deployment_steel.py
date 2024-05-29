@@ -257,6 +257,7 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
   results_dic = {}
   results_dic['id'] = plant
   results_dic['state'] = value(model.pState)
+  results_dic['State price ($/MMBtu)'] = utils.get_met_coal_eia_aeo_price()
   lat, lon = get_lat_lon(plant)
   results_dic['latitude'], results_dic['longitude'] = lat, lon
   results_dic['Steel prod. (ton/year)'] = steel_cap_ton_per_annum
