@@ -178,7 +178,7 @@ fig.update_layout(
         t=10  # top margin
     ),
     legend=dict(
-        title="<b>Application</b>",
+        title="<b>Industrial Application</b>",
         x=0.9,
         y=1,
         traceorder="normal",

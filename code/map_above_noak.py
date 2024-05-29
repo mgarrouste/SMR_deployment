@@ -99,7 +99,7 @@ fig.add_trace(go.Scattergeo(
     mode='markers',
     marker=dict(
         size=30,
-        color='black',
+        color='#610000',
         symbol=marker_symbols,
         line_color=line_colors,
         line_width=3,
