@@ -22,7 +22,7 @@ else:
 # Define tick values and corresponding custom tick texts
 colorbar_ticks = [20, 30, 40, 46.1, 52.2, 56.9, 77.8, 116.9]
 colorbar_texts = ['20', '30', '40', 
-                  'iMSR: $46/MWhe', 'PBR-HTGR: $52/MWhe', 'iPWR: $57/MWhe', 'HTGR: $78/MWhe', 'Micro: $117/MWhe']
+                  'BE iMSR: 46', 'BE PBR-HTGR: 52', 'BE iPWR: 57', 'BE HTGR: 78', 'BE Micro: 117']
 
 max_actual_value = max(elec_df['average price ($/MWhe)'])
 max_tick_value = max(colorbar_ticks)
@@ -70,32 +70,35 @@ fig.add_trace(
 
 # FOAK data with no PTC
 h2_data = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='nocogen')
-h2_data = h2_data[['latitude', 'longitude', 'Depl. ANR Cap. (MWe)', 'BE wo PTC ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
+h2_data = h2_data[['latitude', 'longitude', 'State price ($/MMBtu)','Depl. ANR Cap. (MWe)', 'BE wo PTC ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
                    'Industry', 'Application', 'ANR' ]]
 h2_data.reset_index(inplace=True)
 
 heat_data = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='nocogen')
-heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'ANR',
+heat_data = heat_data[['latitude', 'longitude', 'NG price ($/MMBtu)', 'Emissions_mmtco2/y', 'ANR',
                        'Depl. ANR Cap. (MWe)', 'Industry','BE wo PTC ($/MMBtu)', 'Application']]
-heat_data.rename(columns={'Emissions_mmtco2/y':'Ann. avoided CO2 emissions (MMT-CO2/year)'}, inplace=True)
+heat_data.rename(columns={'Emissions_mmtco2/y':'Ann. avoided CO2 emissions (MMT-CO2/year)',
+                          'NG price ($/MMBtu)':'State price ($/MMBtu)'}, inplace=True)
 heat_data.reset_index(inplace=True, names=['id'])
 
-noptc_be = pd.concat([h2_data, heat_data], ignore_index=True)
+noptc_be = pd.concat([heat_data,h2_data], ignore_index=True)
 
 #print(noptc_be['BE wo PTC ($/MMBtu)'].describe(percentiles = [.1,.25,.5,.75,.9]))
 
-max_be = 200 # show only up to 275$/MMBtu
+max_be = 23 # show only up to median BE
 
-above_max = noptc_be[noptc_be['BE wo PTC ($/MMBtu)']>max_be]
+profitable = noptc_be[noptc_be['BE wo PTC ($/MMBtu)']<noptc_be['State price ($/MMBtu)']]
+print('Number of facilities profitable with the hydrogen PTC : ',len(profitable))
 noptc_be = noptc_be[noptc_be['BE wo PTC ($/MMBtu)']<=max_be]
+noptc_be = noptc_be[noptc_be['BE wo PTC ($/MMBtu)']>noptc_be['State price ($/MMBtu)']]
 
 
 # Set marker symbol based on the application's type
-markers_applications = {'Process Heat':'square', 'Industrial Hydrogen':'circle'}
+markers_applications = {'Process Heat':'cross', 'Industrial Hydrogen':'circle'}
 marker_symbols = noptc_be['Application'].map(markers_applications).to_list()
 
-colorbar_ticks = [6.20, 16.44, 22.81, 55.48, 129.75]
-colorbar_texts = ['Minimum: 6.20', '25th: 16.44', 'Median: 22.81', '75th: 55.48', '90th: 129.75']
+colorbar_ticks = [6.21,12.57, 16.4, 22.8]
+colorbar_texts = ['Minimum: 6.2', '10th: 12.6', '25th: 16.4', 'Median: 22.8']
 
 fig.add_trace(go.Scattergeo(
     lon=noptc_be['longitude'],
@@ -124,26 +127,6 @@ fig.add_trace(go.Scattergeo(
 ))
 
 
-
-# Set marker symbol based on the application's type
-markers_applications = {'Process Heat':'square', 'Industrial Hydrogen':'circle'}
-marker_symbols = above_max['Application'].map(markers_applications).to_list()
-
-
-fig.add_trace(go.Scattergeo(
-    lon=above_max['longitude'],
-    lat=above_max['latitude'],
-    text="Breakeven price: " + above_max['BE wo PTC ($/MMBtu)'].astype(str) + " $/MMBtu",
-    mode='markers',
-    marker=dict(
-        size=8,
-        color='#4E0B0B',
-        symbol=marker_symbols,
-        line_color='black',
-        line_width=1,
-    ),
-    showlegend=False
-))
 
 # Create symbol and color legend traces
 for app, marker in markers_applications.items():
