@@ -35,6 +35,7 @@ def load_h2_results(anr_tag, cogen_tag):
     if anr_tag == 'FOAK':
       list_cols.append('Breakeven CAPEX ($/MWe)')
       list_cols.append('Cost red CAPEX BE')
+      list_cols.append('State price ($/MMBtu)')
     df = df[list_cols]
     df['Industry'] = ind 
     list_df.append(df)
