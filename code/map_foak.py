@@ -3,6 +3,7 @@ import plotly.graph_objects as go
 from utils import palette, app_palette
 import matplotlib.pyplot as plt
 import ANR_application_comparison
+import numpy as np
 
 
 # Create figure
@@ -48,45 +49,42 @@ foak_positive = pd.concat([h2_data, heat_data], ignore_index=True)
 foak_positive = foak_positive[foak_positive['Annual Net Revenues (M$/MWe/y)'] >=0]
 
 
-def plot_bars(foak_positive):
+def plot_waterfall(foak_positive):
 	df = foak_positive[['App', 'Emissions_mmtco2/y', 'Depl. ANR Cap. (MWe)']]
 	df = df.rename(columns={'Emissions_mmtco2/y':'Emissions', 'Depl. ANR Cap. (MWe)':'Capacity'})
 	df['Capacity'] = df['Capacity']/1e3
-	grouped_df = df.groupby('App').sum()
+	df = df.groupby('App').sum()
+	df = df.reset_index()
+	total_emissions = df['Emissions'].sum()
+	total_row = pd.DataFrame({'App': ['FOAK'], 'Emissions': [total_emissions]})
+	df = pd.concat([df, total_row], ignore_index=True)
+	# Get measures list with all "relative" and the last one as "total"
+	measures = ["relative"] * (len(df['Emissions']) - 1) + ["total"]
+	df['text'] = df.apply(lambda x: int(x['Emissions']), axis=1)
+	# Create waterfall chart
+	fig = go.Figure(go.Waterfall(
+		orientation = "v",
+    measure = measures,
+    x = df['App'],
+    textposition = "outside",
+    text = df['text'],
+    y = df['Emissions'],
+    connector = {"line":{"color":"rgb(63, 63, 63)"}},
+    increasing = {"marker":{"color": "paleGreen"}},
+    totals = {"marker":{"color": "limeGreen"}}
+	))
 
-	# We then create the subplots
-	fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2, figsize=(4, 5))  # 1 row, 2 columns of subplots
+	# Set chart layout
+	fig.update_layout(
+		title = "Avoided Emissions",
+		showlegend = False,
+		width=300,  # Set the width of the figure
+		height=550,  # Set the height of the figure
+	)
 
-	# Build a 'bottom' series to stack the Apps in each bar
-	bottom_emissions = [0]   # Starting at 0 for the first App in Emissions
-	bottom_capacity = [0]    # Starting at 0 for the first App in Capacity
+	fig.write_image('./results/foak_positive_emissions.png')
 
-	# Stacked bar for Emissions and Capacity
-	for app, values in grouped_df.iterrows():
-			ax1.bar('Emissions', values['Emissions'], bottom=bottom_emissions[-1], color=app_palette[app], label=app, width=0.3)
-			ax2.bar('Capacity', values['Capacity'], bottom=bottom_capacity[-1], color=app_palette[app], width=0.3)
-			
-			# Update the 'bottom' for the next App
-			bottom_emissions.append(bottom_emissions[-1] + values['Emissions'])
-			bottom_capacity.append(bottom_capacity[-1] + values['Capacity'])
-
-	ax1.set_ylabel('Avoided emissions (MMtCO2/y)')
-	ax1.set_xlabel('FOAK')
-
-	ax2.set_ylabel('Deployed ANR capacity (GWe)')
-	ax2.set_xlabel('FOAK')
-	# Remove top and right spines for both subplots
-	for ax in (ax1, ax2):
-		ax.spines['right'].set_visible(False)
-		ax.spines['top'].set_visible(False)
-
-	# Place the legend outside of the subplots
-	handles, labels = ax1.get_legend_handles_labels()
-	fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, -0.05), ncol=1)
-	plt.subplots_adjust(bottom=0.05, top=0.85, wspace=0.4)
-	fig.savefig('./results/foak_positive_emissions_capacity.png', bbox_inches='tight')
-
-plot_bars(foak_positive)
+plot_waterfall(foak_positive)
 
 scaler = 40
 
