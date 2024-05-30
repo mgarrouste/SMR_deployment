@@ -132,7 +132,7 @@ fig.add_trace(go.Scattergeo(
         color=noak_neg100['Cost red CAPEX BE'],
         colorscale='Reds',
         colorbar = dict(
-            title='<b>CAPEX cost reduction for breakeven (% FOAK)</b>',
+            title='CAPEX cost reduction for breakeven (% FOAK)',
             orientation='h',  # Set the orientation to 'h' for horizontal
             x=0.5,  # Center the colorbar horizontally
             y=-0.1,  # Position the colorbar below the x-axis
