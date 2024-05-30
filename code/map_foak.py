@@ -52,23 +52,20 @@ print(foak_positive['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.
 
 # Size based on capacity deployed
 percentiles =  foak_positive['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]).to_frame()
-print(percentiles.loc['10%'])
-print(percentiles)
-def set_size(revenues):
-	if revenues <= percentiles.loc['10%'].iloc[0]:
+
+def set_size(cap):
+	if cap <= 25:
 		size = 5
-	elif revenues <= percentiles.loc['25%'].iloc[0]:
-		size = 7
-	elif revenues <= percentiles.loc['50%'].iloc[0]:
+	elif cap <= 100:
 		size = 10
-	elif revenues <= percentiles.loc['75%'].iloc[0]:
-		size = 17
+	elif cap <= 500:
+		size = 25
 	else:
-		size = 30
+		size = 40
 	return size
 
 foak_positive['size'] = foak_positive['Depl. ANR Cap. (MWe)'].apply(set_size)
-print(foak_positive['size'])
+
 def plot_waterfall(foak_positive):
 	df = foak_positive[['App', 'Emissions_mmtco2/y', 'Depl. ANR Cap. (MWe)']]
 	df = df.rename(columns={'Emissions_mmtco2/y':'Emissions', 'Depl. ANR Cap. (MWe)':'Capacity'})
@@ -143,6 +140,9 @@ marker_symbols = foak_positive['Application'].map(markers_applications).to_list(
 # Get colors for each marker
 line_colors = [palette[anr] for anr in foak_positive['ANR']]
 
+max_rev = 510
+foak_positive = foak_positive[foak_positive['Annual Net Revenues (M$/y)'] <= max_rev]
+
 fig.add_trace(go.Scattergeo(
 		lon=foak_positive['longitude'],
 		lat=foak_positive['latitude'],
@@ -161,8 +161,8 @@ fig.add_trace(go.Scattergeo(
 						yanchor='bottom',
 						lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
 						len=0.8,  # Length of the colorbar (80% of figure width)
-						tickvals = [1,50,100],
-						ticktext = [1,50,100],
+						tickvals = [1,10,100,250,500],
+						ticktext = [1,10,100,250,500],
 						tickmode='array'
 				),
 				symbol=marker_symbols,
@@ -174,14 +174,14 @@ fig.add_trace(go.Scattergeo(
 ))
 
 # Create custom legend
-custom_legend = {'iMSR - Process Heat':[palette['iMSR'], 'square'],
-								 'HTGR - Process Heat':[palette['HTGR'], 'square'],
-								 'iPWR - Process Heat':[palette['iPWR'], 'square'],
-								 'PBR-HTGR - Process Heat':[palette['PBR-HTGR'], 'square'],
-								 'Micro - Process Heat':[palette['Micro'], 'square'],
+custom_legend = {'iMSR - Process Heat':[palette['iMSR'], 'cross'],
+								 #'HTGR - Process Heat':[palette['HTGR'], 'cross'],
+								 'iPWR - Process Heat':[palette['iPWR'], 'cross'],
+								 'PBR-HTGR - Process Heat':[palette['PBR-HTGR'], 'cross'],
+								 #'Micro - Process Heat':[palette['Micro'], 'cross'],
 								 'iMSR - Industrial H2':[palette['iMSR'], 'circle'],
-								 'HTGR - Industrial H2':[palette['HTGR'], 'circle'],
-								 'iPWR - Industrial H2':[palette['iPWR'], 'circle'],
+								 #'HTGR - Industrial H2':[palette['HTGR'], 'circle'],
+								 #'iPWR - Industrial H2':[palette['iPWR'], 'circle'],
 								 'PBR-HTGR - Industrial H2':[palette['PBR-HTGR'], 'circle'],
 								 'Micro - Industrial H2':[palette['Micro'], 'circle']}
 
@@ -203,6 +203,28 @@ for name, cm in custom_legend.items():
 					),
 					name=name
 			))
+
+
+# Custom legend for size
+sizes = foak_positive['size'].unique()
+sizes.sort()
+perc_cap = ['<25 MWe', '25-100 MWe', '100-500 MWe', '>500 MWe']
+
+for size, cap in zip(sizes, perc_cap):
+	fig.add_trace(go.Scattergeo(
+					lon=[None],
+					lat=[None],
+					marker=dict(
+							size=size,
+							color='white',
+							line_color='black',
+							line_width=1,
+							symbol='circle'
+					),
+					name=cap
+			))
+
+
 
 
 # Update layout
