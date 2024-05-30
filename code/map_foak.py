@@ -77,7 +77,7 @@ def plot_waterfall(foak_positive):
 	total_row = pd.DataFrame({'App': ['FOAK-Total'], 'Emissions': [total_emissions], 'Capacity':[total_capacity]})
 	df = pd.concat([df, total_row], ignore_index=True)
 
-	fig = make_subplots(rows=1, cols=2, horizontal_spacing=0.25)
+	fig = make_subplots(rows=1, cols=2, horizontal_spacing=0.18)
 
 
 	# Get measures list with all "relative" and the last one as "total"
@@ -89,7 +89,7 @@ def plot_waterfall(foak_positive):
 		orientation = "v",
     measure = measures,
     x = df['App'],
-    textposition = "inside",
+    textposition = "outside",
     text = df['text_em'],
     y = df['Emissions'],
     connector = {"line":{"color":"rgb(63, 63, 63)"}},
@@ -106,12 +106,12 @@ def plot_waterfall(foak_positive):
 		orientation = "v",
     measure = measures,
     x = df['App'],
-    textposition = "inside",
+    textposition = "outside",
     text = df['text_cap'],
     y = df['Capacity'],
     connector = {"line":{"color":"rgb(63, 63, 63)"}},
-    increasing = {"marker":{"color": "paleGreen"}},
-    totals = {"marker":{"color": "limeGreen"}}
+    increasing = {"marker":{"color": "lightBlue"}},
+    totals = {"marker":{"color": "royalBlue"}}
 		),
 		row=1, col=2
 	)
@@ -121,8 +121,9 @@ def plot_waterfall(foak_positive):
 	fig.update_xaxes(tickangle=270)
 	# Set chart layout
 	fig.update_layout(
+		margin=dict(l=20, r=20, t=20, b=20),
 		showlegend = False,
-		width=450,  # Set the width of the figure
+		width=400,  # Set the width of the figure
 		height=550,  # Set the height of the figure
 	)
 

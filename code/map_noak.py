@@ -1,8 +1,8 @@
 import pandas as pd
 import plotly.graph_objects as go
 from utils import palette, app_palette
+from plotly.subplots import make_subplots
 import ANR_application_comparison
-import matplotlib.pyplot as plt
 
 # Create figure
 fig = go.Figure()
@@ -50,11 +50,8 @@ heat_data['App'] = 'Process Heat'
 noak_positive = pd.concat([heat_data, h2_data], ignore_index=True)
 noak_positive = noak_positive[noak_positive['Annual Net Revenues (M$/y)'] >=0]
 
-print(noak_positive['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
-
 # Size based on capacity deployed
 percentiles =  noak_positive['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]).to_frame()
-print(percentiles)
 
 scaler = 30
 
@@ -228,14 +225,14 @@ fig.write_image('./results/map_NOAK_cogen.png')
 
 ### Plot waterfalls
 
-h2_data = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='nocogen')
+h2_data = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='cogen')
 h2_data = h2_data[['latitude', 'longitude', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
 									 'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/MWe/y)' ]]
 h2_data['Emissions_mmtco2/y'] = h2_data['Ann. avoided CO2 emissions (MMT-CO2/year)']
 h2_data['App'] = h2_data.apply(lambda x: x['Application']+'-'+x['Industry'].capitalize(), axis=1)
 h2_data.reset_index(inplace=True)
 
-heat_data = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='nocogen')
+heat_data = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen')
 heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'ANR',
 											 'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)',
 											 'Annual Net Revenues (M$/MWe/y)', 'Application']]
@@ -252,25 +249,75 @@ def plot_bars(foak_positive, noak_positive):
 	df['Capacity'] = df['Capacity']/1e3
 	df = df.groupby('App').sum()
 	df1 = df.reset_index()
+	df1 = df1.replace('Industrial Hydrogen-', '', regex=True)
+	df1['App'] = 'FOAK-Co-'+df1['App']
 	df1['measure'] = 'relative'
 	total_df1 = df1.sum()
-	total_df1['App'] = 'FOAK-Total'
+	total_df1['App'] = 'FOAK-Co-Total'
 	total_df1['measure'] = 'total'
 
-	df = noak_positive[['App', 'Emissions_mmtco2/y', 'Depl. ANR Cap. (MWe)']]
-	df = df.rename(columns={'Emissions_mmtco2/y':'Emissions', 'Depl. ANR Cap. (MWe)':'Capacity'})
+	df = noak_positive[['App', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 'Depl. ANR Cap. (MWe)']]
+	df = df.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions', 'Depl. ANR Cap. (MWe)':'Capacity'})
 	df['Capacity'] = df['Capacity']/1e3
 	df = df.groupby('App').sum()
 	df2 = df.reset_index()
+	df2 = df2.replace('Industrial Hydrogen-', '', regex=True)
+	df2['App'] = 'NOAK-Co-'+df2['App']
 	df2['measure'] = 'relative'
 	total_df2 = df2.sum()
-	total_df2['App'] = 'NOAK-Total'
+	total_df2['App'] = 'NOAK-Co-Total'
 	total_df2['measure'] = 'total'
 	df2_adjusted = pd.concat([pd.DataFrame([total_df1]), df2, pd.DataFrame([total_df2])], ignore_index=True)
 	
 	# Now create a combined DataFrame from df1 and the adjusted df2
 	combined_df = pd.concat([df1, df2_adjusted], ignore_index=True)
 	print(combined_df)
+
+	fig = make_subplots(rows=1, cols=2, horizontal_spacing=0.13)
+	combined_df['text_em'] = combined_df.apply(lambda x: int(x['Emissions']), axis=1)
+	
+	fig.add_trace(go.Waterfall(
+		orientation = "v",
+    measure = combined_df['measure'],
+    x = combined_df['App'],
+    textposition = "outside",
+    text = combined_df['text_em'],
+    y = combined_df['Emissions'],
+    connector = {"line":{"color":"rgb(63, 63, 63)"}},
+    increasing = {"marker":{"color": "paleGreen"}},
+    totals = {"marker":{"color": "limeGreen"}}
+		),
+		row=1, col=1
+	)
+
+	combined_df['text_cap'] = combined_df.apply(lambda x: int(x['Capacity']), axis=1)
+	fig.add_trace(go.Waterfall(
+		orientation = "v",
+    measure = combined_df['measure'],
+    x = combined_df['App'],
+    textposition = "outside",
+    text = combined_df['text_cap'],
+    y = combined_df['Capacity'],
+    connector = {"line":{"color":"rgb(63, 63, 63)"}},
+    increasing = {"marker":{"color": "lightBlue"}},
+    totals = {"marker":{"color": "royalBlue"}}
+		),
+		row=1, col=2
+	)
+	# Set y-axis titles
+	fig.update_yaxes(title_text='Avoided emissions (MMtCO2/y)', row=1, col=1)
+	fig.update_yaxes(title_text='ANR Capacity (GWe)', row=1, col=2)
+	fig.update_xaxes(tickangle=270)
+	# Set chart layout
+	fig.update_layout(
+		margin=dict(l=20, r=20, t=20, b=20),
+		showlegend = False,
+		width=600,  # Set the width of the figure
+		height=550,  # Set the height of the figure
+	)
+
+	fig.write_image('./results/noak_cogen_positive_emissions_capacity.png')
+
 
 
 
