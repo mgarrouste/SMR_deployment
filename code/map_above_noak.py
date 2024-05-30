@@ -21,6 +21,8 @@ geo_centers = pd.read_excel('./input_data/us_states_centers.xlsx')
 elec_data = elec_data.merge(geo_centers, on='state', how='left')
 elec_data['Cost red CAPEX BE']  *= 100
 
+print(elec_data['Cost red CAPEX BE'].describe(percentiles=[.1,.25,.5,.75,.9]))
+
 # Add electricity data separately to the figure
 fig.add_trace(go.Scattergeo(
     lon=elec_data['longitude'],
@@ -75,6 +77,7 @@ be_foak = pd.concat([h2_data, heat_data], ignore_index=True)
 # Merge data to get breakeven capex and cost reduction for breakeven for sites with negative revenues in NOAK cogen case
 noak_neg = noak_neg.merge(right=be_foak, on=['id'],how='left')
 noak_neg['Cost red CAPEX BE'] *=100
+print(noak_neg['Cost red CAPEX BE'].describe(percentiles=[.1,.25,.5,.75,.9]))
 
 
 #Scale up
@@ -87,7 +90,7 @@ noak_negsup100 = noak_neg[noak_neg['Cost red CAPEX BE']>100]
 
 # Above 100%
 # Set marker symbol based on the application's type
-markers_applications = {'Process Heat':'square', 'Industrial Hydrogen':'circle', 'Electricity':'triangle-up'}
+markers_applications = {'Process Heat':'cross', 'Industrial Hydrogen':'circle', 'Electricity':'triangle-up'}
 marker_symbols = noak_negsup100['Application'].map(markers_applications).to_list()
 # Get colors for each marker
 line_colors = [palette[anr] for anr in noak_negsup100['ANR']]
@@ -112,7 +115,7 @@ fig.add_trace(go.Scattergeo(
 # Below 100%
 # Set marker symbol based on the application's type
 noak_neg100 = noak_neg100[['Application', 'latitude', 'longitude', 'Cost red CAPEX BE', 'ANR']]
-markers_applications = {'Process Heat':'square', 'Industrial Hydrogen':'circle', 'Electricity':'triangle-up'}
+markers_applications = {'Process Heat':'cross', 'Industrial Hydrogen':'circle', 'Electricity':'triangle-up'}
 marker_symbols = noak_neg100['Application'].map(markers_applications).to_list()
 
 # Get colors for each marker
@@ -151,14 +154,14 @@ fig.add_trace(go.Scattergeo(
 
 
 # Create custom legend
-custom_legend = {'iMSR - Process Heat':[palette['iMSR'], 'square'],
-                 'HTGR - Process Heat':[palette['HTGR'], 'square'],
-                 'iPWR - Process Heat':[palette['iPWR'], 'square'],
-                 'PBR-HTGR - Process Heat':[palette['PBR-HTGR'], 'square'],
-                 'Micro - Process Heat':[palette['Micro'], 'square'],
+custom_legend = {'iMSR - Process Heat':[palette['iMSR'], 'cross'],
+                 #'HTGR - Process Heat':[palette['HTGR'], 'cross'],
+                 #'iPWR - Process Heat':[palette['iPWR'], 'cross'],
+                 'PBR-HTGR - Process Heat':[palette['PBR-HTGR'], 'cross'],
+                 'Micro - Process Heat':[palette['Micro'], 'cross'],
                  'iMSR - Industrial H2':[palette['iMSR'], 'circle'],
-                 'HTGR - Industrial H2':[palette['HTGR'], 'circle'],
-                 'iPWR - Industrial H2':[palette['iPWR'], 'circle'],
+                 #'HTGR - Industrial H2':[palette['HTGR'], 'circle'],
+                 #'iPWR - Industrial H2':[palette['iPWR'], 'circle'],
                  'PBR-HTGR - Industrial H2':[palette['PBR-HTGR'], 'circle'],
                  'Micro - Industrial H2':[palette['Micro'], 'circle'],
                  'iMSR - Electricity':[palette['iMSR'], 'triangle-up']}
