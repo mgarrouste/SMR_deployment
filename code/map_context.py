@@ -119,10 +119,10 @@ fig.update_layout(
 				t=20  # top margin
 		),
 		legend=dict(
-				title="<b>Industrial facilities</b>",
 				x=1,
 				y=1,
 				traceorder="normal",
+        font = dict(size = 16, color = "black"),
 				bgcolor="rgba(255, 255, 255, 0.5)"  # semi-transparent background
 		),
 )
