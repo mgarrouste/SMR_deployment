@@ -8,7 +8,6 @@ import ANR_application_comparison
 fig = go.Figure()
 
 
-
 # Nuclear moratoriums layers
 nuclear_restrictions = ['CA', 'CT', 'VT', 'MA', 'IL', 'OR', 'NJ', 'HI', 'ME', 'RI', 'VT']
 nuclear_ban = ['MN', 'NY']
@@ -89,6 +88,7 @@ fig.add_trace(go.Scattergeo(
 				colorscale='Greys',
 				colorbar = dict(
 						title='Annual Net Revenues (M$/y)',
+						titlefont = dict(size=16),
 						orientation='h',  # Set the orientation to 'h' for horizontal
 						x=0.5,  # Center the colorbar horizontally
 						y=-0.1,  # Position the colorbar below the x-axis
@@ -98,9 +98,8 @@ fig.add_trace(go.Scattergeo(
 						len=0.7,  # Length of the colorbar (80% of figure width)
 						tickvals = [0.1,10,25,50,100,500],
 						ticktext = [0.1,10,25,50,100,500],
-						tickmode='array'
-						#dtick=0.1,
-						#tick0=0.1
+						tickmode='array',
+						tickfont=dict(size=16)
 				),
 				symbol=marker_symbols,
 				line_color=line_colors,
@@ -115,13 +114,14 @@ fig.add_trace(go.Scattergeo(
 custom_legend = {'iMSR - Process Heat':[palette['iMSR'], 'cross'],
 								 #'HTGR - Process Heat':[palette['HTGR'], 'square'],
 								 #'iPWR - Process Heat':[palette['iPWR'], 'cross'],
-								 'PBR-HTGR - Process Heat':[palette['PBR-HTGR'], 'cross'],
-								 'Micro - Process Heat':[palette['Micro'], 'cross'],
+								 #'PBR-HTGR - Process Heat':[palette['PBR-HTGR'], 'cross'],
+								 #'Micro - Process Heat':[palette['Micro'], 'cross'],
 								 'iMSR - Industrial H2':[palette['iMSR'], 'circle'],
 								 #'HTGR - Industrial H2':[palette['HTGR'], 'circle'],
 								 #'iPWR - Industrial H2':[palette['iPWR'], 'circle'],
 								 'PBR-HTGR - Industrial H2':[palette['PBR-HTGR'], 'circle'],
-								 'Micro - Industrial H2':[palette['Micro'], 'circle']}
+								 #'Micro - Industrial H2':[palette['Micro'], 'circle']
+								 }
 
 reactors_used = noak_positive['ANR'].unique()
 
@@ -191,6 +191,19 @@ for app, marker in markers_applications.items():
 				name=app
 		))
 """
+nuclear_legend = {'Nuclear ban':'darkRed', 
+                  'Nuclear restrictions':'salmon'}
+for b, color in nuclear_legend.items():
+  fig.add_trace(go.Scattergeo(
+      lon=[None],
+      lat=[None],
+      marker=dict(
+          size=15,
+          color=color,
+          symbol='square',
+      ),
+      name=b
+  ))
 
 
 # Update layout
@@ -210,10 +223,10 @@ fig.update_layout(
 				t=20  # top margin
 		),
 		legend=dict(
-				title="<b>Application & ANR</b>",
 				x=1,
 				y=1,
 				traceorder="normal",
+				font = dict(size = 16, color = "black"),
 				bgcolor="rgba(255, 255, 255, 0.5)"  # semi-transparent background
 		),
 )
@@ -250,11 +263,12 @@ def plot_bars(foak_positive, noak_positive):
 	df = df.groupby('App').sum()
 	df1 = df.reset_index()
 	df1 = df1.replace('Industrial Hydrogen-', '', regex=True)
-	df1['App'] = 'FOAK-Co-'+df1['App']
 	df1['measure'] = 'relative'
 	total_df1 = df1.sum()
-	total_df1['App'] = 'FOAK-Co-Total'
+	total_df1['App'] = 'Total'
 	total_df1['measure'] = 'total'
+	df1['tag'] = 'FOAK-cogen'
+	total_df1['tag'] = 'FOAK-cogen'
 
 	df = noak_positive[['App', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 'Depl. ANR Cap. (MWe)']]
 	df = df.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions', 'Depl. ANR Cap. (MWe)':'Capacity'})
@@ -262,11 +276,12 @@ def plot_bars(foak_positive, noak_positive):
 	df = df.groupby('App').sum()
 	df2 = df.reset_index()
 	df2 = df2.replace('Industrial Hydrogen-', '', regex=True)
-	df2['App'] = 'NOAK-Co-'+df2['App']
 	df2['measure'] = 'relative'
 	total_df2 = df2.sum()
-	total_df2['App'] = 'NOAK-Co-Total'
+	total_df2['App'] = 'Total'
 	total_df2['measure'] = 'total'
+	df2['tag'] = 'NOAK-cogen'
+	total_df2['tag'] = 'NOAK-cogen'
 	df2_adjusted = pd.concat([pd.DataFrame([total_df1]), df2, pd.DataFrame([total_df2])], ignore_index=True)
 	
 	# Now create a combined DataFrame from df1 and the adjusted df2
@@ -279,7 +294,7 @@ def plot_bars(foak_positive, noak_positive):
 	fig.add_trace(go.Waterfall(
 		orientation = "v",
     measure = combined_df['measure'],
-    x = combined_df['App'],
+    x = [combined_df['tag'],combined_df['App']],
     textposition = "outside",
     text = combined_df['text_em'],
     y = combined_df['Emissions'],
@@ -294,7 +309,7 @@ def plot_bars(foak_positive, noak_positive):
 	fig.add_trace(go.Waterfall(
 		orientation = "v",
     measure = combined_df['measure'],
-    x = combined_df['App'],
+    x = [combined_df['tag'],combined_df['App']],
     textposition = "outside",
     text = combined_df['text_cap'],
     y = combined_df['Capacity'],
@@ -307,7 +322,7 @@ def plot_bars(foak_positive, noak_positive):
 	# Set y-axis titles
 	fig.update_yaxes(title_text='Avoided emissions (MMtCO2/y)', row=1, col=1)
 	fig.update_yaxes(title_text='ANR Capacity (GWe)', row=1, col=2)
-	fig.update_xaxes(tickangle=270)
+	fig.update_xaxes(tickangle=45)
 	# Set chart layout
 	fig.update_layout(
 		margin=dict(l=20, r=20, t=20, b=20),
