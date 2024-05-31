@@ -155,16 +155,18 @@ fig.add_trace(go.Scattergeo(
 				colorscale='Greys',
 				colorbar = dict(
 						title='Annual Net Revenues (M$/y)',
+						titlefont = dict(size=16),
 						orientation='h',  # Set the orientation to 'h' for horizontal
 						x=0.5,  # Center the colorbar horizontally
-						y=-0.1,  # Position the colorbar below the x-axis
+						y=-0.15,  # Position the colorbar below the x-axis
 						xanchor='center',
 						yanchor='bottom',
 						lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
 						len=0.8,  # Length of the colorbar (80% of figure width)
-						tickvals = [1,10,100,250,500],
-						ticktext = [1,10,100,250,500],
-						tickmode='array'
+						tickvals = [.03,25,100,250,500],
+						ticktext = [.03,25,100,250,500],
+						tickmode='array',
+						tickfont=dict(size=16)
 				),
 				symbol=marker_symbols,
 				line_color=line_colors,
@@ -173,6 +175,7 @@ fig.add_trace(go.Scattergeo(
 		),
 		showlegend=False
 ))
+
 
 # Create custom legend
 custom_legend = {'iMSR - Process Heat':[palette['iMSR'], 'cross'],
@@ -225,6 +228,19 @@ for size, cap in zip(sizes, perc_cap):
 					name=cap
 			))
 
+nuclear_legend = {'Nuclear ban':'darkRed', 
+                  'Nuclear restrictions':'salmon'}
+for b, color in nuclear_legend.items():
+  fig.add_trace(go.Scattergeo(
+      lon=[None],
+      lat=[None],
+      marker=dict(
+          size=15,
+          color=color,
+          symbol='square',
+      ),
+      name=b
+  ))
 
 
 
@@ -245,10 +261,10 @@ fig.update_layout(
 				t=20  # top margin
 		),
 		legend=dict(
-				title="<b>Application & ANR</b>",
-				x=1,
+				x=0.90,
 				y=1,
 				traceorder="normal",
+				font = dict(size = 16, color = "black"),
 				bgcolor="rgba(255, 255, 255, 0.5)"  # semi-transparent background
 		),
 )
