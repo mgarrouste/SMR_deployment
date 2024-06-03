@@ -27,34 +27,35 @@ fig.add_trace(go.Choropleth(
 		colorscale='Reds',
 ))
 
+def load_noak_noPTC():
+	# NOAK data
+	h2_data = ANR_application_comparison.load_h2_results(anr_tag='NOAK', cogen_tag='cogen')
+	h2_data = h2_data[['latitude', 'longitude', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
+										'Industry', 'Application', 'ANR', 'Net Revenues ($/year)','Electricity revenues ($/y)' ]]
 
+	h2_data['Annual Net Revenues (M$/y)'] =h2_data.loc[:,['Net Revenues ($/year)','Electricity revenues ($/y)']].sum(axis=1)
+	h2_data['Annual Net Revenues (M$/y)'] /=1e6
+	h2_data['Emissions'] = h2_data['Ann. avoided CO2 emissions (MMT-CO2/year)']
+	h2_data['App'] = h2_data.apply(lambda x: x['Application']+'-'+x['Industry'].capitalize(), axis=1)
+	h2_data = h2_data.drop(columns=['Net Revenues ($/year)','Electricity revenues ($/y)' ])
+	h2_data.reset_index(inplace=True)
 
-# NOAK data
-h2_data = ANR_application_comparison.load_h2_results(anr_tag='NOAK', cogen_tag='cogen')
-h2_data = h2_data[['latitude', 'longitude', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
-									 'Industry', 'Application', 'ANR', 'Net Revenues ($/year)','Electricity revenues ($/y)' ]]
+	heat_data = ANR_application_comparison.load_heat_results(anr_tag='NOAK', cogen_tag='cogen', with_PTC=False)
+	heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'ANR',
+												'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)',
+													'Application', 'Annual Net Revenues (M$/y)']]
+	heat_data.rename(columns={'Breakeven NG price ($/MMBtu)':'Breakeven price ($/MMBtu)',
+												'Emissions_mmtco2/y':'Emissions'}, inplace=True)
+	heat_data.reset_index(inplace=True, names=['id'])
+	heat_data['App'] = 'Process Heat'
 
-h2_data['Annual Net Revenues (M$/y)'] =h2_data.loc[:,['Net Revenues ($/year)','Electricity revenues ($/y)']].sum(axis=1)
-h2_data['Annual Net Revenues (M$/y)'] /=1e6
-h2_data['Emissions'] = h2_data['Ann. avoided CO2 emissions (MMT-CO2/year)']
-h2_data['App'] = h2_data.apply(lambda x: x['Application']+'-'+x['Industry'].capitalize(), axis=1)
-h2_data = h2_data.drop(columns=['Net Revenues ($/year)','Electricity revenues ($/y)' ])
-h2_data.reset_index(inplace=True)
+	# Only profitable facilities
+	noak_positive = pd.concat([heat_data, h2_data], ignore_index=True)
+	noak_positive = noak_positive[noak_positive['Annual Net Revenues (M$/y)'] >=0]
+	noak_positive.to_excel('./results/results_heat_h2_NOAK_noPTC.xlsx', index=False)
+	return noak_positive
 
-heat_data = ANR_application_comparison.load_heat_results(anr_tag='NOAK', cogen_tag='cogen', with_PTC=False)
-heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'ANR',
-											 'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)',
-											  'Application', 'Annual Net Revenues (M$/y)']]
-heat_data.rename(columns={'Breakeven NG price ($/MMBtu)':'Breakeven price ($/MMBtu)',
-											'Emissions_mmtco2/y':'Emissions'}, inplace=True)
-heat_data.reset_index(inplace=True, names=['id'])
-heat_data['App'] = 'Process Heat'
-
-
-# Only profitable facilities
-noak_positive = pd.concat([heat_data, h2_data], ignore_index=True)
-noak_positive = noak_positive[noak_positive['Annual Net Revenues (M$/y)'] >=0]
-noak_positive.to_excel('./results/results_heat_h2_NOAK_noPTC.xlsx', index=False)
+noak_positive = load_noak_noPTC()
 
 # Size based on capacity deployed
 percentiles =  noak_positive['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]).to_frame()
@@ -190,18 +191,18 @@ for size, cap in zip(sizes, perc_cap):
 
 
 nuclear_legend = {'Nuclear ban':'darkRed', 
-                  'Nuclear restrictions':'salmon'}
+									'Nuclear restrictions':'salmon'}
 for b, color in nuclear_legend.items():
-  fig.add_trace(go.Scattergeo(
-      lon=[None],
-      lat=[None],
-      marker=dict(
-          size=15,
-          color=color,
-          symbol='square',
-      ),
-      name=b
-  ))
+	fig.add_trace(go.Scattergeo(
+			lon=[None],
+			lat=[None],
+			marker=dict(
+					size=15,
+					color=color,
+					symbol='square',
+			),
+			name=b
+	))
 
 
 # Update layout
@@ -291,14 +292,14 @@ def plot_bars(foak_positive, noak_positive):
 	
 	fig.add_trace(go.Waterfall(
 		orientation = "v",
-    measure = combined_df['measure'],
-    x = [combined_df['tag'],combined_df['App']],
-    textposition = "outside",
-    text = combined_df['text_em'],
-    y = combined_df['Emissions'],
-    connector = {"line":{"color":"rgb(63, 63, 63)"}},
-    increasing = {"marker":{"color": "paleGreen"}},
-    totals = {"marker":{"color": "limeGreen"}}
+		measure = combined_df['measure'],
+		x = [combined_df['tag'],combined_df['App']],
+		textposition = "outside",
+		text = combined_df['text_em'],
+		y = combined_df['Emissions'],
+		connector = {"line":{"color":"rgb(63, 63, 63)"}},
+		increasing = {"marker":{"color": "paleGreen"}},
+		totals = {"marker":{"color": "limeGreen"}}
 		),
 		row=1, col=1
 	)
@@ -306,14 +307,14 @@ def plot_bars(foak_positive, noak_positive):
 	combined_df['text_cap'] = combined_df.apply(lambda x: int(x['Capacity']), axis=1)
 	fig.add_trace(go.Waterfall(
 		orientation = "v",
-    measure = combined_df['measure'],
-    x = [combined_df['tag'],combined_df['App']],
-    textposition = "outside",
-    text = combined_df['text_cap'],
-    y = combined_df['Capacity'],
-    connector = {"line":{"color":"rgb(63, 63, 63)"}},
-    increasing = {"marker":{"color": "lightBlue"}},
-    totals = {"marker":{"color": "royalBlue"}}
+		measure = combined_df['measure'],
+		x = [combined_df['tag'],combined_df['App']],
+		textposition = "outside",
+		text = combined_df['text_cap'],
+		y = combined_df['Capacity'],
+		connector = {"line":{"color":"rgb(63, 63, 63)"}},
+		increasing = {"marker":{"color": "lightBlue"}},
+		totals = {"marker":{"color": "royalBlue"}}
 		),
 		row=1, col=2
 	)
