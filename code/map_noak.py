@@ -2,7 +2,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from utils import palette, app_palette
 from plotly.subplots import make_subplots
-import ANR_application_comparison
+import ANR_application_comparison, map_foak
 
 # Create figure
 fig = go.Figure()
@@ -242,23 +242,7 @@ fig.write_image('./results/map_NOAK_cogen.png')
 
 ### Plot waterfalls
 
-h2_data = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='cogen')
-h2_data = h2_data[['latitude', 'longitude', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
-									 'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/MWe/y)' ]]
-h2_data['Emissions_mmtco2/y'] = h2_data['Ann. avoided CO2 emissions (MMT-CO2/year)']
-h2_data['App'] = h2_data.apply(lambda x: x['Application']+'-'+x['Industry'].capitalize(), axis=1)
-h2_data.reset_index(inplace=True)
-
-heat_data = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen')
-heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'ANR',
-											 'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)',
-											 'Annual Net Revenues (M$/MWe/y)', 'Application']]
-heat_data['App'] = 'Process Heat'
-heat_data.reset_index(inplace=True)
-
-foak_positive = pd.concat([h2_data, heat_data], ignore_index=True)
-foak_positive = foak_positive[foak_positive['Annual Net Revenues (M$/MWe/y)'] >=0]
-
+foak_positive = map_foak.load_foak_positive()
 
 def plot_bars(foak_positive, noak_positive):
 	df = foak_positive[['App', 'Emissions_mmtco2/y', 'Depl. ANR Cap. (MWe)']]
