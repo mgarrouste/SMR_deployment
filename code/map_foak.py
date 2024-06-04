@@ -54,7 +54,16 @@ def load_foak_positive():
 
 foak_positive = load_foak_positive()
 print(foak_positive['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
-
+print(foak_positive['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+print('Micro deployed capacity : ',sum(foak_positive[foak_positive.ANR=='Micro']['Depl. ANR Cap. (MWe)']))
+print('Micro deployed units : ',sum(foak_positive[foak_positive.ANR=='Micro']['Depl. ANR Cap. (MWe)'])/6.7)
+print('iMSR deployed capacity : ',sum(foak_positive[foak_positive.ANR=='iMSR']['Depl. ANR Cap. (MWe)']))
+print('iMSR deployed units : ',sum(foak_positive[foak_positive.ANR=='iMSR']['Depl. ANR Cap. (MWe)'])/141)
+print('PBR-HTGR deployed capacity : ',sum(foak_positive[foak_positive.ANR=='PBR-HTGR']['Depl. ANR Cap. (MWe)']))
+print('PBR-HTGR deployed units: ',sum(foak_positive[foak_positive.ANR=='PBR-HTGR']['Depl. ANR Cap. (MWe)'])/80)
+print('iPWR deployed capacity : ',sum(foak_positive[foak_positive.ANR=='iPWR']['Depl. ANR Cap. (MWe)']))
+print('iPWR deployed units : ',sum(foak_positive[foak_positive.ANR=='iPWR']['Depl. ANR Cap. (MWe)'])/77)
+print('Total capacity deployed GWe : ', sum(foak_positive['Depl. ANR Cap. (MWe)'])/1e3)
 # Size based on capacity deployed
 percentiles =  foak_positive['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]).to_frame()
 
@@ -168,8 +177,8 @@ fig.add_trace(go.Scattergeo(
 						yanchor='bottom',
 						lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
 						len=0.8,  # Length of the colorbar (80% of figure width)
-						tickvals = [.03,25,100,250,500],
-						ticktext = [.03,25,100,250,500],
+						tickvals = [.6,25,100,250,500],
+						ticktext = [.6,25,100,250,500],
 						tickmode='array',
 						tickfont=dict(size=16)
 				),
