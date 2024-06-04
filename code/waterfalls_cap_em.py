@@ -2,6 +2,9 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import ANR_application_comparison
+import matplotlib.pyplot as plt
+import seaborn as sns
+from utils import palette
 
 
 def load_foak_positive():
@@ -81,10 +84,6 @@ foak_positive = load_foak_positive()
 noak_noPTC = load_noak_noPTC()
 
 
-print(foak_positive.columns)
-print(noak_positive.columns)
-print(noak_noPTC.columns)
-
 def plot_bars(foak_positive, noak_positive, noak_noPTC):
 	df = foak_positive[['App', 'Emissions', 'Depl. ANR Cap. (MWe)']]
 	df = df.rename(columns={'Depl. ANR Cap. (MWe)':'Capacity'})
@@ -139,7 +138,6 @@ def plot_bars(foak_positive, noak_positive, noak_noPTC):
 
 	# Now create a combined DataFrame from df1 and the adjusted df2
 	combined_df = pd.concat([df1, pd.DataFrame([total_df1]), df2, pd.DataFrame([total_df2]), diffdf, pd.DataFrame([total_diffdf])], ignore_index=True)
-	print(combined_df)
 
 	fig = make_subplots(rows=1, cols=2, horizontal_spacing=0.08)
 	combined_df['text_em'] = combined_df.apply(lambda x: int(x['Emissions']), axis=1)
@@ -190,5 +188,92 @@ def plot_bars(foak_positive, noak_positive, noak_noPTC):
 
 
 
+def abatement_cost_plot():
+	save_path = './results/abatement_cost_cogen.png'
 	
+	fig, ax = plt.subplots(2,1, figsize=(7,4),sharex=True)
+	xmin = -50
+	xmax = 2500
+
+	# FOAK on the left
+	anr_tag = 'FOAK'
+	import pp_industrial_hydrogen
+	h2_data = pp_industrial_hydrogen.load_data(anr_tag)
+	# Select only profitable sites  !
+	h2_data = h2_data[h2_data['Net Annual Revenues with H2 PTC ($/MWe/y)']>=0]
+	h2_data['Cost ANR ($/y)'] = h2_data['ANR CAPEX ($/year)']+h2_data['H2 CAPEX ($/year)']+h2_data['ANR O&M ($/year)']+h2_data['H2 O&M ($/year)']\
+												+h2_data['Conversion costs ($/year)']-h2_data['Avoided NG costs ($/year)']
+	h2_data['Abatement cost ($/tCO2)'] = h2_data['Cost ANR ($/y)']/(h2_data['Ann. avoided CO2 emissions (MMT-CO2/year)']*1e6)
+	print('FOAK h2')
+	h2_data = h2_data[['ANR type', 'Abatement cost ($/tCO2)', 'Industry']]
+	print(h2_data['Abatement cost ($/tCO2)'].describe())
+	h2_data = h2_data.rename(columns={'ANR type':'ANR'})
+	# Direct heat
+	heat_data = pd.read_excel(f'./results/process_heat/best_pathway_{anr_tag}_cogen_PTC_True.xlsx')
+	heat_data = heat_data[heat_data['Pathway Net Ann. Rev. (M$/y)']>=0]
+	heat_data['Cost ANR ($/y)'] = (heat_data['CAPEX ($/y)']+heat_data['O&M ($/y)']+heat_data['Conversion']-heat_data['Avoided NG Cost ($/y)'])
+	heat_data['Abatement cost ($/tCO2)'] = heat_data['Cost ANR ($/y)']/(heat_data['Emissions_mmtco2/y']*1e6)
+	heat_data = heat_data[['ANR', 'Abatement cost ($/tCO2)']]
+	print('FOAK heat')
+	print(heat_data['Abatement cost ($/tCO2)'].describe())
+	heat_data['Industry'] = 'Process Heat'
+
+	foak = pd.concat([h2_data, heat_data], ignore_index=True)
+
+	sns.boxplot(ax=ax[0], data=foak, y='Industry', x='Abatement cost ($/tCO2)', color='k', fill=False, width=.4)
+	sns.stripplot(ax=ax[0], data=foak,y='Industry', x='Abatement cost ($/tCO2)', hue='ANR', palette=palette, alpha=.5)
+	ax[0].get_legend().set_visible(False)
+	ax[0].set_xlim(xmin, xmax)
+	ax[0].set_title('FOAK')
+	ax[0].get_legend().set_visible(False)
+	ax[0].set_ylabel('')
+	#ax[0].set_yticks(ax[0].get_yticks(), ax[0].get_yticklabels(), rotation=-30, ha='left')
+
+	# FOAK on the left
+	anr_tag = 'NOAK'
+	import pp_industrial_hydrogen
+	h2_data = pp_industrial_hydrogen.load_data(anr_tag)
+	# Select only profitable sites
+	h2_data = h2_data[h2_data['Net Annual Revenues with H2 PTC ($/MWe/y)']>=0]
+	h2_data['Cost ANR ($/y)'] = h2_data['ANR CAPEX ($/year)']+h2_data['H2 CAPEX ($/year)']+h2_data['ANR O&M ($/year)']+h2_data['H2 O&M ($/year)']\
+												+h2_data['Conversion costs ($/year)']-h2_data['Avoided NG costs ($/year)']
+	h2_data['Abatement cost ($/tCO2)'] = h2_data['Cost ANR ($/y)']/(h2_data['Ann. avoided CO2 emissions (MMT-CO2/year)']*1e6)
+	h2_data = h2_data[['ANR type', 'Abatement cost ($/tCO2)', 'Industry']]
+	print('NOAK h2')
+	print(h2_data['Abatement cost ($/tCO2)'].describe())
+	h2_data = h2_data[['ANR type', 'Abatement cost ($/tCO2)', 'Industry']]
+	h2_data = h2_data.rename(columns={'ANR type':'ANR'})
+	# Direct heat
+	heat_data = pd.read_excel(f'./results/process_heat/best_pathway_{anr_tag}_cogen_PTC_True.xlsx')
+	heat_data = heat_data[heat_data['Pathway Net Ann. Rev. (M$/y)']>=0]
+	heat_data['Cost ANR ($/y)'] = (heat_data['CAPEX ($/y)']+heat_data['O&M ($/y)']+heat_data['Conversion']-heat_data['Avoided NG Cost ($/y)'])
+	heat_data['Abatement cost ($/tCO2)'] = heat_data['Cost ANR ($/y)']/(heat_data['Emissions_mmtco2/y']*1e6)
+	heat_data = heat_data[['ANR', 'Abatement cost ($/tCO2)']]
+	print('NOAK heat')
+	print(heat_data['Abatement cost ($/tCO2)'].describe())
+	heat_data['Industry'] = 'Process Heat'
+
+	noak = pd.concat([h2_data, heat_data], ignore_index=True)
+	sns.boxplot(ax=ax[1], data=noak,y='Industry', x='Abatement cost ($/tCO2)', color='k', fill=False, width=.4)
+	sns.stripplot(ax=ax[1], data=noak, y='Industry', x='Abatement cost ($/tCO2)', hue='ANR', palette=palette, alpha=.5)
+	ax[1].set_xlim(xmin,xmax)
+	ax[1].set_title('NOAK')
+	ax[1].get_legend().set_visible(False)
+	ax[1].set_ylabel('')
+	#ax[1].set_yticks(ax[1].get_xticks(), ax[1].get_xticklabels(), rotation=-30, ha='left')
+
+	h3, l3 = ax[0].get_legend_handles_labels()
+	h4, l4 = ax[1].get_legend_handles_labels()
+	by_label = dict(zip(l3+l4, h3+h4))
+	fig.legend(by_label.values(), by_label.keys(),  bbox_to_anchor=(.5,0.01),loc='upper center', ncol=5)
+
+
+	sns.despine()
+	fig.savefig(save_path, bbox_inches='tight')
+
+	
+
+
+
 plot_bars(foak_positive, noak_positive, noak_noPTC)
+abatement_cost_plot()
