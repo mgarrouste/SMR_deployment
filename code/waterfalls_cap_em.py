@@ -209,7 +209,7 @@ def abatement_cost_plot():
 	
 	fig, ax = plt.subplots(2,1, figsize=(7,4),sharex=True)
 	xmin = -50
-	xmax = 2500
+	xmax = 1000
 
 	# FOAK on the left
 	anr_tag = 'FOAK'
@@ -222,7 +222,7 @@ def abatement_cost_plot():
 	h2_data['Abatement cost ($/tCO2)'] = h2_data['Cost ANR ($/y)']/(h2_data['Ann. avoided CO2 emissions (MMT-CO2/year)']*1e6)
 	print('FOAK h2')
 	h2_data = h2_data[['ANR type', 'Abatement cost ($/tCO2)', 'Industry']]
-	print(h2_data['Abatement cost ($/tCO2)'].describe())
+	print(h2_data['Abatement cost ($/tCO2)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 	h2_data = h2_data.rename(columns={'ANR type':'ANR'})
 	# Direct heat
 	heat_data = pd.read_excel(f'./results/process_heat/best_pathway_{anr_tag}_cogen_PTC_True.xlsx')
@@ -231,13 +231,13 @@ def abatement_cost_plot():
 	heat_data['Abatement cost ($/tCO2)'] = heat_data['Cost ANR ($/y)']/(heat_data['Emissions_mmtco2/y']*1e6)
 	heat_data = heat_data[['ANR', 'Abatement cost ($/tCO2)']]
 	print('FOAK heat')
-	print(heat_data['Abatement cost ($/tCO2)'].describe())
+	print(heat_data['Abatement cost ($/tCO2)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 	heat_data['Industry'] = 'Process Heat'
 
 	foak = pd.concat([h2_data, heat_data], ignore_index=True)
 
 	sns.boxplot(ax=ax[0], data=foak, y='Industry', x='Abatement cost ($/tCO2)', color='k', fill=False, width=.4)
-	sns.stripplot(ax=ax[0], data=foak,y='Industry', x='Abatement cost ($/tCO2)', hue='ANR', palette=palette, alpha=.5)
+	sns.stripplot(ax=ax[0], data=foak,y='Industry', x='Abatement cost ($/tCO2)', hue='ANR', palette=palette, marker='P',alpha=.5)
 	ax[0].get_legend().set_visible(False)
 	ax[0].set_xlim(xmin, xmax)
 	ax[0].set_title('FOAK')
@@ -256,7 +256,7 @@ def abatement_cost_plot():
 	h2_data['Abatement cost ($/tCO2)'] = h2_data['Cost ANR ($/y)']/(h2_data['Ann. avoided CO2 emissions (MMT-CO2/year)']*1e6)
 	h2_data = h2_data[['ANR type', 'Abatement cost ($/tCO2)', 'Industry']]
 	print('NOAK h2')
-	print(h2_data['Abatement cost ($/tCO2)'].describe())
+	print(h2_data['Abatement cost ($/tCO2)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 	h2_data = h2_data[['ANR type', 'Abatement cost ($/tCO2)', 'Industry']]
 	h2_data = h2_data.rename(columns={'ANR type':'ANR'})
 	# Direct heat
@@ -266,12 +266,12 @@ def abatement_cost_plot():
 	heat_data['Abatement cost ($/tCO2)'] = heat_data['Cost ANR ($/y)']/(heat_data['Emissions_mmtco2/y']*1e6)
 	heat_data = heat_data[['ANR', 'Abatement cost ($/tCO2)']]
 	print('NOAK heat')
-	print(heat_data['Abatement cost ($/tCO2)'].describe())
+	print(heat_data['Abatement cost ($/tCO2)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 	heat_data['Industry'] = 'Process Heat'
 
 	noak = pd.concat([h2_data, heat_data], ignore_index=True)
 	sns.boxplot(ax=ax[1], data=noak,y='Industry', x='Abatement cost ($/tCO2)', color='k', fill=False, width=.4)
-	sns.stripplot(ax=ax[1], data=noak, y='Industry', x='Abatement cost ($/tCO2)', hue='ANR', palette=palette, alpha=.5)
+	sns.stripplot(ax=ax[1], data=noak, y='Industry', x='Abatement cost ($/tCO2)', hue='ANR', palette=palette, marker='P',alpha=.5)
 	ax[1].set_xlim(xmin,xmax)
 	ax[1].set_title('NOAK')
 	ax[1].get_legend().set_visible(False)
@@ -285,7 +285,7 @@ def abatement_cost_plot():
 
 
 	sns.despine()
-	fig.savefig(save_path, bbox_inches='tight')
+	fig.savefig(save_path, bbox_inches='tight', dpi=500)
 
 	
 
