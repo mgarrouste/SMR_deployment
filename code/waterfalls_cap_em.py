@@ -32,7 +32,7 @@ def load_noak_positive():
 	# NOAK data
 	h2_data = ANR_application_comparison.load_h2_results(anr_tag='NOAK', cogen_tag='cogen')
 	h2_data = h2_data[['latitude', 'longitude', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
-										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/MWe/y)', 'Annual Net Revenues (M$/y)' ]]
+										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/y)' ]]
 	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions'}, inplace=True)
 	h2_data['App'] = h2_data.apply(lambda x: x['Application']+'-'+x['Industry'].capitalize(), axis=1)
 	h2_data.reset_index(inplace=True)
@@ -40,7 +40,7 @@ def load_noak_positive():
 	heat_data = ANR_application_comparison.load_heat_results(anr_tag='NOAK', cogen_tag='cogen')
 	heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'ANR',
 												'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)',
-												'Annual Net Revenues (M$/MWe/y)', 'Application', 'Annual Net Revenues (M$/y)']]
+												  'Application', 'Annual Net Revenues (M$/y)']]
 	heat_data.rename(columns={'Breakeven NG price ($/MMBtu)':'Breakeven price ($/MMBtu)',
 													'Emissions_mmtco2/y':'Emissions'}, inplace=True)
 	heat_data.reset_index(inplace=True, names='id')
@@ -48,6 +48,13 @@ def load_noak_positive():
 
 	noak_positive = pd.concat([heat_data, h2_data], ignore_index=True)
 	noak_positive = noak_positive[noak_positive['Annual Net Revenues (M$/y)'] >=0]
+
+	noak_positive.set_index('id', inplace=True)
+	foak_positive = load_foak_positive()
+	foak_positive.set_index('id', inplace=True)
+	foak_to_drop = foak_positive.index.to_list()
+	noak_positive = noak_positive.drop(foak_to_drop, errors='ignore')
+	noak_positive = noak_positive.reset_index()
 	return noak_positive
 
 
@@ -77,10 +84,16 @@ def load_noak_noPTC():
 	noak_positive = pd.concat([heat_data, h2_data], ignore_index=True)
 	noak_positive = noak_positive[noak_positive['Annual Net Revenues (M$/y)'] >=0]
 	noak_positive.to_excel('./results/results_heat_h2_NOAK_noPTC.xlsx', index=False)
+	noak_positive.set_index('id', inplace=True)
+	foak_positive = load_foak_positive()
+	foak_positive.set_index('id', inplace=True)
+	foak_to_drop = foak_positive.index.to_list()
+	noak_positive = noak_positive.drop(foak_to_drop, errors='ignore')
+	noak_positive = noak_positive.reset_index()
 	return noak_positive
 
-noak_positive = load_noak_positive()
 foak_positive = load_foak_positive()
+noak_positive = load_noak_positive()
 noak_noPTC = load_noak_noPTC()
 
 
@@ -124,6 +137,8 @@ def plot_bars(foak_positive, noak_positive, noak_noPTC):
 	df3_forcalc.set_index('App', inplace=True)
 	df3_forcalc.at['Ammonia', 'Capacity'] = 0
 	df3_forcalc.at['Ammonia', 'Emissions'] = 0
+	df3_forcalc.at['Refining', 'Capacity'] = 0
+	df3_forcalc.at['Refining', 'Emissions'] = 0
 	diffdf = df2_forcalc.copy()
 	diffdf['Capacity'] = df3_forcalc["Capacity"] - df2_forcalc['Capacity']
 	diffdf['Emissions'] = df3_forcalc["Emissions"] - df2_forcalc['Emissions']
@@ -138,6 +153,7 @@ def plot_bars(foak_positive, noak_positive, noak_noPTC):
 
 	# Now create a combined DataFrame from df1 and the adjusted df2
 	combined_df = pd.concat([df1, pd.DataFrame([total_df1]), df2, pd.DataFrame([total_df2]), diffdf, pd.DataFrame([total_diffdf])], ignore_index=True)
+	print(combined_df)
 
 	fig = make_subplots(rows=1, cols=2, horizontal_spacing=0.08)
 	combined_df['text_em'] = combined_df.apply(lambda x: int(x['Emissions']), axis=1)
@@ -183,7 +199,7 @@ def plot_bars(foak_positive, noak_positive, noak_noPTC):
 		width=1050,  # Set the width of the figure
 		height=550,  # Set the height of the figure
 	)
-	fig.write_image('./results/waterfall_foak_noak_noaknoPTC_emissions_capacity.png')
+	fig.write_image('./results/waterfall_foak_noak_noaknoPTC_emissions_capacity.png', scale=4)
 
 
 
