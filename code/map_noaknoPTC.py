@@ -27,39 +27,59 @@ fig.add_trace(go.Choropleth(
 		colorscale='Reds',
 ))
 
-def load_noak_noPTC():
+import waterfalls_cap_em
+
+noak_positive = waterfalls_cap_em.load_noak_noPTC()
+
+
+def save_noak_noPTC():
 	# NOAK data
 	h2_data = ANR_application_comparison.load_h2_results(anr_tag='NOAK', cogen_tag='cogen')
-	h2_data = h2_data[['latitude', 'longitude', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
+	h2_data = h2_data[['state', 'Depl. ANR Cap. (MWe)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
 										'Industry', 'Application', 'ANR', 'Net Revenues ($/year)','Electricity revenues ($/y)' ]]
 
 	h2_data['Annual Net Revenues (M$/y)'] =h2_data.loc[:,['Net Revenues ($/year)','Electricity revenues ($/y)']].sum(axis=1)
 	h2_data['Annual Net Revenues (M$/y)'] /=1e6
-	h2_data['Emissions'] = h2_data['Ann. avoided CO2 emissions (MMT-CO2/year)']
-	h2_data['App'] = h2_data.apply(lambda x: x['Application']+'-'+x['Industry'].capitalize(), axis=1)
-	h2_data = h2_data.drop(columns=['Net Revenues ($/year)','Electricity revenues ($/y)' ])
-	h2_data.reset_index(inplace=True)
+	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions (MMtCO2/y)', 'state':'State'}, inplace=True)
+	h2_data = h2_data.drop(columns=['Net Revenues ($/year)','Electricity revenues ($/y)'])
+	h2_data = h2_data.reset_index(names=['id'])
 
 	heat_data = ANR_application_comparison.load_heat_results(anr_tag='NOAK', cogen_tag='cogen', with_PTC=False)
-	heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'ANR',
-												'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)',
+	heat_data = heat_data[['STATE', 'Emissions_mmtco2/y', 'ANR',
+												'Depl. ANR Cap. (MWe)', 'Industry',
 													'Application', 'Annual Net Revenues (M$/y)']]
-	heat_data.rename(columns={'Breakeven NG price ($/MMBtu)':'Breakeven price ($/MMBtu)',
-												'Emissions_mmtco2/y':'Emissions'}, inplace=True)
-	heat_data.reset_index(inplace=True, names=['id'])
-	heat_data['App'] = 'Process Heat'
+	heat_data.rename(columns={'Emissions_mmtco2/y':'Emissions (MMtCO2/y)', 'STATE':'State'}, inplace=True)
+	heat_data = heat_data.reset_index(names=['id'])
 
-	# Only profitable facilities
 	noak_positive = pd.concat([heat_data, h2_data], ignore_index=True)
 	noak_positive = noak_positive[noak_positive['Annual Net Revenues (M$/y)'] >=0]
-	noak_positive.to_excel('./results/results_heat_h2_NOAK_noPTC.xlsx', index=False)
-	return noak_positive
+	noak_positive.set_index('id', inplace=True)
+	foak_positive = waterfalls_cap_em.load_foak_positive()
+	foak_positive.set_index('id', inplace=True)
+	foak_to_drop = foak_positive.index.to_list()
+	noak_positive = noak_positive.drop(foak_to_drop, errors='ignore')
+	noak_positive['Depl. ANR Cap. (MWe)'] = noak_positive['Depl. ANR Cap. (MWe)'].astype(int)
 
-noak_positive = load_noak_noPTC()
+	noak_positive.to_latex('./results/noak_noPTC_positive.tex',float_format="{:0.3f}".format, longtable=True, escape=True,\
+                            label='tab:noak_noPTC_positive_detailed_results',\
+														caption='Detailed results for NOAK without the H2 PTC deployment stage: Profitable industrial sites and associated SMR capacity deployed and annual revenues')
+
+
+save_noak_noPTC()
+
 
 # Size based on capacity deployed
 percentiles =  noak_positive['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]).to_frame()
-print(percentiles)
+print(noak_positive['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+print('Micro deployed capacity : ',sum(noak_positive[noak_positive.ANR=='Micro']['Depl. ANR Cap. (MWe)']))
+print('Micro deployed units : ',sum(noak_positive[noak_positive.ANR=='Micro']['Depl. ANR Cap. (MWe)'])/6.7)
+print('iMSR deployed capacity : ',sum(noak_positive[noak_positive.ANR=='iMSR']['Depl. ANR Cap. (MWe)']))
+print('iMSR deployed units : ',sum(noak_positive[noak_positive.ANR=='iMSR']['Depl. ANR Cap. (MWe)'])/141)
+print('PBR-HTGR deployed capacity : ',sum(noak_positive[noak_positive.ANR=='PBR-HTGR']['Depl. ANR Cap. (MWe)']))
+print('PBR-HTGR deployed units: ',sum(noak_positive[noak_positive.ANR=='PBR-HTGR']['Depl. ANR Cap. (MWe)'])/80)
+print('iPWR deployed capacity : ',sum(noak_positive[noak_positive.ANR=='iPWR']['Depl. ANR Cap. (MWe)']))
+print('iPWR deployed units : ',sum(noak_positive[noak_positive.ANR=='iPWR']['Depl. ANR Cap. (MWe)'])/77)
+print('Total capacity deployed GWe : ', sum(noak_positive['Depl. ANR Cap. (MWe)'])/1e3)
 
 scaler = 30
 
@@ -73,7 +93,7 @@ line_colors = [palette[anr] for anr in noak_positive['ANR']]
 # size based on deployed capacity
 def set_size(cap):
 	if cap <= 200:
-		size = 7
+		size = 8
 	elif cap <= 500:
 		size = 15
 	else:
@@ -84,7 +104,7 @@ noak_positive['size'] = noak_positive['Depl. ANR Cap. (MWe)'].apply(set_size)
 
 
 print(noak_positive['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
-max_rev = 11
+max_rev = 5.1
 noak_above90th = noak_positive[noak_positive['Annual Net Revenues (M$/y)'] >max_rev]
 noak_positive = noak_positive[noak_positive['Annual Net Revenues (M$/y)'] <= max_rev]
 
@@ -108,8 +128,8 @@ fig.add_trace(go.Scattergeo(
 						yanchor='bottom',
 						lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
 						len=0.7,  # Length of the colorbar (80% of figure width)
-						tickvals = [0.1,5,10],
-						ticktext = [0.1,5,10],
+						tickvals = [0.4,2.1,5, 6.9],
+						ticktext = [0.4,2.1,5, 6.9],
 						tickmode='array',
 						tickfont=dict(size=16)
 				),
@@ -231,109 +251,4 @@ fig.update_layout(
 )
 
 # Save
-fig.write_image('./results/map_NOAK_cogen_noPTC.png')
-# Show figure
-fig.show()
-
-### Plot waterfalls
-
-h2_data = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='cogen')
-h2_data = h2_data[['latitude', 'longitude', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
-									 'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/MWe/y)' ]]
-h2_data['Emissions_mmtco2/y'] = h2_data['Ann. avoided CO2 emissions (MMT-CO2/year)']
-h2_data['App'] = h2_data.apply(lambda x: x['Application']+'-'+x['Industry'].capitalize(), axis=1)
-h2_data.reset_index(inplace=True)
-
-heat_data = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen')
-heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'ANR',
-											 'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)',
-											 'Annual Net Revenues (M$/MWe/y)', 'Application']]
-heat_data['App'] = 'Process Heat'
-heat_data.reset_index(inplace=True)
-
-foak_positive = pd.concat([h2_data, heat_data], ignore_index=True)
-foak_positive = foak_positive[foak_positive['Annual Net Revenues (M$/MWe/y)'] >=0]
-
-
-def plot_bars(foak_positive, noak_positive):
-	df = foak_positive[['App', 'Emissions_mmtco2/y', 'Depl. ANR Cap. (MWe)']]
-	df = df.rename(columns={'Emissions_mmtco2/y':'Emissions', 'Depl. ANR Cap. (MWe)':'Capacity'})
-	df['Capacity'] = df['Capacity']/1e3
-	df = df.groupby('App').sum()
-	df1 = df.reset_index()
-	df1 = df1.replace('Industrial Hydrogen-', '', regex=True)
-	df1['measure'] = 'relative'
-	total_df1 = df1.sum()
-	total_df1['App'] = 'Total'
-	total_df1['measure'] = 'total'
-	df1['tag'] = 'FOAK-cogen'
-	total_df1['tag'] = 'FOAK-cogen'
-
-	df = noak_positive[['App', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 'Depl. ANR Cap. (MWe)']]
-	df = df.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions', 'Depl. ANR Cap. (MWe)':'Capacity'})
-	df['Capacity'] = df['Capacity']/1e3
-	df = df.groupby('App').sum()
-	df2 = df.reset_index()
-	df2 = df2.replace('Industrial Hydrogen-', '', regex=True)
-	df2['measure'] = 'relative'
-	total_df2 = df2.sum()
-	total_df2['App'] = 'Total'
-	total_df2['measure'] = 'total'
-	df2['tag'] = 'NOAK-cogen'
-	total_df2['tag'] = 'NOAK-cogen'
-	df2_adjusted = pd.concat([pd.DataFrame([total_df1]), df2, pd.DataFrame([total_df2])], ignore_index=True)
-	
-	# Now create a combined DataFrame from df1 and the adjusted df2
-	combined_df = pd.concat([df1, df2_adjusted], ignore_index=True)
-	print(combined_df)
-
-	fig = make_subplots(rows=1, cols=2, horizontal_spacing=0.13)
-	combined_df['text_em'] = combined_df.apply(lambda x: int(x['Emissions']), axis=1)
-	
-	fig.add_trace(go.Waterfall(
-		orientation = "v",
-		measure = combined_df['measure'],
-		x = [combined_df['tag'],combined_df['App']],
-		textposition = "outside",
-		text = combined_df['text_em'],
-		y = combined_df['Emissions'],
-		connector = {"line":{"color":"rgb(63, 63, 63)"}},
-		increasing = {"marker":{"color": "paleGreen"}},
-		totals = {"marker":{"color": "limeGreen"}}
-		),
-		row=1, col=1
-	)
-
-	combined_df['text_cap'] = combined_df.apply(lambda x: int(x['Capacity']), axis=1)
-	fig.add_trace(go.Waterfall(
-		orientation = "v",
-		measure = combined_df['measure'],
-		x = [combined_df['tag'],combined_df['App']],
-		textposition = "outside",
-		text = combined_df['text_cap'],
-		y = combined_df['Capacity'],
-		connector = {"line":{"color":"rgb(63, 63, 63)"}},
-		increasing = {"marker":{"color": "lightBlue"}},
-		totals = {"marker":{"color": "royalBlue"}}
-		),
-		row=1, col=2
-	)
-	# Set y-axis titles
-	fig.update_yaxes(title_text='Avoided emissions (MMtCO2/y)', row=1, col=1)
-	fig.update_yaxes(title_text='ANR Capacity (GWe)', row=1, col=2)
-	fig.update_xaxes(tickangle=45)
-	# Set chart layout
-	fig.update_layout(
-		margin=dict(l=20, r=20, t=20, b=20),
-		showlegend = False,
-		width=600,  # Set the width of the figure
-		height=550,  # Set the height of the figure
-	)
-
-	fig.write_image('./results/noak_cogen_positive_emissions_capacity.png')
-
-
-
-
-	
-#plot_bars(foak_positive, noak_positive)
+fig.write_image('./results/map_NOAK_cogen_noPTC.png', scale=4)
