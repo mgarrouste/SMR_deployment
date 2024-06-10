@@ -69,7 +69,9 @@ def save_foak_positive():
 	foak_positive = pd.concat([h2_data, heat_data], ignore_index=True)
 	foak_positive = foak_positive[foak_positive['Annual Net Revenues (M$/y)'] >=0]
 	foak_positive.set_index('id', inplace=True)
-	foak_positive.to_latex('./results/foak_positive.tex',float_format="{:0.1f}".format, longtable=True, escape=True,\
+	foak_positive['Depl. ANR Cap. (MWe)'] = foak_positive['Depl. ANR Cap. (MWe)'].astype(int)
+
+	foak_positive.to_latex('./results/foak_positive.tex',float_format="{:0.3f}".format, longtable=True, escape=True,\
                             label='tab:foak_positive_detailed_results',\
 														caption='Detailed results for FOAK deployment stage: Profitable industrial sites and associated SMR capacity deployed and annual revenues')
 
