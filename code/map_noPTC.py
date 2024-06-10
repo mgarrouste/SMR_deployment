@@ -25,6 +25,7 @@ colorbar_texts = ['20', '30', '40',
                   'BE iMSR: 46', 'BE PBR-HTGR: 52', 'BE iPWR: 57', 'BE HTGR: 78', 'BE Micro: 117']
 
 max_actual_value = max(elec_df['average price ($/MWhe)'])
+print('Maximum state-level average electricity price: ', max_actual_value)
 max_tick_value = max(colorbar_ticks)
 # List of colors for the colorscale (light to dark blue)
 color_list = ["#ebf3fb", "#d2e3f3", "#b6d2ee", "#85bcdb", "#57a0ce", "#3082be", "#1361a9", "#0a4a90", "#08306b"]
@@ -62,6 +63,7 @@ fig.add_trace(
             len=0.7,  # Length of the colorbar (80% of figure width)
             tickvals=colorbar_ticks,  # Custom tick values
             ticktext=colorbar_texts,
+            tickfont=dict(size=14)
         ),
     )
 )
@@ -106,7 +108,7 @@ fig.add_trace(go.Scattergeo(
     text="Breakeven price: " + noptc_be['BE wo PTC ($/MMBtu)'].astype(str) + " $/MMBtu",
     mode='markers',
     marker=dict(
-        size=8,
+        size=12,
         color=noptc_be['BE wo PTC ($/MMBtu)'],
         colorscale='Reds',
         colorbar = dict(
@@ -118,6 +120,7 @@ fig.add_trace(go.Scattergeo(
             len=0.8,  # Length of the colorbar (80% of figure width)
             tickvals=colorbar_ticks,  # Custom tick values
             ticktext=colorbar_texts,
+            tickfont=dict(size=14)
         ),
         symbol=marker_symbols,
         line_color='black',
@@ -165,11 +168,12 @@ fig.update_layout(
         x=0.9,
         y=1,
         traceorder="normal",
+        font = dict(size = 16, color = "black"),
         bgcolor="rgba(255, 255, 255, 0.5)"  # semi-transparent background
     ),
 )
 
 
 # Save
-fig.write_image('./results/map_noPTC.png')
+fig.write_image('./results/map_noPTC.png', scale=4)
 fig.show()
