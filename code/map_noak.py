@@ -28,29 +28,41 @@ fig.add_trace(go.Choropleth(
 ))
 
 
-def load_noak_positive():
+import waterfalls_cap_em
+def save_noak_positive():
 	# NOAK data
 	h2_data = ANR_application_comparison.load_h2_results(anr_tag='NOAK', cogen_tag='cogen')
-	h2_data = h2_data[['latitude', 'longitude', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
-										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/MWe/y)', 'Annual Net Revenues (M$/y)' ]]
-	h2_data['Emissions_mmtco2/y'] = h2_data['Ann. avoided CO2 emissions (MMT-CO2/year)']
-	h2_data['App'] = h2_data.apply(lambda x: x['Application']+'-'+x['Industry'].capitalize(), axis=1)
-	h2_data.reset_index(inplace=True)
+	h2_data = h2_data[['state', 'Depl. ANR Cap. (MWe)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
+										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/y)' ]]
+	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions (MMtCO2/y)', 'state':'State'}, inplace=True)
+	h2_data = h2_data.reset_index(names=['id'])
 
 	heat_data = ANR_application_comparison.load_heat_results(anr_tag='NOAK', cogen_tag='cogen')
-	heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'ANR',
-												'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)',
-												'Annual Net Revenues (M$/MWe/y)', 'Application', 'Annual Net Revenues (M$/y)']]
-	heat_data.rename(columns={'Breakeven NG price ($/MMBtu)':'Breakeven price ($/MMBtu)',
-													'Emissions_mmtco2/y':'Ann. avoided CO2 emissions (MMT-CO2/year)'}, inplace=True)
-	heat_data.reset_index(inplace=True, names=['id'])
-	heat_data['App'] = 'Process Heat'
+	heat_data = heat_data[['STATE', 'Emissions_mmtco2/y', 'ANR',
+												'Depl. ANR Cap. (MWe)', 'Industry',
+												  'Application', 'Annual Net Revenues (M$/y)']]
+	heat_data.rename(columns={'Emissions_mmtco2/y':'Emissions (MMtCO2/y)', 'STATE':'State'}, inplace=True)
+	heat_data = heat_data.reset_index(names=['id'])
 
 	noak_positive = pd.concat([heat_data, h2_data], ignore_index=True)
 	noak_positive = noak_positive[noak_positive['Annual Net Revenues (M$/y)'] >=0]
-	return noak_positive
+	noak_positive.set_index('id', inplace=True)
+	foak_positive = waterfalls_cap_em.load_foak_positive()
+	foak_positive.set_index('id', inplace=True)
+	foak_to_drop = foak_positive.index.to_list()
+	noak_positive = noak_positive.drop(foak_to_drop, errors='ignore')
+	noak_positive['Depl. ANR Cap. (MWe)'] = noak_positive['Depl. ANR Cap. (MWe)'].astype(int)
 
-noak_positive = load_noak_positive()
+	noak_positive.to_latex('./results/noak_positive.tex',float_format="{:0.3f}".format, longtable=True, escape=True,\
+                            label='tab:noak_positive_detailed_results',\
+														caption='Detailed results for NOAK deployment stage: Profitable industrial sites and associated SMR capacity deployed and annual revenues')
+
+
+
+
+
+noak_positive = waterfalls_cap_em.load_noak_positive()
+save_noak_positive()
 
 # Size based on capacity deployed
 percentiles =  noak_positive['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]).to_frame()
@@ -78,7 +90,7 @@ line_colors = [palette[anr] for anr in noak_positive['ANR']]
 # size based on deployed capacity
 def set_size(cap):
 	if cap <= 200:
-		size = 5
+		size = 7
 	elif cap <= 500:
 		size = 15
 	else:
@@ -88,7 +100,7 @@ def set_size(cap):
 noak_positive['size'] = noak_positive['Depl. ANR Cap. (MWe)'].apply(set_size)
 
 print(noak_positive['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
-max_rev = 52
+max_rev = 12
 noak_positive = noak_positive[noak_positive['Annual Net Revenues (M$/y)'] <= max_rev]
 
 
@@ -111,8 +123,8 @@ fig.add_trace(go.Scattergeo(
 						yanchor='bottom',
 						lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
 						len=0.7,  # Length of the colorbar (80% of figure width)
-						tickvals = [0.1,10,25,50,100,500],
-						ticktext = [0.1,10,25,50,100,500],
+						tickvals = [2.6,5.1,11.3,25,50,100,500],
+						ticktext = [2.6,5.1,11.3,25,50,100,500],
 						tickmode='array',
 						tickfont=dict(size=16)
 				),
@@ -247,7 +259,7 @@ fig.update_layout(
 )
 
 # Save
-fig.write_image('./results/map_NOAK_cogen.png')
+fig.write_image('./results/map_NOAK_cogen.png', scale=4)
 # Show figure
 
 
@@ -336,4 +348,4 @@ def plot_bars(foak_positive, noak_positive):
 
 
 	
-plot_bars(foak_positive, noak_positive)
+#plot_bars(foak_positive, noak_positive)
