@@ -57,6 +57,7 @@ def save_foak_positive():
 	h2_data = h2_data[['state', 'Depl. ANR Cap. (MWe)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
 										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/y)' ]]
 	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions (MMtCO2/y)', 'state':'State'}, inplace=True)
+	h2_data['application'] = h2_data.apply(lambda x:'H2-'+x['Industry'].capitalize(), axis=1)
 	h2_data = h2_data.reset_index(names=['id'])
 
 	heat_data = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen')
@@ -64,6 +65,7 @@ def save_foak_positive():
 												'Depl. ANR Cap. (MWe)', 'Industry',
 												'Annual Net Revenues (M$/y)', 'Application']]
 	heat_data.rename(columns={'Emissions_mmtco2/y':'Emissions (MMtCO2/y)', 'STATE':'State'}, inplace=True)
+	heat_data['application'] = 'Process Heat'
 	heat_data = heat_data.reset_index(names=['id'])
 
 	foak_positive = pd.concat([h2_data, heat_data], ignore_index=True)
@@ -71,7 +73,9 @@ def save_foak_positive():
 	foak_positive.set_index('id', inplace=True)
 	foak_positive['Depl. ANR Cap. (MWe)'] = foak_positive['Depl. ANR Cap. (MWe)'].astype(int)
 
-	foak_positive.to_latex('./results/foak_positive.tex',float_format="{:0.3f}".format, longtable=True, escape=True,\
+	foak_positive = foak_positive.drop(columns=['Industry', 'Application'])
+
+	foak_positive.to_latex('./results/foak_positive.tex',float_format="{:0.1f}".format, longtable=True, escape=True,\
                             label='tab:foak_positive_detailed_results',\
 														caption='Detailed results for FOAK deployment stage: Profitable industrial sites and associated SMR capacity deployed and annual revenues')
 

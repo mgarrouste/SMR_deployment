@@ -21,6 +21,7 @@ geo_centers = pd.read_excel('./input_data/us_states_centers.xlsx')
 elec_data = elec_data.merge(geo_centers, on='state', how='left')
 elec_data['Cost red CAPEX BE']  *= 100
 
+print('Cost reduction needed for electricity')
 print(elec_data['Cost red CAPEX BE'].describe(percentiles=[.1,.25,.5,.75,.9]))
 
 # Add electricity data separately to the figure
@@ -30,7 +31,7 @@ fig.add_trace(go.Scattergeo(
     mode='markers',
     text="Cost reduction needed " + elec_data['Cost red CAPEX BE'].astype(str) + " % FOAK",
     marker=dict(
-        size=elec_data['Cost red CAPEX BE']*0.2,
+        size=20,
         color=elec_data['Cost red CAPEX BE'],
         colorscale='Reds',
         symbol='triangle-up',
@@ -44,16 +45,20 @@ fig.add_trace(go.Scattergeo(
 
 # NOAK data
 h2_data = ANR_application_comparison.load_h2_results(anr_tag='NOAK', cogen_tag='cogen')
-h2_data = h2_data[['latitude', 'longitude', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
+h2_data = h2_data[['latitude', 'longitude', 'state','Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
                    'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/MWe/y)' ]]
+h2_data = h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions (MMtCO2/y)'})
+h2_data['application'] = h2_data.apply(lambda x:'H2-'+x['Industry'].capitalize(), axis=1)
 h2_data.reset_index(inplace=True)
 
 heat_data = ANR_application_comparison.load_heat_results(anr_tag='NOAK', cogen_tag='cogen')
-heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'ANR',
+heat_data = heat_data[['latitude', 'longitude','STATE', 'Emissions_mmtco2/y', 'ANR',
                        'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)',
                        'Annual Net Revenues (M$/MWe/y)', 'Application']]
 heat_data.rename(columns={'Breakeven NG price ($/MMBtu)':'Breakeven price ($/MMBtu)',
-                        'Emissions_mmtco2/y':'Ann. avoided CO2 emissions (MMT-CO2/year)'}, inplace=True)
+                          'STATE':'state',
+                        'Emissions_mmtco2/y':'Emissions (MMtCO2/y)'}, inplace=True)
+heat_data['application'] = 'Process Heat'
 heat_data.reset_index(inplace=True, names=['id'])
 
 # Negative NOAK sites
@@ -62,11 +67,11 @@ noak_neg = noak_neg[noak_neg['Annual Net Revenues (M$/MWe/y)'] <0]
 
 
 # Load FOAK capex breakeven data for those sites
-h2_data = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='nocogen')
+h2_data = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='cogen')
 h2_data = h2_data[['Breakeven CAPEX ($/MWe)', 'Cost red CAPEX BE']]
 h2_data.reset_index(inplace=True)
 
-heat_data = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='nocogen')
+heat_data = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen')
 heat_data = heat_data[['Breakeven CAPEX ($/MWe)', 'Cost red CAPEX BE']]
 heat_data.reset_index(inplace=True, names=['id'])
 
@@ -77,15 +82,23 @@ be_foak = pd.concat([h2_data, heat_data], ignore_index=True)
 # Merge data to get breakeven capex and cost reduction for breakeven for sites with negative revenues in NOAK cogen case
 noak_neg = noak_neg.merge(right=be_foak, on=['id'],how='left')
 noak_neg['Cost red CAPEX BE'] *=100
+print('Cost reduction needed for h2 and heat')
 print(noak_neg['Cost red CAPEX BE'].describe(percentiles=[.1,.25,.5,.75,.9]))
 
 
+save_noak_neg = noak_neg[['id', 'state','application', 'Emissions (MMtCO2/y)', 'Cost red CAPEX BE']]
+save_noak_neg.set_index('id', inplace=True)
+save_noak_neg.to_latex('./results/noak_negative_be_capex.tex', float_format="{:0.3f}".format, longtable=True, escape=True,\
+                            label='tab:noak_negative_be_capex',caption='CAPEX cost reduction needed for non-profitable sites at NOAK stage with H2 PTC')
+
+
+
 #Scale up
-scaler = 0.2
+scaler = 0.25
 
 
 # First only show up to 100 % 
-noak_neg100 = noak_neg[noak_neg['Cost red CAPEX BE']<=100]
+noak_neg100 = noak_neg[noak_neg['Cost red CAPEX BE']<=103]
 noak_negsup100 = noak_neg[noak_neg['Cost red CAPEX BE']>100]
 
 # Above 100%
@@ -128,7 +141,7 @@ fig.add_trace(go.Scattergeo(
     text="Cost reduction needed: " + noak_neg100['Cost red CAPEX BE'].astype(str) + " % FOAK CAPEX",
     mode='markers',
     marker=dict(
-        size=noak_neg100['Cost red CAPEX BE']*scaler,
+        size=20,
         color=noak_neg100['Cost red CAPEX BE'],
         colorscale='Reds',
         colorbar = dict(
@@ -140,13 +153,13 @@ fig.add_trace(go.Scattergeo(
             yanchor='bottom',
             lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
             len=0.8,  # Length of the colorbar (80% of figure width)
-            tickvals = [45,50,60,70,80,90],
-            ticktext = [45,50,60,70,80,90],
+            tickvals = [36,50,75,100],
+            ticktext = [36,50,75,100],
             tickmode='array'
         ),
         symbol=marker_symbols,
         line_color=line_colors,
-        line_width=3,
+        line_width=2,
         sizemode='diameter'
     ),
     showlegend=False
@@ -205,7 +218,7 @@ fig.update_layout(
         t=20  # top margin
     ),
     legend=dict(
-        title="<b>Application & ANR</b>",
+        title="<b>Application & SMR</b>",
         x=1,
         y=1,
         traceorder="normal",
@@ -214,7 +227,4 @@ fig.update_layout(
 )
 
 # Save
-fig.write_image('./results/map_above_NOAK.png')
-
-# Show figure
-fig.show()
+fig.write_image('./results/map_above_NOAK.png', scale=4)

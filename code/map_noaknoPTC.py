@@ -42,12 +42,15 @@ def save_noak_noPTC():
 	h2_data['Annual Net Revenues (M$/y)'] /=1e6
 	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions (MMtCO2/y)', 'state':'State'}, inplace=True)
 	h2_data = h2_data.drop(columns=['Net Revenues ($/year)','Electricity revenues ($/y)'])
+	h2_data['application'] = h2_data.apply(lambda x:'H2-'+x['Industry'].capitalize(), axis=1)
+
 	h2_data = h2_data.reset_index(names=['id'])
 
 	heat_data = ANR_application_comparison.load_heat_results(anr_tag='NOAK', cogen_tag='cogen', with_PTC=False)
 	heat_data = heat_data[['STATE', 'Emissions_mmtco2/y', 'ANR',
 												'Depl. ANR Cap. (MWe)', 'Industry',
 													'Application', 'Annual Net Revenues (M$/y)']]
+	heat_data['application'] = 'Process Heat'
 	heat_data.rename(columns={'Emissions_mmtco2/y':'Emissions (MMtCO2/y)', 'STATE':'State'}, inplace=True)
 	heat_data = heat_data.reset_index(names=['id'])
 
@@ -59,8 +62,8 @@ def save_noak_noPTC():
 	foak_to_drop = foak_positive.index.to_list()
 	noak_positive = noak_positive.drop(foak_to_drop, errors='ignore')
 	noak_positive['Depl. ANR Cap. (MWe)'] = noak_positive['Depl. ANR Cap. (MWe)'].astype(int)
-
-	noak_positive.to_latex('./results/noak_noPTC_positive.tex',float_format="{:0.3f}".format, longtable=True, escape=True,\
+	noak_positive = noak_positive.drop(columns=['Industry', 'Application'])
+	noak_positive.to_latex('./results/noak_noPTC_positive.tex',float_format="{:0.1f}".format, longtable=True, escape=True,\
                             label='tab:noak_noPTC_positive_detailed_results',\
 														caption='Detailed results for NOAK without the H2 PTC deployment stage: Profitable industrial sites and associated SMR capacity deployed and annual revenues')
 

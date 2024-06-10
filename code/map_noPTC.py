@@ -72,18 +72,28 @@ fig.add_trace(
 
 # FOAK data with no PTC
 h2_data = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='cogen')
-h2_data = h2_data[['latitude', 'longitude', 'State price ($/MMBtu)','Depl. ANR Cap. (MWe)', 'BE wo PTC ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
+h2_data = h2_data[['state','latitude', 'longitude', 'State price ($/MMBtu)','Depl. ANR Cap. (MWe)', 'BE wo PTC ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
                    'Industry', 'Application', 'ANR' ]]
+h2_data['application'] = h2_data.apply(lambda x:'H2-'+x['Industry'].capitalize(), axis=1)
 h2_data.reset_index(inplace=True)
 
 heat_data = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen')
-heat_data = heat_data[['latitude', 'longitude', 'NG price ($/MMBtu)', 'Emissions_mmtco2/y', 'ANR',
+heat_data = heat_data[['STATE','latitude', 'longitude', 'NG price ($/MMBtu)', 'Emissions_mmtco2/y', 'ANR',
                        'Depl. ANR Cap. (MWe)', 'Industry','BE wo PTC ($/MMBtu)', 'Application']]
 heat_data.rename(columns={'Emissions_mmtco2/y':'Ann. avoided CO2 emissions (MMT-CO2/year)',
-                          'NG price ($/MMBtu)':'State price ($/MMBtu)'}, inplace=True)
+                          'NG price ($/MMBtu)':'State price ($/MMBtu)', 'STATE':'state'}, inplace=True)
+heat_data['application'] = 'Process Heat'
 heat_data.reset_index(inplace=True, names=['id'])
 
 noptc_be = pd.concat([heat_data,h2_data], ignore_index=True)
+
+tosave_noptc = noptc_be[['id','state', 'State price ($/MMBtu)', 'BE wo PTC ($/MMBtu)', 'application', 'ANR']]
+tosave_noptc = tosave_noptc.rename(columns={'BE wo PTC ($/MMBtu)':'Breakeven price ($/MMBtu)'})
+tosave_noptc.set_index('id', inplace=True)
+tosave_noptc.to_latex('./results/foak_noPTC.tex',float_format="{:0.1f}".format, longtable=True, escape=True,\
+                        label='tab:foak_noPTC_detailed_results',\
+						caption='Detailed results for FOAK without the H2 PTC deployment stage')
+
 
 print(noptc_be['BE wo PTC ($/MMBtu)'].describe(percentiles = [.1,.25,.5,.75,.9]))
 

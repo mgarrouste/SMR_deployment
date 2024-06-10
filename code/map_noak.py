@@ -35,6 +35,7 @@ def save_noak_positive():
 	h2_data = h2_data[['state', 'Depl. ANR Cap. (MWe)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
 										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/y)' ]]
 	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions (MMtCO2/y)', 'state':'State'}, inplace=True)
+	h2_data['application'] = h2_data.apply(lambda x:'H2-'+x['Industry'].capitalize(), axis=1)
 	h2_data = h2_data.reset_index(names=['id'])
 
 	heat_data = ANR_application_comparison.load_heat_results(anr_tag='NOAK', cogen_tag='cogen')
@@ -42,6 +43,7 @@ def save_noak_positive():
 												'Depl. ANR Cap. (MWe)', 'Industry',
 												  'Application', 'Annual Net Revenues (M$/y)']]
 	heat_data.rename(columns={'Emissions_mmtco2/y':'Emissions (MMtCO2/y)', 'STATE':'State'}, inplace=True)
+	heat_data['application'] = 'Process Heat'
 	heat_data = heat_data.reset_index(names=['id'])
 
 	noak_positive = pd.concat([heat_data, h2_data], ignore_index=True)
@@ -52,8 +54,8 @@ def save_noak_positive():
 	foak_to_drop = foak_positive.index.to_list()
 	noak_positive = noak_positive.drop(foak_to_drop, errors='ignore')
 	noak_positive['Depl. ANR Cap. (MWe)'] = noak_positive['Depl. ANR Cap. (MWe)'].astype(int)
-
-	noak_positive.to_latex('./results/noak_positive.tex',float_format="{:0.3f}".format, longtable=True, escape=True,\
+	noak_positive = noak_positive.drop(columns=['Industry', 'Application'])
+	noak_positive.to_latex('./results/noak_positive.tex',float_format="{:0.1f}".format, longtable=True, escape=True,\
                             label='tab:noak_positive_detailed_results',\
 														caption='Detailed results for NOAK deployment stage: Profitable industrial sites and associated SMR capacity deployed and annual revenues')
 
