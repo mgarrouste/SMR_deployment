@@ -11,12 +11,12 @@ def load_foak_positive():
 	h2_data = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='cogen')
 	h2_data = h2_data[['latitude', 'longitude', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
 										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/y)' ]]
-	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions'}, inplace=True)
+	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions', 'ANR':'SMR'}, inplace=True)
 	h2_data['App'] = h2_data.apply(lambda x: x['Application']+'-'+x['Industry'].capitalize(), axis=1)
 	h2_data.reset_index(inplace=True)
 
 	heat_data = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen')
-	heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'ANR',
+	heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'SMR',
 												'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)',
 												'Annual Net Revenues (M$/y)', 'Application']]
 	heat_data = heat_data.rename(columns={'Emissions_mmtco2/y':'Emissions','Breakeven NG price ($/MMBtu)':'Breakeven price ($/MMBtu)'})
@@ -33,12 +33,12 @@ def load_noak_positive():
 	h2_data = ANR_application_comparison.load_h2_results(anr_tag='NOAK', cogen_tag='cogen')
 	h2_data = h2_data[['latitude', 'longitude', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
 										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/y)' ]]
-	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions'}, inplace=True)
+	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions', 'ANR':'SMR'}, inplace=True)
 	h2_data['App'] = h2_data.apply(lambda x: x['Application']+'-'+x['Industry'].capitalize(), axis=1)
 	h2_data.reset_index(inplace=True)
 
 	heat_data = ANR_application_comparison.load_heat_results(anr_tag='NOAK', cogen_tag='cogen')
-	heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'ANR',
+	heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'SMR',
 												'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)',
 												  'Application', 'Annual Net Revenues (M$/y)']]
 	heat_data.rename(columns={'Breakeven NG price ($/MMBtu)':'Breakeven price ($/MMBtu)',
@@ -66,13 +66,13 @@ def load_noak_noPTC():
 
 	h2_data['Annual Net Revenues (M$/y)'] =h2_data.loc[:,['Net Revenues ($/year)','Electricity revenues ($/y)']].sum(axis=1)
 	h2_data['Annual Net Revenues (M$/y)'] /=1e6
-	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions'}, inplace=True)
+	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions', 'ANR':'SMR'}, inplace=True)
 	h2_data['App'] = h2_data.apply(lambda x: x['Application']+'-'+x['Industry'].capitalize(), axis=1)
 	h2_data = h2_data.drop(columns=['Net Revenues ($/year)','Electricity revenues ($/y)' ])
 	h2_data.reset_index(inplace=True)
 
 	heat_data = ANR_application_comparison.load_heat_results(anr_tag='NOAK', cogen_tag='cogen', with_PTC=False)
-	heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'ANR',
+	heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'SMR',
 												'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)',
 													'Application', 'Annual Net Revenues (M$/y)']]
 	heat_data.rename(columns={'Breakeven NG price ($/MMBtu)':'Breakeven price ($/MMBtu)',
@@ -209,7 +209,10 @@ def abatement_cost_plot():
 	
 	fig, ax = plt.subplots(2,1, figsize=(7,4),sharex=True)
 	xmin = -50
-	xmax = 1000
+	xmax = 600
+
+	epa_scc = 230
+	rff_scc = 185
 
 	# FOAK on the left
 	anr_tag = 'FOAK'
@@ -223,13 +226,13 @@ def abatement_cost_plot():
 	print('FOAK h2')
 	h2_data = h2_data[['ANR type', 'Abatement cost ($/tCO2)', 'Industry']]
 	print(h2_data['Abatement cost ($/tCO2)'].describe(percentiles=[.1,.25,.5,.75,.9]))
-	h2_data = h2_data.rename(columns={'ANR type':'ANR'})
+	h2_data = h2_data.rename(columns={'ANR type':'SMR'})
 	# Direct heat
 	heat_data = pd.read_excel(f'./results/process_heat/best_pathway_{anr_tag}_cogen_PTC_True.xlsx')
 	heat_data = heat_data[heat_data['Pathway Net Ann. Rev. (M$/y)']>=0]
 	heat_data['Cost ANR ($/y)'] = (heat_data['CAPEX ($/y)']+heat_data['O&M ($/y)']+heat_data['Conversion']-heat_data['Avoided NG Cost ($/y)'])
 	heat_data['Abatement cost ($/tCO2)'] = heat_data['Cost ANR ($/y)']/(heat_data['Emissions_mmtco2/y']*1e6)
-	heat_data = heat_data[['ANR', 'Abatement cost ($/tCO2)']]
+	heat_data = heat_data[['SMR', 'Abatement cost ($/tCO2)']]
 	print('FOAK heat')
 	print(heat_data['Abatement cost ($/tCO2)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 	heat_data['Industry'] = 'Process Heat'
@@ -237,12 +240,16 @@ def abatement_cost_plot():
 	foak = pd.concat([h2_data, heat_data], ignore_index=True)
 
 	sns.boxplot(ax=ax[0], data=foak, y='Industry', x='Abatement cost ($/tCO2)', color='k', fill=False, width=.4)
-	sns.stripplot(ax=ax[0], data=foak,y='Industry', x='Abatement cost ($/tCO2)', hue='ANR', palette=palette, marker='P',alpha=.5)
+	sns.stripplot(ax=ax[0], data=foak,y='Industry', x='Abatement cost ($/tCO2)', hue='SMR', palette=palette, marker='P',alpha=.7)
 	ax[0].get_legend().set_visible(False)
 	ax[0].set_xlim(xmin, xmax)
 	ax[0].set_title('FOAK')
 	ax[0].get_legend().set_visible(False)
 	ax[0].set_ylabel('')
+	ax[0].axvline(x=rff_scc, ls='--', color='orange')
+	ax[0].axvline(x=epa_scc, ls='--', color='tomato')
+	ax[0].text(x=rff_scc, y=-.4, s='RFF',color='orange')
+	ax[0].text(x=epa_scc, y=-.4, s='EPA',color='tomato')
 	#ax[0].set_yticks(ax[0].get_yticks(), ax[0].get_yticklabels(), rotation=-30, ha='left')
 
 	# FOAK on the left
@@ -258,30 +265,32 @@ def abatement_cost_plot():
 	print('NOAK h2')
 	print(h2_data['Abatement cost ($/tCO2)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 	h2_data = h2_data[['ANR type', 'Abatement cost ($/tCO2)', 'Industry']]
-	h2_data = h2_data.rename(columns={'ANR type':'ANR'})
+	h2_data = h2_data.rename(columns={'ANR type':'SMR'})
 	# Direct heat
 	heat_data = pd.read_excel(f'./results/process_heat/best_pathway_{anr_tag}_cogen_PTC_True.xlsx')
 	heat_data = heat_data[heat_data['Pathway Net Ann. Rev. (M$/y)']>=0]
 	heat_data['Cost ANR ($/y)'] = (heat_data['CAPEX ($/y)']+heat_data['O&M ($/y)']+heat_data['Conversion']-heat_data['Avoided NG Cost ($/y)'])
 	heat_data['Abatement cost ($/tCO2)'] = heat_data['Cost ANR ($/y)']/(heat_data['Emissions_mmtco2/y']*1e6)
-	heat_data = heat_data[['ANR', 'Abatement cost ($/tCO2)']]
+	heat_data = heat_data[['SMR', 'Abatement cost ($/tCO2)']]
 	print('NOAK heat')
 	print(heat_data['Abatement cost ($/tCO2)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 	heat_data['Industry'] = 'Process Heat'
 
 	noak = pd.concat([h2_data, heat_data], ignore_index=True)
 	sns.boxplot(ax=ax[1], data=noak,y='Industry', x='Abatement cost ($/tCO2)', color='k', fill=False, width=.4)
-	sns.stripplot(ax=ax[1], data=noak, y='Industry', x='Abatement cost ($/tCO2)', hue='ANR', palette=palette, marker='P',alpha=.5)
+	sns.stripplot(ax=ax[1], data=noak, y='Industry', x='Abatement cost ($/tCO2)', hue='SMR', palette=palette, marker='P',alpha=.7)
 	ax[1].set_xlim(xmin,xmax)
 	ax[1].set_title('NOAK')
 	ax[1].get_legend().set_visible(False)
 	ax[1].set_ylabel('')
+	ax[1].axvline(x=rff_scc, ls='--', color='orange')
+	ax[1].axvline(x=epa_scc, ls='--', color='tomato')
 	#ax[1].set_yticks(ax[1].get_xticks(), ax[1].get_xticklabels(), rotation=-30, ha='left')
 
 	h3, l3 = ax[0].get_legend_handles_labels()
 	h4, l4 = ax[1].get_legend_handles_labels()
 	by_label = dict(zip(l3+l4, h3+h4))
-	fig.legend(by_label.values(), by_label.keys(),  bbox_to_anchor=(.5,0.01),loc='upper center', ncol=5)
+	fig.legend(by_label.values(), by_label.keys(),  bbox_to_anchor=(1.,.8),ncol=1)
 
 
 	sns.despine()
