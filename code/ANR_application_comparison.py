@@ -57,9 +57,9 @@ def load_h2_results(anr_tag, cogen_tag):
   return all_df 
 
 
-def load_heat_results(anr_tag, cogen_tag):
+def load_heat_results(anr_tag, cogen_tag, ptc_tag=True):
   """Loads direct process heat results and returns them sorted by breakeven prices"""
-  heat_results_path = f'./results/process_heat/best_pathway_{anr_tag}_{cogen_tag}.xlsx'
+  heat_results_path = f'./results/process_heat/best_pathway_{anr_tag}_{cogen_tag}_PTC_{ptc_tag}.xlsx'
   heat_df = pd.read_excel(heat_results_path, index_col='FACILITY_ID')
   heat_df['Annual Net Revenues (M$/MWe/y)']  = heat_df['Pathway Net Ann. Rev. (M$/y)']/heat_df['Depl. ANR Cap. (MWe)']
   heat_df['Annual Net Revenues (M$/y)'] = heat_df['Pathway Net Ann. Rev. (M$/y)']
