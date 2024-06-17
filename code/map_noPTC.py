@@ -78,7 +78,7 @@ h2_data['application'] = h2_data.apply(lambda x:'H2-'+x['Industry'].capitalize()
 h2_data.reset_index(inplace=True)
 
 heat_data = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen')
-heat_data = heat_data[['STATE','latitude', 'longitude', 'NG price ($/MMBtu)', 'Emissions_mmtco2/y', 'ANR',
+heat_data = heat_data[['STATE','latitude', 'longitude', 'NG price ($/MMBtu)', 'Emissions_mmtco2/y', 'SMR',
                        'Depl. ANR Cap. (MWe)', 'Industry','BE wo PTC ($/MMBtu)', 'Application']]
 heat_data.rename(columns={'Emissions_mmtco2/y':'Ann. avoided CO2 emissions (MMT-CO2/year)',
                           'NG price ($/MMBtu)':'State price ($/MMBtu)', 'STATE':'state'}, inplace=True)
@@ -87,7 +87,7 @@ heat_data.reset_index(inplace=True, names=['id'])
 
 noptc_be = pd.concat([heat_data,h2_data], ignore_index=True)
 
-tosave_noptc = noptc_be[['id','state', 'State price ($/MMBtu)', 'BE wo PTC ($/MMBtu)', 'application', 'ANR']]
+tosave_noptc = noptc_be[['id','state', 'State price ($/MMBtu)', 'BE wo PTC ($/MMBtu)', 'application', 'SMR']]
 tosave_noptc = tosave_noptc.rename(columns={'BE wo PTC ($/MMBtu)':'Breakeven price ($/MMBtu)'})
 tosave_noptc.set_index('id', inplace=True)
 tosave_noptc.to_latex('./results/foak_noPTC.tex',float_format="{:0.1f}".format, longtable=True, escape=True,\
@@ -109,8 +109,8 @@ noptc_be = noptc_be[noptc_be['BE wo PTC ($/MMBtu)']>noptc_be['State price ($/MMB
 markers_applications = {'Process Heat':'cross', 'Industrial Hydrogen':'circle'}
 marker_symbols = noptc_be['Application'].map(markers_applications).to_list()
 
-colorbar_ticks = [6.21, 9.9, 12.11, 17.3]
-colorbar_texts = ['Minimum: 6.2', '10th: 9.9', '25th: 12.1', 'Median: 17.3']
+colorbar_ticks = [6.21, 7.56,9.9, 11.18, 12.11, 17.3]
+colorbar_texts = ['Minimum: 6.2', 'Maximum state level: 7.6','10th: 9.9', '10 year peak (2008): 11.2','25th: 12.1', 'Median: 17.3']
 
 fig.add_trace(go.Scattergeo(
     lon=noptc_be['longitude'],
