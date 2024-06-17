@@ -189,8 +189,8 @@ def plot_bars(foak_positive, noak_positive, noak_noPTC):
 		row=1, col=2
 	)
 	# Set y-axis titles
-	fig.update_yaxes(title_text='Avoided emissions (MMtCO2/y)', row=1, col=1)
-	fig.update_yaxes(title_text='ANR Capacity (GWe)', row=1, col=2)
+	fig.update_yaxes(title_text='Avoided emissions (MMtCO2/y)', row=1, col=1, titlefont_color='black')
+	fig.update_yaxes(title_text='ANR Capacity (GWe)', row=1, col=2, titlefont_color='black')
 	fig.update_xaxes(tickangle=53)
 	# Set chart layout
 	fig.update_layout(
@@ -198,7 +198,11 @@ def plot_bars(foak_positive, noak_positive, noak_noPTC):
 		showlegend = False,
 		width=1050,  # Set the width of the figure
 		height=550,  # Set the height of the figure
+		plot_bgcolor='white', 
+
 	)
+	fig.update_yaxes(gridcolor='grey', gridwidth=0.3, tickfont_color='black')
+	fig.update_xaxes(tickfont_color='black')
 	fig.write_image('./results/waterfall_foak_noak_noaknoPTC_emissions_capacity.png', scale=4)
 
 
