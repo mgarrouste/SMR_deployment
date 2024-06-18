@@ -139,6 +139,8 @@ def plot_bars(foak_positive, noak_positive, noak_noPTC):
 	df3_forcalc.at['Ammonia', 'Emissions'] = 0
 	df3_forcalc.at['Refining', 'Capacity'] = 0
 	df3_forcalc.at['Refining', 'Emissions'] = 0
+	df3_forcalc.at['Steel', 'Capacity'] = 0
+	df3_forcalc.at['Steel', 'Emissions'] = 0
 	diffdf = df2_forcalc.copy()
 	diffdf['Capacity'] = df3_forcalc["Capacity"] - df2_forcalc['Capacity']
 	diffdf['Emissions'] = df3_forcalc["Emissions"] - df2_forcalc['Emissions']
@@ -190,7 +192,7 @@ def plot_bars(foak_positive, noak_positive, noak_noPTC):
 	)
 	# Set y-axis titles
 	fig.update_yaxes(title_text='Avoided emissions (MMtCO2/y)', row=1, col=1, titlefont_color='black')
-	fig.update_yaxes(title_text='ANR Capacity (GWe)', row=1, col=2, titlefont_color='black')
+	fig.update_yaxes(title_text='SMR Capacity (GWe)', row=1, col=2, titlefont_color='black')
 	fig.update_xaxes(tickangle=53)
 	# Set chart layout
 	fig.update_layout(
