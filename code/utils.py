@@ -73,6 +73,24 @@ ratio_ironore_DRI = 1.391 # tironore/tDRI
 bfbof_iron_cons = 1.226 #t_ironore/t_steel
 om_bfbof = 178.12 #$/t_steel
 
+def calculate_irr(Co, Celec, Ch2, Cff, lifetime=60, ptc=True):
+  """Calculates the IRR given: 
+  Args: 
+    Co (float): initial total investment, CAPEX SMR, H2, and conversion costs
+    Celec (float): yearly revenues from electricity production (cogeneration)
+    Ch2 (float): yearly revenues from the H2 PTC (stops after 10 years)
+    Cff (float): yearly revenues from avoided fossil fuel costs
+  Returns: 
+    irr (float): internal rate of return
+  """
+  import numpy_financial as npf
+  if ptc: 
+    list_cashflows = [-Co]+[Celec+Ch2+Cff]*10+[Celec+Cff]*(lifetime-10)
+  else:
+    list_cashflows = [-Co]+[Celec+Cff]*lifetime
+  return round(npf.irr(list_cashflows), 2)
+
+
 def get_met_coal_eia_aeo_price():
   price2024 = 5.679083 # 2022$/MMBtu
   price = price2024*conversion_2022usd_to_2020usd
