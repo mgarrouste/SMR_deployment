@@ -250,9 +250,9 @@ def abatement_cost_plot():
 	ax[0].set_title('FOAK')
 	ax[0].get_legend().set_visible(False)
 	ax[0].set_ylabel('')
-	ax[0].axvline(x=rff_scc, ls='--', color='orange')
+	#ax[0].axvline(x=rff_scc, ls='--', color='orange')
 	ax[0].axvline(x=epa_scc, ls='--', color='tomato')
-	ax[0].text(x=rff_scc, y=-.4, s='RFF',color='orange')
+	#ax[0].text(x=rff_scc, y=-.4, s='RFF',color='orange')
 	ax[0].text(x=epa_scc, y=-.4, s='EPA',color='tomato')
 	#ax[0].set_yticks(ax[0].get_yticks(), ax[0].get_yticklabels(), rotation=-30, ha='left')
 
@@ -287,7 +287,7 @@ def abatement_cost_plot():
 	ax[1].set_title('NOAK')
 	ax[1].get_legend().set_visible(False)
 	ax[1].set_ylabel('')
-	ax[1].axvline(x=rff_scc, ls='--', color='orange')
+	#ax[1].axvline(x=rff_scc, ls='--', color='orange')
 	ax[1].axvline(x=epa_scc, ls='--', color='tomato')
 	#ax[1].set_yticks(ax[1].get_xticks(), ax[1].get_xticklabels(), rotation=-30, ha='left')
 
