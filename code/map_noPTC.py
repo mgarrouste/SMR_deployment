@@ -10,7 +10,7 @@ from utils import compute_average_electricity_prices
 fig = go.Figure()
 
 
-
+"""
 # Electricity: average state prices and breakeven prices
 elec_path = './results/average_electricity_prices_MidCase_2024.xlsx'
 if os.path.isfile(elec_path):
@@ -67,7 +67,7 @@ fig.add_trace(
         ),
     )
 )
-
+"""
 
 
 # FOAK data with no PTC
@@ -124,7 +124,7 @@ fig.add_trace(go.Scattergeo(
         colorbar = dict(
             title='Breakeven NG price ($/MMBtu)',
             orientation='v',  
-            x=0.87, 
+            x=0.9, 
             y=0.45,  
             lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
             len=0.8,  # Length of the colorbar (80% of figure width)
