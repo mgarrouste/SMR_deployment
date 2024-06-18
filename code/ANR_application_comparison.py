@@ -25,7 +25,7 @@ def load_elec_results(anr_tag):
 def load_h2_results(anr_tag, cogen_tag):
   """"Loads all hydrogen results and returns results sorted by breakeven prices"""
   h2_results_path = f'./results/clean_results_anr_{anr_tag}_h2_wacc_0.077.xlsx'
-  industries = ['refining','ammonia']
+  industries = ['refining','steel','ammonia']
   list_df = []
   for ind in industries:
     df = pd.read_excel(h2_results_path, sheet_name=ind, index_col='id')

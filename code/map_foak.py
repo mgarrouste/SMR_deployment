@@ -1,6 +1,6 @@
 import pandas as pd
 import plotly.graph_objects as go
-from utils import palette, app_palette
+from utils import palette
 import matplotlib.pyplot as plt
 import ANR_application_comparison
 from plotly.subplots import make_subplots
@@ -38,11 +38,12 @@ def load_foak_positive():
 	h2_data = h2_data[['latitude', 'longitude', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
 										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/y)' ]]
 	h2_data['Emissions_mmtco2/y'] = h2_data['Ann. avoided CO2 emissions (MMT-CO2/year)']
+	h2_data.rename(columns={'ANR':'SMR'}, inplace=True)
 	h2_data['App'] = h2_data.apply(lambda x: x['Application']+'-'+x['Industry'].capitalize(), axis=1)
 	h2_data.reset_index(inplace=True)
 
 	heat_data = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen')
-	heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'ANR',
+	heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'SMR',
 												'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)',
 												'Annual Net Revenues (M$/y)', 'Application']]
 	heat_data['App'] = 'Process Heat'
@@ -56,12 +57,12 @@ def save_foak_positive():
 	h2_data = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='cogen')
 	h2_data = h2_data[['state', 'Depl. ANR Cap. (MWe)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
 										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/y)' ]]
-	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions (MMtCO2/y)', 'state':'State'}, inplace=True)
+	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions (MMtCO2/y)', 'state':'State', 'ANR':'SMR'}, inplace=True)
 	h2_data['application'] = h2_data.apply(lambda x:'H2-'+x['Industry'].capitalize(), axis=1)
 	h2_data = h2_data.reset_index(names=['id'])
 
 	heat_data = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen')
-	heat_data = heat_data[['STATE', 'Emissions_mmtco2/y', 'ANR',
+	heat_data = heat_data[['STATE', 'Emissions_mmtco2/y', 'SMR',
 												'Depl. ANR Cap. (MWe)', 'Industry',
 												'Annual Net Revenues (M$/y)', 'Application']]
 	heat_data.rename(columns={'Emissions_mmtco2/y':'Emissions (MMtCO2/y)', 'STATE':'State'}, inplace=True)
@@ -85,14 +86,14 @@ foak_positive = load_foak_positive()
 save_foak_positive()
 print(foak_positive['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 print(foak_positive['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]))
-print('Micro deployed capacity : ',sum(foak_positive[foak_positive.ANR=='Micro']['Depl. ANR Cap. (MWe)']))
-print('Micro deployed units : ',sum(foak_positive[foak_positive.ANR=='Micro']['Depl. ANR Cap. (MWe)'])/6.7)
-print('iMSR deployed capacity : ',sum(foak_positive[foak_positive.ANR=='iMSR']['Depl. ANR Cap. (MWe)']))
-print('iMSR deployed units : ',sum(foak_positive[foak_positive.ANR=='iMSR']['Depl. ANR Cap. (MWe)'])/141)
-print('PBR-HTGR deployed capacity : ',sum(foak_positive[foak_positive.ANR=='PBR-HTGR']['Depl. ANR Cap. (MWe)']))
-print('PBR-HTGR deployed units: ',sum(foak_positive[foak_positive.ANR=='PBR-HTGR']['Depl. ANR Cap. (MWe)'])/80)
-print('iPWR deployed capacity : ',sum(foak_positive[foak_positive.ANR=='iPWR']['Depl. ANR Cap. (MWe)']))
-print('iPWR deployed units : ',sum(foak_positive[foak_positive.ANR=='iPWR']['Depl. ANR Cap. (MWe)'])/77)
+print('Micro deployed capacity : ',sum(foak_positive[foak_positive.SMR=='Micro']['Depl. ANR Cap. (MWe)']))
+print('Micro deployed units : ',sum(foak_positive[foak_positive.SMR=='Micro']['Depl. ANR Cap. (MWe)'])/6.7)
+print('iMSR deployed capacity : ',sum(foak_positive[foak_positive.SMR=='iMSR']['Depl. ANR Cap. (MWe)']))
+print('iMSR deployed units : ',sum(foak_positive[foak_positive.SMR=='iMSR']['Depl. ANR Cap. (MWe)'])/141)
+print('PBR-HTGR deployed capacity : ',sum(foak_positive[foak_positive.SMR=='PBR-HTGR']['Depl. ANR Cap. (MWe)']))
+print('PBR-HTGR deployed units: ',sum(foak_positive[foak_positive.SMR=='PBR-HTGR']['Depl. ANR Cap. (MWe)'])/80)
+print('iPWR deployed capacity : ',sum(foak_positive[foak_positive.SMR=='iPWR']['Depl. ANR Cap. (MWe)']))
+print('iPWR deployed units : ',sum(foak_positive[foak_positive.SMR=='iPWR']['Depl. ANR Cap. (MWe)'])/77)
 print('Total capacity deployed GWe : ', sum(foak_positive['Depl. ANR Cap. (MWe)'])/1e3)
 # Size based on capacity deployed
 percentiles =  foak_positive['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]).to_frame()
@@ -183,7 +184,7 @@ markers_applications = {'Process Heat':'cross', 'Industrial Hydrogen':'circle'}
 marker_symbols = foak_positive['Application'].map(markers_applications).to_list()
 
 # Get colors for each marker
-line_colors = [palette[anr] for anr in foak_positive['ANR']]
+line_colors = [palette[anr] for anr in foak_positive['SMR']]
 
 max_rev = 510
 foak_positive = foak_positive[foak_positive['Annual Net Revenues (M$/y)'] <= max_rev]
@@ -207,8 +208,8 @@ fig.add_trace(go.Scattergeo(
 						yanchor='bottom',
 						lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
 						len=0.8,  # Length of the colorbar (80% of figure width)
-						tickvals = [.6,25,100,250,500],
-						ticktext = [.6,25,100,250,500],
+						tickvals = [.03,50,100,250,500],
+						ticktext = [.02,50,100,250,500],
 						tickmode='array',
 						tickfont=dict(size=16)
 				),
@@ -233,7 +234,7 @@ custom_legend = {'iMSR - Process Heat':[palette['iMSR'], 'cross'],
 								 'PBR-HTGR - Industrial H2':[palette['PBR-HTGR'], 'circle'],
 								 'Micro - Industrial H2':[palette['Micro'], 'circle']}
 
-reactors_used = foak_positive['ANR'].unique()
+reactors_used = foak_positive['SMR'].unique()
 
 # Create symbol and color legend traces
 for name, cm in custom_legend.items():
