@@ -1,6 +1,6 @@
 import pandas as pd
 import plotly.graph_objects as go
-from utils import palette, app_palette
+from utils import palette
 from plotly.subplots import make_subplots
 import ANR_application_comparison, map_foak
 
@@ -34,12 +34,12 @@ def save_noak_positive():
 	h2_data = ANR_application_comparison.load_h2_results(anr_tag='NOAK', cogen_tag='cogen')
 	h2_data = h2_data[['state', 'Depl. ANR Cap. (MWe)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
 										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/y)' ]]
-	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions (MMtCO2/y)', 'state':'State'}, inplace=True)
+	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions (MMtCO2/y)', 'state':'State', 'ANR':'SMR'}, inplace=True)
 	h2_data['application'] = h2_data.apply(lambda x:'H2-'+x['Industry'].capitalize(), axis=1)
 	h2_data = h2_data.reset_index(names=['id'])
 
 	heat_data = ANR_application_comparison.load_heat_results(anr_tag='NOAK', cogen_tag='cogen')
-	heat_data = heat_data[['STATE', 'Emissions_mmtco2/y', 'ANR',
+	heat_data = heat_data[['STATE', 'Emissions_mmtco2/y', 'SMR',
 												'Depl. ANR Cap. (MWe)', 'Industry',
 												  'Application', 'Annual Net Revenues (M$/y)']]
 	heat_data.rename(columns={'Emissions_mmtco2/y':'Emissions (MMtCO2/y)', 'STATE':'State'}, inplace=True)
@@ -70,14 +70,14 @@ save_noak_positive()
 percentiles =  noak_positive['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]).to_frame()
 
 print(noak_positive['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]))
-print('Micro deployed capacity : ',sum(noak_positive[noak_positive.ANR=='Micro']['Depl. ANR Cap. (MWe)']))
-print('Micro deployed units : ',sum(noak_positive[noak_positive.ANR=='Micro']['Depl. ANR Cap. (MWe)'])/6.7)
-print('iMSR deployed capacity : ',sum(noak_positive[noak_positive.ANR=='iMSR']['Depl. ANR Cap. (MWe)']))
-print('iMSR deployed units : ',sum(noak_positive[noak_positive.ANR=='iMSR']['Depl. ANR Cap. (MWe)'])/141)
-print('PBR-HTGR deployed capacity : ',sum(noak_positive[noak_positive.ANR=='PBR-HTGR']['Depl. ANR Cap. (MWe)']))
-print('PBR-HTGR deployed units: ',sum(noak_positive[noak_positive.ANR=='PBR-HTGR']['Depl. ANR Cap. (MWe)'])/80)
-print('iPWR deployed capacity : ',sum(noak_positive[noak_positive.ANR=='iPWR']['Depl. ANR Cap. (MWe)']))
-print('iPWR deployed units : ',sum(noak_positive[noak_positive.ANR=='iPWR']['Depl. ANR Cap. (MWe)'])/77)
+print('Micro deployed capacity : ',sum(noak_positive[noak_positive.SMR=='Micro']['Depl. ANR Cap. (MWe)']))
+print('Micro deployed units : ',sum(noak_positive[noak_positive.SMR=='Micro']['Depl. ANR Cap. (MWe)'])/6.7)
+print('iMSR deployed capacity : ',sum(noak_positive[noak_positive.SMR=='iMSR']['Depl. ANR Cap. (MWe)']))
+print('iMSR deployed units : ',sum(noak_positive[noak_positive.SMR=='iMSR']['Depl. ANR Cap. (MWe)'])/141)
+print('PBR-HTGR deployed capacity : ',sum(noak_positive[noak_positive.SMR=='PBR-HTGR']['Depl. ANR Cap. (MWe)']))
+print('PBR-HTGR deployed units: ',sum(noak_positive[noak_positive.SMR=='PBR-HTGR']['Depl. ANR Cap. (MWe)'])/80)
+print('iPWR deployed capacity : ',sum(noak_positive[noak_positive.SMR=='iPWR']['Depl. ANR Cap. (MWe)']))
+print('iPWR deployed units : ',sum(noak_positive[noak_positive.SMR=='iPWR']['Depl. ANR Cap. (MWe)'])/77)
 print('Total capacity deployed GWe : ', sum(noak_positive['Depl. ANR Cap. (MWe)'])/1e3)
 
 scaler = 30
@@ -87,7 +87,7 @@ markers_applications = {'Industrial Hydrogen':'circle','Process Heat':'cross' }
 marker_symbols = noak_positive['Application'].map(markers_applications).to_list()
 
 # Get colors for each marker
-line_colors = [palette[anr] for anr in noak_positive['ANR']]
+line_colors = [palette[anr] for anr in noak_positive['SMR']]
 
 # size based on deployed capacity
 def set_size(cap):
@@ -125,8 +125,8 @@ fig.add_trace(go.Scattergeo(
 						yanchor='bottom',
 						lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
 						len=0.7,  # Length of the colorbar (80% of figure width)
-						tickvals = [2.6,5.1,11.3,25,50,100,500],
-						ticktext = [2.6,5.1,11.3,25,50,100,500],
+						tickvals = [0.02,5.1,11.3,25,50,100,500],
+						ticktext = [0.01,5.1,11.3,25,50,100,500],
 						tickmode='array',
 						tickfont=dict(size=16)
 				),
@@ -152,7 +152,7 @@ custom_legend = {'iMSR - Process Heat':[palette['iMSR'], 'cross'],
 								 #'Micro - Industrial H2':[palette['Micro'], 'circle']
 								 }
 
-reactors_used = noak_positive['ANR'].unique()
+reactors_used = noak_positive['SMR'].unique()
 
 # Create symbol and color legend traces
 for name, cm in custom_legend.items():
@@ -334,7 +334,7 @@ def plot_bars(foak_positive, noak_positive):
 	)
 	# Set y-axis titles
 	fig.update_yaxes(title_text='Avoided emissions (MMtCO2/y)', row=1, col=1)
-	fig.update_yaxes(title_text='ANR Capacity (GWe)', row=1, col=2)
+	fig.update_yaxes(title_text='SMR Capacity (GWe)', row=1, col=2)
 	fig.update_xaxes(tickangle=45)
 	# Set chart layout
 	fig.update_layout(
