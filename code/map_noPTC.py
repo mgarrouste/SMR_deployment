@@ -95,7 +95,7 @@ tosave_noptc.to_latex('./results/foak_noPTC.tex',float_format="{:0.1f}".format, 
 						caption='Detailed results for FOAK without the H2 PTC deployment stage')
 
 
-print(noptc_be['BE wo PTC ($/MMBtu)'].describe(percentiles = [.1,.25,.5,.75,.9]))
+print(noptc_be['BE wo PTC ($/MMBtu)'].describe(percentiles = [.01,.02,.03,.05,.07,.08,.1,.17,.2,.25,.5,.75,.9]))
 
 max_be = 17.4 # show only up to median BE
 
