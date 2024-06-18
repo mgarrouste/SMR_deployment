@@ -157,7 +157,7 @@ def build_steel_plant_deployment(plant, ANR_data, H2_data):
   
   def annualized_costs_dri_eaf(model):
     crf = model.pWACC / (1 - (1/(1+model.pWACC)**20) )# assumes 20 years lifetime for shaft and eaf
-    costs = steel_cap_ton_per_annum*(model.pEAFCAPEX*(1-model.pITC_H2) + model.pShaftFCAPEX*(1-model.pITC_H2)/model.pRatioSteelDRI + model.pEAFOM +\
+    costs = steel_cap_ton_per_annum*(model.pEAFCAPEX*(1-model.pITC_H2)*crf + model.pShaftFCAPEX*(1-model.pITC_H2)*crf/model.pRatioSteelDRI + model.pEAFOM +\
             model.pIronOre*model.pRatioIronOreDRI/model.pRatioSteelDRI)
     return costs
   
@@ -226,7 +226,8 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
     return sum(model.pANRCAPEX[g]*model.vS[g] for g in model.G)
   
   def compute_conv_costs(model):
-    costs = steel_cap_ton_per_annum*(model.pEAFCAPEX*(1-model.pITC_H2) + model.pShaftFCAPEX*(1-model.pITC_H2)/model.pRatioSteelDRI + model.pEAFOM +\
+    crf = model.pWACC / (1 - (1/(1+model.pWACC)**20) )# assumes 20 years lifetime for shaft and eaf
+    costs = steel_cap_ton_per_annum*(model.pEAFCAPEX*(1-model.pITC_H2)*crf + model.pShaftFCAPEX*(1-model.pITC_H2)*crf/model.pRatioSteelDRI + model.pEAFOM +\
             model.pIronOre*model.pRatioIronOreDRI/model.pRatioSteelDRI)
     return costs
   def get_deployed_cap(model):
@@ -245,6 +246,12 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
 
   def get_eq_elec_dem_h2(model): return sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g] for h in model.H) for g in model.G) for n in model.N) 
 
+  def compute_initial_investment(model):
+    anr_capex = sum(sum(model.pANRCap[g]*model.vM[n,g]*model.pANRCAPEX[g]*(1-model.pITC_ANR) for g in model.G) for n in model.N)
+    h2_capex = sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]*(model.pH2CAPEX[h]*(1-model.pITC_H2)) for h in model.H) for g in model.G) for n in model.N)
+    conversion_costs = steel_cap_ton_per_annum*(model.pEAFCAPEX*(1-model.pITC_H2) + model.pShaftFCAPEX*(1-model.pITC_H2)/model.pRatioSteelDRI )
+    Co = anr_capex + h2_capex +conversion_costs 
+    return Co
 
   ############## SOLVE ###################
   solver = SolverFactory('cplex')
@@ -272,6 +279,7 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
   if results.solver.termination_condition == TerminationCondition.optimal: 
     model.solutions.load_from(results)
     results_dic['Ann. CO2 emissions (kgCO2eq/year)'] = value(compute_annual_carbon_emissions(model))
+    results_dic['Initial investment ($)'] = value(compute_initial_investment(model))
     results_dic['ANR CAPEX ($/year)'] = value(compute_anr_capex(model))
     results_dic['H2 CAPEX ($/year)'] = value(compute_h2_capex(model))
     results_dic['ANR O&M ($/year)'] = value(compute_anr_om(model))
@@ -305,7 +313,7 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
     return None
 
 def compute_breakeven_price(results_ref):
-  costs = -1*results_ref['Net Revenues with H2 PTC ($/year)'] # NEt revenues Negative by convention
+  costs = -results_ref['Net Revenues with H2 PTC ($/year)'] # NEt revenues Negative by convention
   plant_cap = results_ref['Steel prod. (ton/year)']
   COAL_CONS_RATE = 0.463
   breakeven_price_per_ton = (costs - iron_ore_cost*bfbof_iron_cons*plant_cap - om_bfbof*plant_cap)/(COAL_CONS_RATE*plant_cap)

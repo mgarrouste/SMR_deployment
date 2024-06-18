@@ -225,7 +225,12 @@ def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results):
     h2_elec_demand  = sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g] for h in model.H) for g in model.G) for n in model.N) 
     return deployed_capacity - aux_elec_demand - h2_elec_demand
 
-
+  def compute_initial_investment(model):
+    anr_capex = sum(sum(model.pANRCap[g]*model.vM[n,g]*model.pANRCAPEX[g]*(1-model.pITC_ANR) for g in model.G) for n in model.N)
+    h2_capex = sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]*(model.pH2CAPEX[h]*(1-model.pITC_H2)) for h in model.H) for g in model.G) for n in model.N)
+    conversion_costs = auxNucNH3CAPEX*(1-model.pITC_H2)
+    Co = anr_capex + h2_capex +conversion_costs 
+    return Co
 
   ############## SOLVE ###################
   solver = SolverFactory('cplex')
@@ -253,6 +258,7 @@ def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results):
   if results.solver.termination_condition == TerminationCondition.optimal: 
     model.solutions.load_from(results)
     results_ref['Ann. CO2 emissions (kgCO2eq/year)'] = value(compute_annual_carbon_emissions(model))
+    results_ref['Initial investment ($)'] = value(compute_initial_investment(model))
     results_ref['ANR CAPEX ($/year)'] = value(compute_anr_capex(model))
     results_ref['ANR CRF'] = value(get_crf(model))
     results_ref['Depl. ANR Cap. (MWe)'] = value(get_deployed_cap(model))

@@ -207,6 +207,14 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data):
     aux_elec_demand = 0/24
     h2_elec_demand  = sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g] for g in model.G) for h in model.H) for n in model.N)
     return deployed_capacity - aux_elec_demand - h2_elec_demand
+  
+  def compute_initial_investment(model):
+    anr_capex = sum(sum(model.pANRCap[g]*model.vM[n,g]*model.pANRCAPEX[g]*(1-model.pITC_ANR) for g in model.G) for n in model.N)
+    h2_capex = sum(sum(sum(model.pH2CapElec[h,g]*model.vQ[n,h,g]*(model.pH2CAPEX[h]*(1-model.pITC_H2)) for h in model.H) for g in model.G) for n in model.N)
+    conversion_costs = 0
+    Co = anr_capex + h2_capex +conversion_costs 
+    return Co
+
 
   #### SOLVE with CPLEX ####
   opt = SolverFactory('cplex')
@@ -229,6 +237,7 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data):
   if results.solver.termination_condition == TerminationCondition.optimal: 
     model.solutions.load_from(results)
     results_ref['Ann. CO2 emissions (kgCO2eq/year)'] = value(compute_annual_carbon_emissions(model))
+    results_ref['Initial investment ($)'] = value(compute_initial_investment(model))
     results_ref['ANR CAPEX ($/year)'] = value(compute_anr_capex(model))
     results_ref['H2 CAPEX ($/year)'] = value(compute_h2_capex(model))
     results_ref['ANR O&M ($/year)'] = value(compute_anr_om(model))
