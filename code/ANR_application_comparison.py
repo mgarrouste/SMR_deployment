@@ -30,7 +30,7 @@ def load_h2_results(anr_tag, cogen_tag):
   for ind in industries:
     df = pd.read_excel(h2_results_path, sheet_name=ind, index_col='id')
     list_cols = ['state', 'latitude', 'longitude','H2 Dem. (kg/day)','Net Revenues with H2 PTC ($/year)',\
-                 'Net Revenues ($/year)','Electricity revenues ($/y)',\
+                 'Net Revenues ($/year)','Electricity revenues ($/y)','IRR w PTC', 'IRR wo PTC',
                   'Net Annual Revenues with H2 PTC ($/MWe/y)', 'HTSE', 'Depl. ANR Cap. (MWe)', 'ANR type', \
              '# ANR modules', 'Breakeven price ($/MMBtu)', 'BE wo PTC ($/MMBtu)','Ann. avoided CO2 emissions (MMT-CO2/year)', 'Electricity revenues ($/y)', \
              'Net Revenues with H2 PTC with elec ($/year)']
