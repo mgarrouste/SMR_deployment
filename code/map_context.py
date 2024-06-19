@@ -1,10 +1,7 @@
 import pandas as pd
 import plotly.graph_objects as go
-from utils import palette, app_palette
-import matplotlib.pyplot as plt
+from utils import  app_palette
 import ANR_application_comparison
-from plotly.subplots import make_subplots
-import numpy as np
 
 
 # Create figure
@@ -128,5 +125,5 @@ fig.update_layout(
 )
 
 # Save
-fig.write_image('./results/map_context.png')
+fig.write_image('./results/map_context.png', scale=4)
 
