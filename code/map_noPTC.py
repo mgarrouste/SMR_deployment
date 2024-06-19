@@ -2,7 +2,6 @@ import pandas as pd
 import plotly.graph_objects as go
 from utils import palette
 import ANR_application_comparison
-import os
 from utils import compute_average_electricity_prices
 
 
@@ -75,6 +74,7 @@ h2_data = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='
 h2_data = h2_data[['state','latitude', 'longitude', 'State price ($/MMBtu)','Depl. ANR Cap. (MWe)', 'BE wo PTC ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
                    'Industry', 'Application', 'ANR' ]]
 h2_data['application'] = h2_data.apply(lambda x:'H2-'+x['Industry'].capitalize(), axis=1)
+h2_data.rename(columns={'ANR':'SMR'}, inplace=True)
 h2_data.reset_index(inplace=True)
 
 heat_data = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen')
@@ -110,7 +110,7 @@ markers_applications = {'Process Heat':'cross', 'Industrial Hydrogen':'circle'}
 marker_symbols = noptc_be['Application'].map(markers_applications).to_list()
 
 colorbar_ticks = [6.21, 7.56,9.9, 11.18, 12.11, 17.3]
-colorbar_texts = ['Minimum: 6.2', 'Maximum state level: 7.6','10th: 9.9', '10 year peak (2008): 11.2','25th: 12.1', 'Median: 17.3']
+colorbar_texts = ['1th: 6.2','Maximum state level: 7.6', '10 year peak (2008): 11.2','25th: 12.1', 'Median: 17.3']
 
 fig.add_trace(go.Scattergeo(
     lon=noptc_be['longitude'],
