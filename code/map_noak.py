@@ -33,14 +33,14 @@ def save_noak_positive():
 	# NOAK data
 	h2_data = ANR_application_comparison.load_h2_results(anr_tag='NOAK', cogen_tag='cogen')
 	h2_data = h2_data[['state', 'Depl. ANR Cap. (MWe)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
-										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/y)' ]]
+										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/y)', 'IRR w PTC']]
 	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions (MMtCO2/y)', 'state':'State', 'ANR':'SMR'}, inplace=True)
 	h2_data['application'] = h2_data.apply(lambda x:'H2-'+x['Industry'].capitalize(), axis=1)
 	h2_data = h2_data.reset_index(names=['id'])
 
 	heat_data = ANR_application_comparison.load_heat_results(anr_tag='NOAK', cogen_tag='cogen')
 	heat_data = heat_data[['STATE', 'Emissions_mmtco2/y', 'SMR',
-												'Depl. ANR Cap. (MWe)', 'Industry',
+												'Depl. ANR Cap. (MWe)', 'Industry', 'IRR w PTC',
 												  'Application', 'Annual Net Revenues (M$/y)']]
 	heat_data.rename(columns={'Emissions_mmtco2/y':'Emissions (MMtCO2/y)', 'STATE':'State'}, inplace=True)
 	heat_data['application'] = 'Process Heat'
@@ -54,17 +54,21 @@ def save_noak_positive():
 	foak_to_drop = foak_positive.index.to_list()
 	noak_positive = noak_positive.drop(foak_to_drop, errors='ignore')
 	noak_positive['Depl. ANR Cap. (MWe)'] = noak_positive['Depl. ANR Cap. (MWe)'].astype(int)
-	noak_positive = noak_positive.drop(columns=['Industry', 'Application'])
+
+	noak_positive['IRR (%)'] = noak_positive['IRR w PTC']*100
+	noak_positive = noak_positive.drop(columns=['Industry', 'Application', 'IRR w PTC'])
 	noak_positive.to_latex('./results/noak_positive.tex',float_format="{:0.1f}".format, longtable=True, escape=True,\
                             label='tab:noak_positive_detailed_results',\
 														caption='Detailed results for NOAK deployment stage: Profitable industrial sites and associated SMR capacity deployed and annual revenues')
-
+	return noak_positive
 
 
 
 
 noak_positive = waterfalls_cap_em.load_noak_positive()
-save_noak_positive()
+plot_data = save_noak_positive()
+from map_foak import plot_irr
+plot_irr(plot_data, save_path='./results/noak_IRR.png')
 
 # Size based on capacity deployed
 percentiles =  noak_positive['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]).to_frame()

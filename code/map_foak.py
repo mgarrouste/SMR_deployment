@@ -101,10 +101,9 @@ print('Total capacity deployed GWe : ', sum(foak_positive['Depl. ANR Cap. (MWe)'
 percentiles =  foak_positive['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]).to_frame()
 
 
-def plot_irr(data):
+def plot_irr(data, save_path):
 	import seaborn as sns
 	fig, ax = plt.subplots(figsize=(5,3))
-	save_path = './results/foak_IRR.png'
 	print(save_path)
 	sns.stripplot(ax=ax, data=data, x='IRR (%)', y='application', palette=palette, hue='SMR', alpha=0.6)
 	sns.boxplot(ax=ax, data=data, x='IRR (%)', y='application', color='black',fill=False, width=0.5)
@@ -118,7 +117,7 @@ def plot_irr(data):
 	fig.tight_layout()
 	fig.savefig(save_path, bbox_inches='tight')
 
-plot_irr(plot_data)
+plot_irr(plot_data, save_path = './results/foak_IRR.png')
 def set_size(cap):
 	if cap <= 25:
 		size = 5
