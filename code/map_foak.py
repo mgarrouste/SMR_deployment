@@ -36,7 +36,7 @@ fig.add_trace(go.Choropleth(
 def load_foak_positive():
 	h2_data = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='cogen')
 	h2_data = h2_data[['latitude', 'longitude', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
-										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/y)' ]]
+										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/y)', 'IRR w PTC', 'IRR wo PTC' ]]
 	h2_data['Emissions_mmtco2/y'] = h2_data['Ann. avoided CO2 emissions (MMT-CO2/year)']
 	h2_data.rename(columns={'ANR':'SMR'}, inplace=True)
 	h2_data['App'] = h2_data.apply(lambda x: x['Application']+'-'+x['Industry'].capitalize(), axis=1)
@@ -45,7 +45,7 @@ def load_foak_positive():
 	heat_data = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen')
 	heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'SMR',
 												'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)',
-												'Annual Net Revenues (M$/y)', 'Application']]
+												'Annual Net Revenues (M$/y)', 'Application', 'IRR w PTC', 'IRR wo PTC']]
 	heat_data['App'] = 'Process Heat'
 	heat_data.reset_index(inplace=True)
 
@@ -56,7 +56,7 @@ def load_foak_positive():
 def save_foak_positive():
 	h2_data = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='cogen')
 	h2_data = h2_data[['state', 'Depl. ANR Cap. (MWe)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
-										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/y)' ]]
+										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/y)', 'IRR w PTC']]
 	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions (MMtCO2/y)', 'state':'State', 'ANR':'SMR'}, inplace=True)
 	h2_data['application'] = h2_data.apply(lambda x:'H2-'+x['Industry'].capitalize(), axis=1)
 	h2_data = h2_data.reset_index(names=['id'])
@@ -64,7 +64,7 @@ def save_foak_positive():
 	heat_data = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen')
 	heat_data = heat_data[['STATE', 'Emissions_mmtco2/y', 'SMR',
 												'Depl. ANR Cap. (MWe)', 'Industry',
-												'Annual Net Revenues (M$/y)', 'Application']]
+												'Annual Net Revenues (M$/y)', 'Application', 'IRR w PTC']]
 	heat_data.rename(columns={'Emissions_mmtco2/y':'Emissions (MMtCO2/y)', 'STATE':'State'}, inplace=True)
 	heat_data['application'] = 'Process Heat'
 	heat_data = heat_data.reset_index(names=['id'])
@@ -73,17 +73,19 @@ def save_foak_positive():
 	foak_positive = foak_positive[foak_positive['Annual Net Revenues (M$/y)'] >=0]
 	foak_positive.set_index('id', inplace=True)
 	foak_positive['Depl. ANR Cap. (MWe)'] = foak_positive['Depl. ANR Cap. (MWe)'].astype(int)
+	foak_positive['IRR (%)'] = foak_positive['IRR w PTC']*100
 
-	foak_positive = foak_positive.drop(columns=['Industry', 'Application'])
+	foak_positive = foak_positive.drop(columns=['Industry', 'Application', 'IRR w PTC'])
 
 	foak_positive.to_latex('./results/foak_positive.tex',float_format="{:0.1f}".format, longtable=True, escape=True,\
-                            label='tab:foak_positive_detailed_results',\
+														label='tab:foak_positive_detailed_results',\
 														caption='Detailed results for FOAK deployment stage: Profitable industrial sites and associated SMR capacity deployed and annual revenues')
+	return foak_positive
 
 
 
 foak_positive = load_foak_positive()
-save_foak_positive()
+plot_data = save_foak_positive()
 print(foak_positive['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 print(foak_positive['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 print('Micro deployed capacity : ',sum(foak_positive[foak_positive.SMR=='Micro']['Depl. ANR Cap. (MWe)']))
@@ -98,6 +100,25 @@ print('Total capacity deployed GWe : ', sum(foak_positive['Depl. ANR Cap. (MWe)'
 # Size based on capacity deployed
 percentiles =  foak_positive['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]).to_frame()
 
+
+def plot_irr(data):
+	import seaborn as sns
+	fig, ax = plt.subplots(figsize=(5,3))
+	save_path = './results/foak_IRR.png'
+	print(save_path)
+	sns.stripplot(ax=ax, data=data, x='IRR (%)', y='application', palette=palette, hue='SMR', alpha=0.6)
+	sns.boxplot(ax=ax, data=data, x='IRR (%)', y='application', color='black',fill=False, width=0.5)
+	sns.despine()
+	ax.set_ylabel('')
+	ax.get_legend().set_visible(False)
+	#ax.xaxis.set_ticks(np.arange(-1, 1, 0.25))
+	ax.xaxis.grid(True)
+	handles, labels = ax.get_legend_handles_labels()
+	fig.legend(handles, labels,  bbox_to_anchor=(1.15,1), ncol=1)
+	fig.tight_layout()
+	fig.savefig(save_path, bbox_inches='tight')
+
+plot_irr(plot_data)
 def set_size(cap):
 	if cap <= 25:
 		size = 5
@@ -132,14 +153,14 @@ def plot_waterfall(foak_positive):
 	# Create waterfall chart
 	fig.add_trace(go.Waterfall(
 		orientation = "v",
-    measure = measures,
-    x = df['App'],
-    textposition = "outside",
-    text = df['text_em'],
-    y = df['Emissions'],
-    connector = {"line":{"color":"rgb(63, 63, 63)"}},
-    increasing = {"marker":{"color": "paleGreen"}},
-    totals = {"marker":{"color": "limeGreen"}}
+		measure = measures,
+		x = df['App'],
+		textposition = "outside",
+		text = df['text_em'],
+		y = df['Emissions'],
+		connector = {"line":{"color":"rgb(63, 63, 63)"}},
+		increasing = {"marker":{"color": "paleGreen"}},
+		totals = {"marker":{"color": "limeGreen"}}
 		),
 		row=1, col=1
 	)
@@ -149,14 +170,14 @@ def plot_waterfall(foak_positive):
 	# Create waterfall chart
 	fig.add_trace(go.Waterfall(
 		orientation = "v",
-    measure = measures,
-    x = df['App'],
-    textposition = "outside",
-    text = df['text_cap'],
-    y = df['Capacity'],
-    connector = {"line":{"color":"rgb(63, 63, 63)"}},
-    increasing = {"marker":{"color": "lightBlue"}},
-    totals = {"marker":{"color": "royalBlue"}}
+		measure = measures,
+		x = df['App'],
+		textposition = "outside",
+		text = df['text_cap'],
+		y = df['Capacity'],
+		connector = {"line":{"color":"rgb(63, 63, 63)"}},
+		increasing = {"marker":{"color": "lightBlue"}},
+		totals = {"marker":{"color": "royalBlue"}}
 		),
 		row=1, col=2
 	)
@@ -274,18 +295,18 @@ for size, cap in zip(sizes, perc_cap):
 			))
 
 nuclear_legend = {'Nuclear ban':'darkRed', 
-                  'Nuclear restrictions':'salmon'}
+									'Nuclear restrictions':'salmon'}
 for b, color in nuclear_legend.items():
-  fig.add_trace(go.Scattergeo(
-      lon=[None],
-      lat=[None],
-      marker=dict(
-          size=15,
-          color=color,
-          symbol='square',
-      ),
-      name=b
-  ))
+	fig.add_trace(go.Scattergeo(
+			lon=[None],
+			lat=[None],
+			marker=dict(
+					size=15,
+					color=color,
+					symbol='square',
+			),
+			name=b
+	))
 
 
 
