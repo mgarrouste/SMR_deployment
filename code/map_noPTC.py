@@ -1,11 +1,13 @@
 import pandas as pd
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from utils import palette
 import ANR_application_comparison
 import os
 from utils import compute_average_electricity_prices
 
-with_elec = True
+with_elec = False
+two_graphs = True
 # Create figure
 fig = go.Figure()
 
@@ -115,7 +117,7 @@ print(noptc_be['BE wo PTC ($/MMBtu)'].describe(percentiles = [.01,.02,.03,.05,.0
 max_be = 17.4 # show only up to median BE
 
 profitable = noptc_be[noptc_be['BE wo PTC ($/MMBtu)']<noptc_be['State price ($/MMBtu)']]
-print('Number of facilities profitable with the hydrogen PTC : ',len(profitable))
+print('Number of facilities profitable without the hydrogen PTC : ',len(profitable))
 noptc_be = noptc_be[noptc_be['BE wo PTC ($/MMBtu)']<=max_be]
 noptc_be = noptc_be[noptc_be['BE wo PTC ($/MMBtu)']>noptc_be['State price ($/MMBtu)']]
 
@@ -127,76 +129,168 @@ marker_symbols = noptc_be['Application'].map(markers_applications).to_list()
 colorbar_ticks = [6.21, 7.56,11.18,  17.3]
 colorbar_texts = ['1th: 6.2','Maximum state level: 7.6', '10 year peak (2008): 11.2', 'Median: 17.3']
 
-fig.add_trace(go.Scattergeo(
-		lon=noptc_be['longitude'],
-		lat=noptc_be['latitude'],
-		text="Breakeven price: " + noptc_be['BE wo PTC ($/MMBtu)'].astype(str) + " $/MMBtu",
-		mode='markers',
-		marker=dict(
-				size=12,
-				color=noptc_be['BE wo PTC ($/MMBtu)'],
-				colorscale='Reds',
-				colorbar = dict(
-						title='Breakeven NG price ($/MMBtu)',
-						orientation='v',  
-						x=0.9, 
-						y=0.45,  
-						lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
-						len=0.8,  # Length of the colorbar (80% of figure width)
-						tickvals=colorbar_ticks,  # Custom tick values
-						ticktext=colorbar_texts,
-						tickfont=dict(size=14)
-				),
-				symbol=marker_symbols,
-				line_color='black',
-				line_width=1,
-		),
-		showlegend=False
-))
+if two_graphs:
+	fig = make_subplots(rows=1, cols=2, specs=[[{"type": "scattergeo"}, {"type": "scattergeo"}]])
+	# Process heat on the left
+	process_heat = noptc_be[noptc_be['Application'] == 'Process Heat']
+	process_heat_markers = process_heat['Application'].map(markers_applications).to_list()
+	fig.add_trace(go.Scattergeo(
+			lon=process_heat['longitude'],
+			lat=process_heat['latitude'],
+			mode='markers',
+			marker=dict(
+					size=12,
+					color=process_heat['BE wo PTC ($/MMBtu)'],
+					colorscale='Reds',
+					colorbar = dict(
+							title='Breakeven NG price ($/MMBtu)',
+							orientation='v',  
+							x=1, 
+							y=0.45,  
+							lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
+							len=0.6,  # Length of the colorbar (80% of figure width)
+							tickvals=colorbar_ticks,  # Custom tick values
+							ticktext=colorbar_texts,
+							tickfont=dict(size=12)
+					),
+					symbol=process_heat_markers,
+					line_color='black',
+					line_width=1,
+			),
+			showlegend=False
+	), row=1, col=1)
 
+	# H2 on the right
+	h2 = noptc_be[noptc_be['Application'] == 'Industrial Hydrogen']
+	h2_markers = h2['Application'].map(markers_applications).to_list()
+	fig.add_trace(go.Scattergeo(
+			lon=h2['longitude'],
+			lat=h2['latitude'],
+			mode='markers',
+			marker=dict(
+					size=12,
+					color=h2['BE wo PTC ($/MMBtu)'],
+					colorscale='Reds',
+					
+					symbol=h2_markers,
+					line_color='black',
+					line_width=1,
+			),
+			showlegend=False, 
+	),row=1, col=2)
 
+	fig.update_geos(
+    scope="usa",  # Limits the map scope to North America
+		showlakes=True,
+		lakecolor='rgb(255, 255, 255)',
+	)
+	# Create symbol and color legend traces
+	for app, marker in markers_applications.items():
+			fig.add_trace(go.Scattergeo(
+					lon=[None],
+					lat=[None],
+					marker=dict(
+							size=15,
+							color='white',
+							symbol=marker,
+							line_color='black',
+							line_width=2,
+					),
+					name=app
+			))
 
-# Create symbol and color legend traces
-for app, marker in markers_applications.items():
-		fig.add_trace(go.Scattergeo(
-				lon=[None],
-				lat=[None],
-				marker=dict(
-						size=15,
-						color='white',
-						symbol=marker,
-						line_color='black',
-						line_width=2,
-				),
-				name=app
-		))
-
-
-# Update layout
-fig.update_layout(
-		geo=dict(
-				scope='usa',
-				projection_type='albers usa',
-				showlakes=True,
-				lakecolor='rgb(255, 255, 255)',
-		),
-		width=1200,  # Set the width of the figure
+	# Update layout
+	fig.update_layout(
 		height=600,  # Set the height of the figure
+		width=1200,  # Increase the width
 		margin=go.layout.Margin(
-				l=0,  # left margin
-				r=20,  # right margin
-				b=20,  # bottom margin
-				t=10  # top margin
+				l=70,  # left margin
+				r=70,  # right margin
+				b=70,  # bottom margin
+				t=70  # top margin
 		),
 		legend=dict(
 				title="<b>Industrial Application</b>",
-				x=0.9,
-				y=1,
+				x=1,
+				y=0.9,
 				traceorder="normal",
-				font = dict(size = 16, color = "black"),
+				font = dict(size = 12, color = "black"),
 				bgcolor="rgba(255, 255, 255, 0.5)"  # semi-transparent background
 		),
-)
+	)
+
+else:
+
+	fig.add_trace(go.Scattergeo(
+			lon=noptc_be['longitude'],
+			lat=noptc_be['latitude'],
+			text="Breakeven price: " + noptc_be['BE wo PTC ($/MMBtu)'].astype(str) + " $/MMBtu",
+			mode='markers',
+			marker=dict(
+					size=12,
+					color=noptc_be['BE wo PTC ($/MMBtu)'],
+					colorscale='Reds',
+					colorbar = dict(
+							title='Breakeven NG price ($/MMBtu)',
+							orientation='v',  
+							x=0.9, 
+							y=0.45,  
+							lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
+							len=0.8,  # Length of the colorbar (80% of figure width)
+							tickvals=colorbar_ticks,  # Custom tick values
+							ticktext=colorbar_texts,
+							tickfont=dict(size=14)
+					),
+					symbol=marker_symbols,
+					line_color='black',
+					line_width=1,
+			),
+			showlegend=False
+	))
+
+
+
+	# Create symbol and color legend traces
+	for app, marker in markers_applications.items():
+			fig.add_trace(go.Scattergeo(
+					lon=[None],
+					lat=[None],
+					marker=dict(
+							size=15,
+							color='white',
+							symbol=marker,
+							line_color='black',
+							line_width=2,
+					),
+					name=app
+			))
+
+
+	# Update layout
+	fig.update_layout(
+			geo=dict(
+					scope='usa',
+					projection_type='albers usa',
+					showlakes=True,
+					lakecolor='rgb(255, 255, 255)',
+			),
+			width=1200,  # Set the width of the figure
+			height=600,  # Set the height of the figure
+			margin=go.layout.Margin(
+					l=0,  # left margin
+					r=20,  # right margin
+					b=20,  # bottom margin
+					t=10  # top margin
+			),
+			legend=dict(
+					title="<b>Industrial Application</b>",
+					x=0.9,
+					y=1,
+					traceorder="normal",
+					font = dict(size = 16, color = "black"),
+					bgcolor="rgba(255, 255, 255, 0.5)"  # semi-transparent background
+			),
+	)
 
 
 # Save
