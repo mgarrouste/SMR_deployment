@@ -73,13 +73,14 @@ ratio_ironore_DRI = 1.391 # tironore/tDRI
 bfbof_iron_cons = 1.226 #t_ironore/t_steel
 om_bfbof = 178.12 #$/t_steel
 
-def calculate_irr(Co, Celec, Ch2, Cff, lifetime=60, ptc=True):
+def calculate_irr(Co, Celec, Ch2, Cff, lifetime=20, ptc=True, add_capex={}):
   """Calculates the IRR given: 
   Args: 
     Co (float): initial total investment, CAPEX SMR, H2, and conversion costs
     Celec (float): yearly revenues from electricity production (cogeneration)
     Ch2 (float): yearly revenues from the H2 PTC (stops after 10 years)
     Cff (float): yearly revenues from avoided fossil fuel costs
+    add_capex (dict[int:float]): dictionary with additional investments necessary, with year as key and amount as value
   Returns: 
     irr (float): internal rate of return
   """
@@ -88,6 +89,9 @@ def calculate_irr(Co, Celec, Ch2, Cff, lifetime=60, ptc=True):
     list_cashflows = [-Co]+[Celec+Ch2+Cff]*10+[Celec+Cff]*(lifetime-10)
   else:
     list_cashflows = [-Co]+[Celec+Cff]*lifetime
+  if len(add_capex)>0:
+    for year, add_investment in add_capex.items():
+      list_cashflows[year] += add_investment
   return round(npf.irr(list_cashflows), 2)
 
 
