@@ -35,7 +35,7 @@ noak_positive = waterfalls_cap_em.load_noak_noPTC()
 def save_noak_noPTC():
 	# NOAK data
 	h2_data = ANR_application_comparison.load_h2_results(anr_tag='NOAK', cogen_tag='cogen')
-	h2_data = h2_data[['state', 'Depl. ANR Cap. (MWe)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
+	h2_data = h2_data[['state', 'Depl. ANR Cap. (MWe)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 'IRR wo PTC',
 										'Industry', 'Application', 'ANR', 'Net Revenues ($/year)','Electricity revenues ($/y)' ]]
 
 	h2_data['Annual Net Revenues (M$/y)'] =h2_data.loc[:,['Net Revenues ($/year)','Electricity revenues ($/y)']].sum(axis=1)
@@ -47,7 +47,7 @@ def save_noak_noPTC():
 	h2_data = h2_data.reset_index(names=['id'])
 
 	heat_data = ANR_application_comparison.load_heat_results(anr_tag='NOAK', cogen_tag='cogen', with_PTC=False)
-	heat_data = heat_data[['STATE', 'Emissions_mmtco2/y', 'SMR',
+	heat_data = heat_data[['STATE', 'Emissions_mmtco2/y', 'SMR','IRR wo PTC',
 												'Depl. ANR Cap. (MWe)', 'Industry',
 													'Application', 'Annual Net Revenues (M$/y)']]
 	heat_data['application'] = 'Process Heat'
@@ -56,6 +56,7 @@ def save_noak_noPTC():
 
 	noak_positive = pd.concat([heat_data, h2_data], ignore_index=True)
 	noak_positive = noak_positive[noak_positive['Annual Net Revenues (M$/y)'] >=0]
+	noak_positive['IRR wo PTC']*=100
 	noak_positive.set_index('id', inplace=True)
 	foak_positive = waterfalls_cap_em.load_foak_positive()
 	foak_positive.set_index('id', inplace=True)
