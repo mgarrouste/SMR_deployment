@@ -130,7 +130,7 @@ colorbar_ticks = [6.21, 7.56,11.18,  17.3]
 colorbar_texts = ['1th: 6.2','Maximum state level: 7.6', '10 year peak (2008): 11.2', 'Median: 17.3']
 
 if two_graphs:
-	fig = make_subplots(rows=1, cols=2, specs=[[{"type": "scattergeo"}, {"type": "scattergeo"}]])
+	fig = make_subplots(rows=1, cols=2, horizontal_spacing=0.01, specs=[[{"type": "scattergeo"}, {"type": "scattergeo"}]])
 	# Process heat on the left
 	process_heat = noptc_be[noptc_be['Application'] == 'Process Heat']
 	process_heat_markers = process_heat['Application'].map(markers_applications).to_list()
@@ -144,14 +144,14 @@ if two_graphs:
 					colorscale='Reds',
 					colorbar = dict(
 							title='Breakeven NG price ($/MMBtu)',
-							orientation='v',  
-							x=1, 
-							y=0.45,  
+							orientation='h',  
+							x=.65, 
+							y=-.02,  
 							lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
-							len=0.6,  # Length of the colorbar (80% of figure width)
+							len=0.5,  # Length of the colorbar (80% of figure width)
 							tickvals=colorbar_ticks,  # Custom tick values
 							ticktext=colorbar_texts,
-							tickfont=dict(size=12)
+							tickfont=dict(size=18)
 					),
 					symbol=process_heat_markers,
 					line_color='black',
@@ -201,20 +201,15 @@ if two_graphs:
 
 	# Update layout
 	fig.update_layout(
-		height=600,  # Set the height of the figure
-		width=1200,  # Increase the width
-		margin=go.layout.Margin(
-				l=70,  # left margin
-				r=70,  # right margin
-				b=70,  # bottom margin
-				t=70  # top margin
-		),
+		height=800,  # Set the height of the figure
+		width=1600,  # Increase the width
+		margin=dict(l=0, r=0, t=0, b=0, pad=.5),
 		legend=dict(
 				title="<b>Industrial Application</b>",
-				x=1,
-				y=0.9,
+				x=.10,
+				y=0.105,
 				traceorder="normal",
-				font = dict(size = 12, color = "black"),
+				font = dict(size = 18, color = "black"),
 				bgcolor="rgba(255, 255, 255, 0.5)"  # semi-transparent background
 		),
 	)
