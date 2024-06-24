@@ -35,7 +35,7 @@ fig.add_trace(go.Choropleth(
 
 def load_foak_positive():
 	h2_data = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='cogen')
-	h2_data = h2_data[['latitude', 'longitude', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
+	h2_data = h2_data[['latitude', 'longitude', 'state', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
 										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/y)', 'IRR w PTC', 'IRR wo PTC' ]]
 	h2_data['Emissions_mmtco2/y'] = h2_data['Ann. avoided CO2 emissions (MMT-CO2/year)']
 	h2_data.rename(columns={'ANR':'SMR'}, inplace=True)
@@ -43,10 +43,11 @@ def load_foak_positive():
 	h2_data.reset_index(inplace=True)
 
 	heat_data = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen')
-	heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'SMR',
+	heat_data = heat_data[['latitude', 'longitude', 'STATE', 'Emissions_mmtco2/y', 'SMR',
 												'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)',
 												'Annual Net Revenues (M$/y)', 'Application', 'IRR w PTC', 'IRR wo PTC']]
 	heat_data['App'] = 'Process Heat'
+	heat_data.rename(columns={'STATE':'state'}, inplace=True)
 	heat_data.reset_index(inplace=True)
 
 	foak_positive = pd.concat([h2_data, heat_data], ignore_index=True)
@@ -74,6 +75,7 @@ def save_foak_positive():
 	foak_positive.set_index('id', inplace=True)
 	foak_positive['Depl. ANR Cap. (MWe)'] = foak_positive['Depl. ANR Cap. (MWe)'].astype(int)
 	foak_positive['IRR (%)'] = foak_positive['IRR w PTC']*100
+	foak_positive.sort_values(by='IRR (%)', ascending=False)
 
 	foak_positive = foak_positive.drop(columns=['Industry', 'Application', 'IRR w PTC'])
 
@@ -97,6 +99,25 @@ print('PBR-HTGR deployed units: ',sum(foak_positive[foak_positive.SMR=='PBR-HTGR
 print('iPWR deployed capacity : ',sum(foak_positive[foak_positive.SMR=='iPWR']['Depl. ANR Cap. (MWe)']))
 print('iPWR deployed units : ',sum(foak_positive[foak_positive.SMR=='iPWR']['Depl. ANR Cap. (MWe)'])/77)
 print('Total capacity deployed GWe : ', sum(foak_positive['Depl. ANR Cap. (MWe)'])/1e3)
+print('Process heat capacity: ', sum(foak_positive[foak_positive.Application=='Process Heat']['Depl. ANR Cap. (MWe)'])/1e3 )
+print('H2 AMmonia: ', sum(foak_positive[foak_positive.App=='Industrial Hydrogen-Ammonia']['Depl. ANR Cap. (MWe)'])/1e3 )
+print('H2 Steel: ', sum(foak_positive[foak_positive.App=='Industrial Hydrogen-Steel']['Depl. ANR Cap. (MWe)'])/1e3 )
+print('H2 Refining: ', sum(foak_positive[foak_positive.App=='Industrial Hydrogen-Refining']['Depl. ANR Cap. (MWe)'])/1e3 )
+
+print('/n REvenues and IRR')
+print(foak_positive['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+heat = foak_positive[foak_positive.Application=='Process Heat']
+print('\n Heat')
+print(heat['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+print('\n H2')
+processh2 = foak_positive[foak_positive.Application!='Process Heat']
+print(processh2['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+
+print('\n Deployment in states with bans')
+banss = foak_positive[foak_positive.state.isin(nuclear_ban)]
+print('Ban % capacity : ', 100*sum(banss['Depl. ANR Cap. (MWe)'])/sum(foak_positive['Depl. ANR Cap. (MWe)']))
+restrs = foak_positive[foak_positive.state.isin(nuclear_restrictions)]
+print('Restrictions % capacity : ', 100*sum(restrs['Depl. ANR Cap. (MWe)'])/sum(foak_positive['Depl. ANR Cap. (MWe)']))
 # Size based on capacity deployed
 percentiles =  foak_positive['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]).to_frame()
 
