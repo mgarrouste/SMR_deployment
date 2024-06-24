@@ -62,11 +62,11 @@ def load_noak_noPTC():
 	# NOAK data
 	h2_data = ANR_application_comparison.load_h2_results(anr_tag='NOAK', cogen_tag='cogen')
 	h2_data = h2_data[['latitude', 'longitude', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
-										'Industry', 'Application', 'ANR', 'Net Revenues ($/year)','Electricity revenues ($/y)' ]]
+										'Industry', 'Application', 'ANR', 'Net Revenues ($/year)','Electricity revenues ($/y)', 'IRR wo PTC']]
 
 	h2_data['Annual Net Revenues (M$/y)'] =h2_data.loc[:,['Net Revenues ($/year)','Electricity revenues ($/y)']].sum(axis=1)
 	h2_data['Annual Net Revenues (M$/y)'] /=1e6
-	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions', 'ANR':'SMR'}, inplace=True)
+	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions', 'ANR':'SMR', 'IRR wo PTC': 'IRR (%)'}, inplace=True)
 	h2_data['App'] = h2_data.apply(lambda x: x['Application']+'-'+x['Industry'].capitalize(), axis=1)
 	h2_data = h2_data.drop(columns=['Net Revenues ($/year)','Electricity revenues ($/y)' ])
 	h2_data.reset_index(inplace=True)
@@ -74,15 +74,16 @@ def load_noak_noPTC():
 	heat_data = ANR_application_comparison.load_heat_results(anr_tag='NOAK', cogen_tag='cogen', with_PTC=False)
 	heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'SMR',
 												'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)',
-													'Application', 'Annual Net Revenues (M$/y)']]
+													'Application', 'Annual Net Revenues (M$/y)', 'IRR wo PTC']]
 	heat_data.rename(columns={'Breakeven NG price ($/MMBtu)':'Breakeven price ($/MMBtu)',
-												'Emissions_mmtco2/y':'Emissions'}, inplace=True)
+												'Emissions_mmtco2/y':'Emissions', 'IRR wo PTC': 'IRR (%)'}, inplace=True)
 	heat_data.reset_index(inplace=True, names=['id'])
 	heat_data['App'] = 'Process Heat'
 
 	# Only profitable facilities
 	noak_positive = pd.concat([heat_data, h2_data], ignore_index=True)
 	noak_positive = noak_positive[noak_positive['Annual Net Revenues (M$/y)'] >=0]
+	noak_positive['IRR (%)'] *=100
 	noak_positive.to_excel('./results/results_heat_h2_NOAK_noPTC.xlsx', index=False)
 	noak_positive.set_index('id', inplace=True)
 	foak_positive = load_foak_positive()

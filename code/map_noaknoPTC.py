@@ -85,6 +85,11 @@ print('iPWR deployed capacity : ',sum(noak_positive[noak_positive.SMR=='iPWR']['
 print('iPWR deployed units : ',sum(noak_positive[noak_positive.SMR=='iPWR']['Depl. ANR Cap. (MWe)'])/77)
 print('Total capacity deployed GWe : ', sum(noak_positive['Depl. ANR Cap. (MWe)'])/1e3)
 
+print('$ \n')
+print(noak_positive['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+print(noak_positive.columns)
+print(noak_positive['IRR (%)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+
 scaler = 30
 
 # Set marker symbol based on the application's type
