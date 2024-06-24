@@ -4,6 +4,7 @@ from plotly.subplots import make_subplots
 from utils import palette
 import ANR_application_comparison
 import os
+import numpy as np
 from utils import compute_average_electricity_prices
 
 with_elec = False
@@ -114,6 +115,20 @@ tosave_noptc.to_latex('./results/foak_noPTC.tex',float_format="{:0.1f}".format, 
 
 print(noptc_be['BE wo PTC ($/MMBtu)'].describe(percentiles = [.01,.02,.03,.05,.07,.08,.1,.17,.2,.25,.5,.75,.9]))
 
+def histogram_and_kde(series):
+		import scipy.stats
+		counts, bins = np.histogram(series, bins=20)
+		bins = 0.5 * (bins[:-1] + bins[1:]) # bin centers
+		# Calculate KDE
+		kde = scipy.stats.gaussian_kde(series)
+		kde_x = np.linspace(series.min(), series.max(), 100)
+		kde_y = kde(kde_x) * np.diff(bins)[0] * len(series) # Scale the KDE by number of observations and bin width
+		return bins, counts, kde_x, kde_y
+
+heat_datakde = noptc_be[noptc_be.Application=='Process Heat']
+heat_datakde = heat_datakde[heat_datakde['BE wo PTC ($/MMBtu)'] <=110]
+heat_bins, heat_counts, heat_kde_x, heat_kde_y = histogram_and_kde(heat_datakde['BE wo PTC ($/MMBtu)'])
+h2_bins, h2_counts, h2_kde_x, h2_kde_y = histogram_and_kde(noptc_be[noptc_be.Application=='Industrial Hydrogen']['BE wo PTC ($/MMBtu)'])
 max_be = 17.4 # show only up to median BE
 
 profitable = noptc_be[noptc_be['BE wo PTC ($/MMBtu)']<noptc_be['State price ($/MMBtu)']]
@@ -130,7 +145,12 @@ colorbar_ticks = [6.21, 7.56,11.18,  17.3]
 colorbar_texts = ['1th: 6.2','Maximum state level: 7.6', '10 year peak (2008): 11.2', 'Median: 17.3']
 
 if two_graphs:
-	fig = make_subplots(rows=1, cols=2, horizontal_spacing=0.01, specs=[[{"type": "scattergeo"}, {"type": "scattergeo"}]])
+	fig = make_subplots(rows=2, cols=2, column_widths=[0.85, 0.15], 
+										specs=[[{"type": "scattergeo"}, {'type':'xy'}],
+													 [{"type": "scattergeo"}, {'type':'xy'}]])
+	
+	# Function that returns histogram and gaussian kde trace for a given dataset
+	
 	# Process heat on the left
 	process_heat = noptc_be[noptc_be['Application'] == 'Process Heat']
 	process_heat_markers = process_heat['Application'].map(markers_applications).to_list()
@@ -143,12 +163,12 @@ if two_graphs:
 					color=process_heat['BE wo PTC ($/MMBtu)'],
 					colorscale='Reds',
 					colorbar = dict(
-							title='Breakeven NG price ($/MMBtu)',
+							title='Breakeven NG<br>price ($/MMBtu)',
 							orientation='h',  
-							x=.65, 
-							y=-.02,  
+							x=.4, 
+							y=.4,  
 							lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
-							len=0.5,  # Length of the colorbar (80% of figure width)
+							len=.65,  # Length of the colorbar (80% of figure width)
 							tickvals=colorbar_ticks,  # Custom tick values
 							ticktext=colorbar_texts,
 							tickfont=dict(size=18)
@@ -159,6 +179,16 @@ if two_graphs:
 			),
 			showlegend=False
 	), row=1, col=1)
+	# Histogram and kde for 'BE wo PTC' column
+	
+	fig.add_trace(
+			go.Bar(x=heat_bins, y=heat_counts,showlegend=False, textfont=dict(size=18)),
+			row=1, col=2
+	)
+	fig.add_trace(
+    go.Scatter(x=heat_kde_x, y=heat_kde_y,line=dict(color='red'), showlegend=False),
+    row=1, col=2
+	)
 
 	# H2 on the right
 	h2 = noptc_be[noptc_be['Application'] == 'Industrial Hydrogen']
@@ -171,16 +201,41 @@ if two_graphs:
 					size=12,
 					color=h2['BE wo PTC ($/MMBtu)'],
 					colorscale='Reds',
-					
 					symbol=h2_markers,
 					line_color='black',
 					line_width=1,
 			),
 			showlegend=False, 
-	),row=1, col=2)
+	),row=2, col=1)
+
+	# Histogram and kde for 'BE wo PTC' column
+	fig.add_trace(
+			go.Bar(x=h2_bins, y=h2_counts, showlegend=False, textfont=dict(size=18)),
+			row=2, col=2
+	)
+	fig.add_trace(
+    go.Scatter(x=h2_kde_x, y=h2_kde_y,line=dict(color='red'), showlegend=False),
+    row=2, col=2
+	)
+
+	# Update layout to add a two-line x-axis label and font sizes to the distribution plots
+	fig.update_xaxes(
+		title_text='Breakeven NG price<br>($/MMBtu)',
+		title_font=dict(size=16),
+		tickfont=dict(size=16),
+		row=1,
+		col=2
+	)
+	fig.update_xaxes(
+			title_text='Breakeven NG price<br>($/MMBtu)',
+			title_font=dict(size=16),
+			tickfont=dict(size=16),
+			row=2,
+			col=2
+	)
 
 	fig.update_geos(
-    scope="usa",  # Limits the map scope to North America
+		scope="usa",  # Limits the map scope to North America
 		showlakes=True,
 		lakecolor='rgb(255, 255, 255)',
 	)
@@ -201,13 +256,13 @@ if two_graphs:
 
 	# Update layout
 	fig.update_layout(
-		height=800,  # Set the height of the figure
-		width=1600,  # Increase the width
-		margin=dict(l=0, r=0, t=0, b=0, pad=.5),
+		height=1200,  # Set the height of the figure
+		width=1200,  # Increase the width
+		margin=dict(l=0, r=5, t=0, b=0, pad=.5),
 		legend=dict(
 				title="<b>Industrial Application</b>",
-				x=.10,
-				y=0.105,
+				x=.04,
+				y=0.46,
 				traceorder="normal",
 				font = dict(size = 18, color = "black"),
 				bgcolor="rgba(255, 255, 255, 0.5)"  # semi-transparent background
