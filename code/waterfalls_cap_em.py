@@ -6,6 +6,27 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from utils import palette
 
+def load_foaknoPTC():
+	# profitable FOAK without the H2 PTC
+	h2_data = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='cogen')
+	h2_data = h2_data[['state','latitude', 'longitude', 'State price ($/MMBtu)','Depl. ANR Cap. (MWe)', 'BE wo PTC ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
+									 'Industry', 'Application', 'ANR', 'IRR wo PTC' ]]
+	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions', 'ANR':'SMR'}, inplace=True)
+	h2_data['App'] = h2_data.apply(lambda x: x['Application']+'-'+x['Industry'].capitalize(), axis=1)
+	h2_data = h2_data[h2_data['BE wo PTC ($/MMBtu)']<h2_data['State price ($/MMBtu)']]
+	h2_data.reset_index(inplace=True)
+
+	heat_data = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen')
+	heat_data = heat_data[['STATE','latitude', 'longitude', 'NG price ($/MMBtu)', 'Emissions_mmtco2/y', 'SMR',
+												'Depl. ANR Cap. (MWe)', 'Industry','BE wo PTC ($/MMBtu)', 'Application', 'IRR wo PTC']]
+	heat_data.rename(columns={'Emissions_mmtco2/y':'Ann. avoided CO2 emissions (MMT-CO2/year)',
+														'NG price ($/MMBtu)':'State price ($/MMBtu)', 'STATE':'state'}, inplace=True)
+	heat_data['application'] = 'Process Heat'
+	heat_data = heat_data[heat_data['BE wo PTC ($/MMBtu)']<heat_data['State price ($/MMBtu)']]
+	heat_data.reset_index(inplace=True, names=['id'])
+
+	noptc_be = pd.concat([heat_data,h2_data], ignore_index=True)
+	return noptc_be
 
 def load_foak_positive():
 	h2_data = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='cogen')
@@ -25,6 +46,13 @@ def load_foak_positive():
 
 	foak_positive = pd.concat([h2_data, heat_data], ignore_index=True)
 	foak_positive = foak_positive[foak_positive['Annual Net Revenues (M$/y)'] >=0]
+
+	foak_noPTC = load_foaknoPTC()
+	foak_positive.set_index('id', inplace=True)
+	foak_noPTC.set_index('id', inplace=True)
+	foak_to_drop = foak_noPTC.index.to_list()
+	foak_positive = foak_positive.drop(foak_to_drop, errors='ignore')
+	foak_positive = foak_positive.reset_index()
 	return foak_positive
 
 
@@ -49,11 +77,25 @@ def load_noak_positive():
 	noak_positive = pd.concat([heat_data, h2_data], ignore_index=True)
 	noak_positive = noak_positive[noak_positive['Annual Net Revenues (M$/y)'] >=0]
 
+	# Drop FOAK sites
 	noak_positive.set_index('id', inplace=True)
 	foak_positive = load_foak_positive()
 	foak_positive.set_index('id', inplace=True)
 	foak_to_drop = foak_positive.index.to_list()
 	noak_positive = noak_positive.drop(foak_to_drop, errors='ignore')
+
+	# Drop FOAK no PTC sites
+	foak_noPTC = load_foaknoPTC()
+	foak_noPTC.set_index('id', inplace=True)
+	foak_noPTC_todrop = foak_noPTC.index.to_list()
+	noak_positive = noak_positive.drop(foak_noPTC_todrop, errors='ignore')
+
+	# Drop NOAK no PTC sites
+	noak_noPTC = load_noak_noPTC()
+	noak_noPTC.set_index('id', inplace=True)
+	noak_noPTC_todrop = noak_noPTC.index.to_list()
+	noak_positive = noak_positive.drop(noak_noPTC_todrop, errors='ignore')
+
 	noak_positive = noak_positive.reset_index()
 	return noak_positive
 
@@ -86,6 +128,13 @@ def load_noak_noPTC():
 	noak_positive['IRR (%)'] *=100
 	noak_positive.to_excel('./results/results_heat_h2_NOAK_noPTC.xlsx', index=False)
 	noak_positive.set_index('id', inplace=True)
+
+	# Drop FOAK no PTC sites
+	foak_noPTC = load_foaknoPTC()
+	foak_noPTC.set_index('id', inplace=True)
+	foak_noPTC_todrop = foak_noPTC.index.to_list()
+	noak_positive = noak_positive.drop(foak_noPTC_todrop, errors='ignore')
+	# Drop FOAK sites
 	foak_positive = load_foak_positive()
 	foak_positive.set_index('id', inplace=True)
 	foak_to_drop = foak_positive.index.to_list()
@@ -93,12 +142,23 @@ def load_noak_noPTC():
 	noak_positive = noak_positive.reset_index()
 	return noak_positive
 
+foak_noPTC = load_foaknoPTC()
 foak_positive = load_foak_positive()
 noak_positive = load_noak_positive()
 noak_noPTC = load_noak_noPTC()
 
 
-def plot_bars(foak_positive, noak_positive, noak_noPTC):
+def plot_bars(foak_noPTC, foak_positive, noak_positive, noak_noPTC):
+	df = foak_noPTC[['App', 'Emissions', 'Depl. ANR Cap. (MWe)']]
+	df = df.rename(columns={'Depl. ANR Cap. (MWe)':'Capacity'})
+	df['Capacity'] = df['Capacity']/1e3
+	df = df.groupby('App').sum()
+	df0 = df.reset_index()
+	df0 = df0.replace('Industrial Hydrogen-', '', regex=True)
+	df0['measure'] = 'relative'
+	total_df0 = pd.DataFrame({'App':['Total'],'Emissions': [df0['Emissions'].sum()], 'Capacity':[df0['Capacity'].sum()], 'measure':['total'], 'tag':['FOAK-NoPTC']})
+	df0['tag'] = 'FOAK<br>NoPTC'
+
 	df = foak_positive[['App', 'Emissions', 'Depl. ANR Cap. (MWe)']]
 	df = df.rename(columns={'Depl. ANR Cap. (MWe)':'Capacity'})
 	df['Capacity'] = df['Capacity']/1e3
@@ -106,68 +166,60 @@ def plot_bars(foak_positive, noak_positive, noak_noPTC):
 	df1 = df.reset_index()
 	df1 = df1.replace('Industrial Hydrogen-', '', regex=True)
 	df1['measure'] = 'relative'
-	total_df1 = df1.sum()
-	total_df1['App'] = 'Total'
-	total_df1['measure'] = 'total'
-	df1['tag'] = 'FOAK-cogen'
-	total_df1['tag'] = 'FOAK-cogen'
+	total_df1 = pd.DataFrame({'App':['Total'],'Emissions': [df1['Emissions'].sum()], 'Capacity':[df1['Capacity'].sum()], 'measure':['total'], 'tag':['FOAK']})
+	df1['tag'] = 'FOAK'
 
-	df = noak_positive[['App', 'Emissions', 'Depl. ANR Cap. (MWe)']]
+
+	df = noak_noPTC[['App', 'Emissions', 'Depl. ANR Cap. (MWe)']]
 	df = df.rename(columns={'Depl. ANR Cap. (MWe)':'Capacity'})
 	df['Capacity'] = df['Capacity']/1e3
 	df = df.groupby('App').sum()
 	df2 = df.reset_index()
 	df2 = df2.replace('Industrial Hydrogen-', '', regex=True)
 	df2['measure'] = 'relative'
-	total_df2 = df2.sum()
-	total_df2['App'] = 'Total'
-	total_df2['measure'] = 'total'
-	df2['tag'] = 'NOAK-cogen'
-	total_df2['tag'] = 'NOAK-cogen'
-	
-	df = noak_noPTC[['App', 'Emissions', 'Depl. ANR Cap. (MWe)']]
+	total_df2 = pd.DataFrame({'App':['Total'],'Emissions': [df2['Emissions'].sum()], 'Capacity':[df2['Capacity'].sum()], 'measure':['total'], 'tag':['NOAK-NoPTC']})
+	df2['tag'] = 'NOAK<br>NoPTC'
+
+
+	df = noak_positive[['App', 'Emissions', 'Depl. ANR Cap. (MWe)']]
 	df = df.rename(columns={'Depl. ANR Cap. (MWe)':'Capacity'})
 	df['Capacity'] = df['Capacity']/1e3
 	df = df.groupby('App').sum()
 	df3 = df.reset_index()
 	df3 = df3.replace('Industrial Hydrogen-', '', regex=True)
-	# Differential from NOAK with to without PTC
-	df2_forcalc = df2.copy()
-	df2_forcalc.set_index('App', inplace=True)
-	df3_forcalc = df3.copy()
-	df3_forcalc.set_index('App', inplace=True)
-	df3_forcalc.at['Ammonia', 'Capacity'] = 0
-	df3_forcalc.at['Ammonia', 'Emissions'] = 0
-	df3_forcalc.at['Refining', 'Capacity'] = 0
-	df3_forcalc.at['Refining', 'Emissions'] = 0
-	df3_forcalc.at['Steel', 'Capacity'] = 0
-	df3_forcalc.at['Steel', 'Emissions'] = 0
-	diffdf = df2_forcalc.copy()
-	diffdf['Capacity'] = df3_forcalc["Capacity"] - df2_forcalc['Capacity']
-	diffdf['Emissions'] = df3_forcalc["Emissions"] - df2_forcalc['Emissions']
-	diffdf = diffdf.reset_index()
-	diffdf['measure'] = 'relative'
-	total_diffdf = diffdf.sum()
-	total_diffdf['App'] = 'Total'
-	total_diffdf['measure'] = 'total'
-	diffdf['tag'] = 'NOAK-cogen-NoPTC'
-	total_diffdf['tag'] = 'NOAK-cogen-NoPTC'
+	df3['measure'] = 'relative'
+	df3.sort_values(by=['Capacity', 'Emissions'], ascending=True, inplace=True)
+	total_emissions = df3['Emissions'].sum()+df2['Emissions'].sum()+df1['Emissions'].sum()+df0['Emissions'].sum()
+	total_cap = df3['Capacity'].sum()+df2['Capacity'].sum()+df1['Capacity'].sum()+df0['Capacity'].sum()
+	total_df3 = pd.DataFrame({'App':['Total'],'Emissions': [total_emissions], 'Capacity':[total_cap], 'measure':['total'], 'tag':['NOAK']})
+	df3['tag'] = 'NOAK'
 
 
 	# Now create a combined DataFrame from df1 and the adjusted df2
-	combined_df = pd.concat([df1, pd.DataFrame([total_df1]), df2, pd.DataFrame([total_df2]), diffdf, pd.DataFrame([total_diffdf])], ignore_index=True)
+	#combined_df = pd.concat([df0, total_df0,df1, total_df1, df3, total_df3,df2, total_df2], ignore_index=True)
+	
+	# Combined DataFrame from df0, df1,... and using reset_index() to maintain correct order
+	combined_df = pd.concat([df0, df1, df2,df3, total_df3], ignore_index=True)
+	combined_df = combined_df.replace('Process Heat', 'Process<br>Heat')
+
 	print(combined_df)
 
+
+	# input to your Waterfall traces to use the sorted combined_df:
+	measure = combined_df['measure'].to_list()
+	x = [combined_df['tag'].to_list(), combined_df['App'].to_list()]
+	emissions = combined_df['Emissions'].to_list()
+
 	fig = make_subplots(rows=1, cols=2, horizontal_spacing=0.08)
-	combined_df['text_em'] = combined_df.apply(lambda x: int(x['Emissions']), axis=1)
-	
+	combined_df['text_em'] = combined_df.apply(lambda x: int(x['Emissions']) if x['Emissions']>=1 else round(x['Emissions'],1), axis=1)
+
 	fig.add_trace(go.Waterfall(
 		orientation = "v",
-		measure = combined_df['measure'],
-		x = [combined_df['tag'],combined_df['App']],
+		measure = measure, 
+		x = x,
 		textposition = "outside",
 		text = combined_df['text_em'],
-		y = combined_df['Emissions'],
+		y = emissions,
 		connector = {"line":{"color":"rgb(63, 63, 63)"}},
 		increasing = {"marker":{"color": "paleGreen"}},
 		decreasing = {"marker":{"color": "firebrick"}},
@@ -176,7 +228,7 @@ def plot_bars(foak_positive, noak_positive, noak_noPTC):
 		row=1, col=1
 	)
 
-	combined_df['text_cap'] = combined_df.apply(lambda x: int(x['Capacity']), axis=1)
+	combined_df['text_cap'] = combined_df.apply(lambda x: int(x['Capacity']) if x['Capacity']>=1 else round(x['Capacity'],1), axis=1)
 	fig.add_trace(go.Waterfall(
 		orientation = "v",
 		measure = combined_df['measure'],
@@ -197,7 +249,7 @@ def plot_bars(foak_positive, noak_positive, noak_noPTC):
 	fig.update_xaxes(tickangle=53)
 	# Set chart layout
 	fig.update_layout(
-		margin=dict(l=20, r=20, t=20, b=20),
+		margin=dict(l=0, r=0, t=0, b=0),
 		showlegend = False,
 		width=1050,  # Set the width of the figure
 		height=550,  # Set the height of the figure
@@ -230,9 +282,9 @@ def abatement_cost_plot():
 	h2_data['Cost ANR ($/y)'] = h2_data['ANR CAPEX ($/year)']+h2_data['H2 CAPEX ($/year)']+h2_data['ANR O&M ($/year)']+h2_data['H2 O&M ($/year)']\
 												+h2_data['Conversion costs ($/year)']-h2_data['Avoided NG costs ($/year)']
 	h2_data['Abatement cost ($/tCO2)'] = h2_data['Cost ANR ($/y)']/(h2_data['Ann. avoided CO2 emissions (MMT-CO2/year)']*1e6)
-	print('FOAK h2')
+	#print('FOAK h2')
 	h2_data = h2_data[['ANR type', 'Abatement cost ($/tCO2)', 'Industry']]
-	print(h2_data['Abatement cost ($/tCO2)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+	#print(h2_data['Abatement cost ($/tCO2)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 	h2_data = h2_data.rename(columns={'ANR type':'SMR'})
 	# Direct heat
 	heat_data = pd.read_excel(f'./results/process_heat/best_pathway_{anr_tag}_cogen_PTC_True.xlsx')
@@ -240,8 +292,8 @@ def abatement_cost_plot():
 	heat_data['Cost ANR ($/y)'] = (heat_data['CAPEX ($/y)']+heat_data['O&M ($/y)']+heat_data['Conversion']-heat_data['Avoided NG Cost ($/y)'])
 	heat_data['Abatement cost ($/tCO2)'] = heat_data['Cost ANR ($/y)']/(heat_data['Emissions_mmtco2/y']*1e6)
 	heat_data = heat_data[['SMR', 'Abatement cost ($/tCO2)']]
-	print('FOAK heat')
-	print(heat_data['Abatement cost ($/tCO2)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+	#print('FOAK heat')
+	#print(heat_data['Abatement cost ($/tCO2)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 	heat_data['Industry'] = 'Process Heat'
 
 	foak = pd.concat([h2_data, heat_data], ignore_index=True)
@@ -269,8 +321,8 @@ def abatement_cost_plot():
 												+h2_data['Conversion costs ($/year)']-h2_data['Avoided NG costs ($/year)']
 	h2_data['Abatement cost ($/tCO2)'] = h2_data['Cost ANR ($/y)']/(h2_data['Ann. avoided CO2 emissions (MMT-CO2/year)']*1e6)
 	h2_data = h2_data[['ANR type', 'Abatement cost ($/tCO2)', 'Industry']]
-	print('NOAK h2')
-	print(h2_data['Abatement cost ($/tCO2)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+	#print('NOAK h2')
+	#print(h2_data['Abatement cost ($/tCO2)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 	h2_data = h2_data[['ANR type', 'Abatement cost ($/tCO2)', 'Industry']]
 	h2_data = h2_data.rename(columns={'ANR type':'SMR'})
 	# Direct heat
@@ -279,8 +331,8 @@ def abatement_cost_plot():
 	heat_data['Cost ANR ($/y)'] = (heat_data['CAPEX ($/y)']+heat_data['O&M ($/y)']+heat_data['Conversion']-heat_data['Avoided NG Cost ($/y)'])
 	heat_data['Abatement cost ($/tCO2)'] = heat_data['Cost ANR ($/y)']/(heat_data['Emissions_mmtco2/y']*1e6)
 	heat_data = heat_data[['SMR', 'Abatement cost ($/tCO2)']]
-	print('NOAK heat')
-	print(heat_data['Abatement cost ($/tCO2)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+	#print('NOAK heat')
+	#print(heat_data['Abatement cost ($/tCO2)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 	heat_data['Industry'] = 'Process Heat'
 
 	noak = pd.concat([h2_data, heat_data], ignore_index=True)
@@ -307,5 +359,5 @@ def abatement_cost_plot():
 
 
 
-plot_bars(foak_positive, noak_positive, noak_noPTC)
+plot_bars(foak_noPTC=foak_noPTC, foak_positive=foak_positive, noak_positive=noak_positive, noak_noPTC=noak_noPTC)
 abatement_cost_plot()
