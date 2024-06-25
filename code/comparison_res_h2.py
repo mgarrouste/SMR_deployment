@@ -43,7 +43,7 @@ def plot_comparison(amdf, redf, stdf, res):
 
   stagep = {'FOAK':'yellowgreen', 'NOAK':'forestgreen', 
             'FOAK-NoPTC':'gold', 'NOAK-NoPTC':'darkorange'}
-  resp = {'Grid PEM':'blue', 'Wind subsidized':'cyan', 'Solar PV-E':'plum', 'SMR 89% CCUS':'gray'}
+  resp = {'Grid PEM':'blue', 'Wind':'cyan', 'Solar PV-E':'plum', 'SMR 89% CCUS':'gray'}
   
   res_list = res.RES.unique()
 
