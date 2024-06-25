@@ -270,7 +270,7 @@ def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results):
     results_ref['Avoided NG costs ($/year)'] = value(annualized_avoided_ng_costs(model))
     results_ref['Breakeven price ($/MMBtu)'] = compute_ng_breakeven_price(results_ref) # Compute BE price before adding avoided ng costs!
     results_ref['BE wo PTC ($/MMBtu)'] = compute_ng_be_without_ptc(results_ref)
-    results_ref['Breakeven CAPEX ($/MWe)'], results_ref['Cost red CAPEX BE'] = compute_ammonia_capex_breakeven(results_ref)
+    results_ref['Breakeven CAPEX ($/MWe)'], results_ref['Breakeven CAPEX wo PTC ($/MWe)'], results_ref['Cost red CAPEX BE'] = compute_ammonia_capex_breakeven(results_ref)
     results_ref['Net Revenues ($/year)'] +=results_ref['Avoided NG costs ($/year)']
     # Recalculate revenues with H2 PTC: add revenues from avoided NG costs
     results_ref['Net Revenues with H2 PTC ($/year)'] = results_ref['Net Revenues ($/year)']+results_ref['H2 PTC Revenues ($/year)']
@@ -310,14 +310,15 @@ def compute_ng_be_without_ptc(results_ref):
 
 def compute_ammonia_capex_breakeven(results_ref):
   alpha = results_ref['ANR CRF']*results_ref['Depl. ANR Cap. (MWe)']*(1-ITC_ANR)
-  # ANRH2 costs
-  anrh2_costs = results_ref['Net Revenues ($/year)'] + results_ref['ANR CAPEX ($/year)'] # costs wo anr capex
+  # Costs without SMR capex
+  anrh2_costs = results_ref['H2 CAPEX ($/year)']+results_ref['ANR O&M ($/year)']+results_ref['H2 O&M ($/year)']+results_ref['Conversion costs ($/year)']
   # BE CAPEX $/MWe
   be_capex = (results_ref['Avoided NG costs ($/year)'] + results_ref['H2 PTC Revenues ($/year)'] - anrh2_costs)/alpha
+  be_capex_wo_ptc = (results_ref['Avoided NG costs ($/year)'] - anrh2_costs)/alpha
   # Cost reduction compared to capex 
   if be_capex >= results_ref['ANR CAPEX ($/MWe)']: cost_red = 0
   else: cost_red = 1-(be_capex/results_ref['ANR CAPEX ($/MWe)'])
-  return be_capex, cost_red
+  return be_capex, be_capex_wo_ptc, cost_red
 
 
 def main(anr_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False): 

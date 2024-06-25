@@ -291,7 +291,7 @@ def solve_steel_plant_deployment(plant, ANR_data, H2_data):
     results_dic['Avoided NG costs ($/year)'] = value(annualized_avoided_ng_costs())
     results_dic['Breakeven price ($/MMBtu)'] = compute_breakeven_price(results_dic) # Compute BE price before adding avoided ng costs!
     results_dic['BE wo PTC ($/MMBtu)'] = compute_be_wo_PTC(results_dic)
-    results_dic['Breakeven CAPEX ($/MWe)'], results_dic['Cost red CAPEX BE'] = compute_breakeven_capex(results_dic)
+    results_dic['Breakeven CAPEX ($/MWe)'], results_dic['Breakeven CAPEX wo PTC ($/MWe)'], results_dic['Cost red CAPEX BE'] = compute_breakeven_capex(results_dic)
     results_dic['Net Revenues ($/year)'] += results_dic['Avoided NG costs ($/year)']
     results_dic['Net Revenues with H2 PTC ($/year)'] = results_dic['Net Revenues ($/year)']+results_dic['H2 PTC Revenues ($/year)']
     results_dic['Surplus ANR Cap. (MWe)'] = value(compute_surplus_capacity(model))
@@ -327,10 +327,11 @@ def compute_breakeven_capex(results_ref):
     + results_ref['ANR O&M ($/year)']+ results_ref['H2 O&M ($/year)']  # costs wo anr capex
   # BE CAPEX $/MWe
   be_capex = (results_ref['Avoided NG costs ($/year)'] + results_ref['H2 PTC Revenues ($/year)'] - anrh2_costs)/alpha
+  be_capex_wo_ptc = (results_ref['Avoided NG costs ($/year)'] - anrh2_costs)/alpha
   # Cost reduction compared to capex 
   if be_capex >= results_ref['ANR CAPEX ($/MWe)']: cost_red = 0
   else: cost_red = 1-(be_capex/results_ref['ANR CAPEX ($/MWe)'])
-  return be_capex, cost_red
+  return be_capex, be_capex_wo_ptc, cost_red
 
 
 
