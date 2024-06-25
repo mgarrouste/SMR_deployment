@@ -34,6 +34,7 @@ def load_data():
   res_steel = pd.read_csv('./results/res_be_steel.csv')
   res_steel['industry'] = 'steel'
   res = pd.concat([res_ammonia, res_ref, res_steel], ignore_index=True)
+  res.replace({'SMR 89% CCUS':'NG 89% CCUS'}, inplace=True)
   print(res)
   return amdf, redf, stdf, res
 
@@ -43,7 +44,7 @@ def plot_comparison(amdf, redf, stdf, res):
 
   stagep = {'FOAK':'yellowgreen', 'NOAK':'forestgreen', 
             'FOAK-NoPTC':'gold', 'NOAK-NoPTC':'darkorange'}
-  resp = {'Grid PEM':'blue', 'Wind':'cyan', 'Solar PV-E':'plum', 'SMR 89% CCUS':'gray'}
+  resp = {'Grid PEM':'blue', 'Wind':'cyan', 'Solar PV-E':'plum', 'NG 89% CCUS':'gray'}
   
   res_list = res.RES.unique()
 
