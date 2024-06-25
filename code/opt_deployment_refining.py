@@ -249,7 +249,6 @@ def solve_refinery_deployment(ref_id, ANR_data, H2_data):
     results_ref['Avoided NG costs ($/year)'] = value(annualized_avoided_ng_costs(model))
     results_ref['Breakeven price ($/MMBtu)'] = compute_breakeven_price(results_ref) # Compute BE prices before adding avoided NG costs!
     results_ref['BE wo PTC ($/MMBtu)'] = compute_ng_be_wo_PTC(results_ref)
-    results_ref['Breakeven CAPEX ($/MWe)'], results_ref['Breakeven CAPEX wo PTC ($/MWe)'], results_ref['Cost red CAPEX BE'] = compute_breakeven_capex(results_ref)
     results_ref['Net Revenues ($/year)'] +=results_ref['Avoided NG costs ($/year)']
     results_ref['Net Revenues with H2 PTC ($/year)'] = results_ref['Net Revenues ($/year)']+results_ref['H2 PTC Revenues ($/year)']
     results_ref['Surplus ANR Cap. (MWe)'] = value(compute_surplus_capacity(model))
@@ -276,23 +275,6 @@ def compute_breakeven_price(results_ref):
   revenues = results_ref['Net Revenues with H2 PTC ($/year)']
   breakeven_price = -revenues/(EFF_H2_SMR * CONV_MJ_TO_MMBTU * results_ref['H2 Dem. (kg/day)']*365)
   return breakeven_price
-
-def compute_breakeven_capex(results_ref):
-  alpha = results_ref['ANR CRF']*results_ref['Depl. ANR Cap. (MWe)']*(1-utils.ITC_ANR)
-   # ANRH2 costs
-  anrh2_costs = results_ref['Conversion costs ($/year)'] + results_ref['H2 CAPEX ($/year)'] \
-    + results_ref['ANR O&M ($/year)']+ results_ref['H2 O&M ($/year)'] # costs wo anr capex
-  ng_price = utils.get_ng_price_aeo(results_ref['state'])
-  avoided_costs = ng_price*utils.smr_nrj_intensity*results_ref['H2 Dem. (kg/day)']*365
-  # BE CAPEX $/MWe
-  be_capex = (avoided_costs+ results_ref['H2 PTC Revenues ($/year)'] - anrh2_costs)/alpha
-  be_capex_wo_ptc = (avoided_costs- anrh2_costs)/alpha
-  # Cost reduction compared to capex 
-  if be_capex >= results_ref['ANR CAPEX ($/MWe)']:
-    cost_red = 0
-  else:
-    cost_red = 1-(be_capex/results_ref['ANR CAPEX ($/MWe)'])
-  return be_capex, be_capex_wo_ptc, cost_red
 
 
 def compute_ng_be_wo_PTC(results_ref):
