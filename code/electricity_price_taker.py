@@ -179,10 +179,14 @@ def plot_results(anr_tag, boxplot=False):
   excel_file = f'./results/price_taker_{anr_tag}_{cambium_scenario}.xlsx'
   df = pd.read_excel(excel_file, header=0)
   df['Annual Net Revenues (M$/year/MWe)'] = df['Annual Net Revenues ($/year/MWe)']/1e6
-  stats = df[['ANR type', 'Annual Net Revenues (M$/year/MWe)']].describe(percentiles=[.1,.25,.5,.75,.9])
+  rev_stats = df[['ANR type', 'Annual Net Revenues (M$/year/MWe)']].describe(percentiles=[.1,.25,.5,.75,.9])
+  lcoe_stats = df[['ANR type', 'LCOE ($/MWhe)']].groupby('ANR type').describe(percentiles=[.1,.25,.5,.75,.9])
   save_stats = f'./results/price_taker_{anr_tag}_{cambium_scenario}_stats.xlsx'
   print('Statistics: {}'.format(save_stats))
-  stats.to_excel(save_stats)
+  with pd.ExcelWriter(save_stats) as writer:  
+    rev_stats.to_excel(writer, sheet_name='Revenues')
+    lcoe_stats.to_excel(writer, sheet_name='lcoe')
+
   if boxplot:
     fig, ax = plt.subplots(figsize=(6,2))
     sns.boxplot(ax=ax, data=df, x='Annual Net Revenues (M$/year/MWe)', color='black', fill=False, width=0.5)
