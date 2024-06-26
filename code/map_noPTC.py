@@ -7,13 +7,14 @@ import os
 import numpy as np
 from utils import compute_average_electricity_prices
 
-with_elec = False
+with_elec = True
 two_graphs = True
 # Create figure
 fig = go.Figure()
 
 
-if with_elec:
+
+def add_elec_layer(fig, col, row):
 	# Electricity: average state prices and breakeven prices
 	elec_path = './results/average_electricity_prices_MidCase_2024.xlsx'
 	if os.path.isfile(elec_path):
@@ -23,15 +24,15 @@ if with_elec:
 		elec_df = pd.read_excel(elec_path)
 
 	# Define tick values and corresponding custom tick texts
-	colorbar_ticks = [20, 30, 40, 46.1, 52.2, 56.9, 77.8, 116.9]
-	colorbar_texts = ['20', '30', '40', 
-										'BE iMSR: 46', 'BE PBR-HTGR: 52', 'BE iPWR: 57', 'BE HTGR: 78', 'BE Micro: 117']
+	colorbar_ticks = [20, 34, 46.1, 52.2, 56.9, 77.8, 116.9]
+	colorbar_texts = ['20', '34',
+										'iMSR: 46', 'PBR-HTGR: 52', 'iPWR: 57', 'HTGR: 78', 'Micro: 117']
 
 	max_actual_value = max(elec_df['average price ($/MWhe)'])
 	print(elec_df['average price ($/MWhe)'].describe())
 	max_tick_value = max(colorbar_ticks)
 	# List of colors for the colorscale (light to dark blue)
-	color_list = ["#ebf3fb", "#d2e3f3", "#b6d2ee", "#85bcdb", "#57a0ce", "#3082be", "#1361a9", "#0a4a90", "#08306b"]
+	color_list = ["#ebf3fb", "#d2e3f3", "#b6d2ee", "#85bcdb", '#ffccff', '#ffb3ff', '#ff00ff','#b300b3']#"#57a0ce", "#3082be", "#1361a9", "#0a4a90", "#08306b"]
 
 	# Compute the proportion of the actual max value against the maximum tick value
 	actual_data_proportion = max_actual_value / max_tick_value
@@ -56,20 +57,19 @@ if with_elec:
 					autocolorscale=False,
 					colorscale=colorscale,     # Custom colorscale defined above
 					colorbar = dict(
-							title='Electricity price ($/MWhe)',
-							orientation='h',  # Set the orientation to 'h' for horizontal
-							x=0.5,  # Center the colorbar horizontally
-							y=-0.3,  # Position the colorbar below the x-axis
+							title='Electricity<br>price ($/MWhe)',
+							orientation='v',  # Set the orientation to 'h' for horizontal
+							x=1.11,  # Center the colorbar horizontally
+							y=0.0,  # Position the colorbar below the x-axis
 							xanchor='center',
 							yanchor='bottom',
 							lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
-							len=0.7,  # Length of the colorbar (80% of figure width)
+							len=0.4,  # Length of the colorbar (80% of figure width)
 							tickvals=colorbar_ticks,  # Custom tick values
 							ticktext=colorbar_texts,
-							tickfont=dict(size=14)
+							tickfont=dict(size=16)
 					),
-			)
-	)
+			), row=row, col=col)
 
 
 
@@ -117,7 +117,7 @@ print(noptc_be['BE wo PTC ($/MMBtu)'].describe(percentiles = [.01,.02,.03,.05,.0
 
 def histogram_and_kde(series):
 		import scipy.stats
-		counts, bins = np.histogram(series, bins=20)
+		counts, bins = np.histogram(series, bins=30)
 		bins = 0.5 * (bins[:-1] + bins[1:]) # bin centers
 		# Calculate KDE
 		kde = scipy.stats.gaussian_kde(series)
@@ -142,15 +142,16 @@ markers_applications = {'Process Heat':'cross', 'Industrial Hydrogen':'circle'}
 marker_symbols = noptc_be['Application'].map(markers_applications).to_list()
 
 colorbar_ticks = [6.21, 7.56,11.18,  17.3]
-colorbar_texts = ['1th: 6.2','Maximum state level: 7.6', '10 year peak (2008): 11.2', 'Median: 17.3']
+colorbar_texts = ['1th: 6.2','Maximum state<br>level: 7.6', '10 year peak<br>(2008): 11.2', 'Median: 17.3']
 
 if two_graphs:
-	fig = make_subplots(rows=2, cols=2, column_widths=[0.85, 0.15], 
-										specs=[[{"type": "scattergeo"}, {'type':'xy'}],
-													 [{"type": "scattergeo"}, {'type':'xy'}]])
-	
-	# Function that returns histogram and gaussian kde trace for a given dataset
-	
+	fig = make_subplots(rows=3, cols=1, row_heights=[0.4,0.2,0.4],
+										specs=[[{"type": "scattergeo"}], 
+								 					 [{'type':'xy'}],
+													 [{"type": "scattergeo"}]])
+	add_elec_layer(fig=fig, row=1, col=1)
+	add_elec_layer(fig=fig, row=3, col=1)
+
 	# Process heat on the left
 	process_heat = noptc_be[noptc_be['Application'] == 'Process Heat']
 	process_heat_markers = process_heat['Application'].map(markers_applications).to_list()
@@ -164,14 +165,14 @@ if two_graphs:
 					colorscale='Reds',
 					colorbar = dict(
 							title='Breakeven NG<br>price ($/MMBtu)',
-							orientation='h',  
-							x=.4, 
-							y=.4,  
+							orientation='v',  
+							x=1., 
+							y=.7,  
 							lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
-							len=.65,  # Length of the colorbar (80% of figure width)
+							len=.4,  # Length of the colorbar (80% of figure width)
 							tickvals=colorbar_ticks,  # Custom tick values
 							ticktext=colorbar_texts,
-							tickfont=dict(size=18)
+							tickfont=dict(size=16)
 					),
 					symbol=process_heat_markers,
 					line_color='black',
@@ -179,16 +180,26 @@ if two_graphs:
 			),
 			showlegend=False
 	), row=1, col=1)
+
+
 	# Histogram and kde for 'BE wo PTC' column
-	
 	fig.add_trace(
-			go.Bar(x=heat_bins, y=heat_counts,showlegend=False, textfont=dict(size=18)),
-			row=1, col=2
+			go.Bar(x=heat_bins, y=heat_counts, marker_color='red', name='Process Heat', textfont=dict(size=14), showlegend=False),
+			row=2, col=1
 	)
 	fig.add_trace(
     go.Scatter(x=heat_kde_x, y=heat_kde_y,line=dict(color='red'), showlegend=False),
-    row=1, col=2
+    row=2, col=1
 	)
+	fig.add_trace(
+			go.Bar(x=h2_bins, y=h2_counts, marker_color='blue',name='Process Hydrogen', textfont=dict(size=14), showlegend=False),
+			row=2, col=1
+	)
+	fig.add_trace(
+    go.Scatter(x=h2_kde_x, y=h2_kde_y,line=dict(color='blue'), showlegend=False),
+    row=2, col=1
+	)
+	fig.update_layout(barmode='overlay')
 
 	# H2 on the right
 	h2 = noptc_be[noptc_be['Application'] == 'Industrial Hydrogen']
@@ -206,32 +217,16 @@ if two_graphs:
 					line_width=1,
 			),
 			showlegend=False, 
-	),row=2, col=1)
+	),row=3, col=1)
 
-	# Histogram and kde for 'BE wo PTC' column
-	fig.add_trace(
-			go.Bar(x=h2_bins, y=h2_counts, showlegend=False, textfont=dict(size=18)),
-			row=2, col=2
-	)
-	fig.add_trace(
-    go.Scatter(x=h2_kde_x, y=h2_kde_y,line=dict(color='red'), showlegend=False),
-    row=2, col=2
-	)
-
+	
 	# Update layout to add a two-line x-axis label and font sizes to the distribution plots
 	fig.update_xaxes(
-		title_text='Breakeven NG price<br>($/MMBtu)',
-		title_font=dict(size=16),
-		tickfont=dict(size=16),
-		row=1,
-		col=2
-	)
-	fig.update_xaxes(
-			title_text='Breakeven NG price<br>($/MMBtu)',
-			title_font=dict(size=16),
-			tickfont=dict(size=16),
-			row=2,
-			col=2
+		title_text='Breakeven NG price ($/MMBtu)',
+		title_font=dict(size=14),
+		tickfont=dict(size=14),
+		row=2,
+		col=1
 	)
 
 	fig.update_geos(
@@ -240,13 +235,14 @@ if two_graphs:
 		lakecolor='rgb(255, 255, 255)',
 	)
 	# Create symbol and color legend traces
+	color_map_app = {'Process Heat':'red', 'Industrial Hydrogen':'blue'}
 	for app, marker in markers_applications.items():
 			fig.add_trace(go.Scattergeo(
 					lon=[None],
 					lat=[None],
 					marker=dict(
 							size=15,
-							color='white',
+							color=color_map_app[app],
 							symbol=marker,
 							line_color='black',
 							line_width=2,
@@ -257,14 +253,14 @@ if two_graphs:
 	# Update layout
 	fig.update_layout(
 		height=1200,  # Set the height of the figure
-		width=1200,  # Increase the width
-		margin=dict(l=0, r=5, t=0, b=0, pad=.5),
+		width=1000,  # Increase the width
+		margin=dict(l=0, r=5, t=0, b=0, pad=.03),
 		legend=dict(
-				title="<b>Industrial Application</b>",
-				x=.04,
-				y=0.46,
+				title="Industrial Application",
+				x=1.01,
+				y=0.98,
 				traceorder="normal",
-				font = dict(size = 18, color = "black"),
+				font = dict(size = 16, color = "black"),
 				bgcolor="rgba(255, 255, 255, 0.5)"  # semi-transparent background
 		),
 	)
@@ -345,4 +341,4 @@ else:
 
 # Save
 fig.write_image('./results/map_noPTC.png', scale=4)
-fig.show()
+
