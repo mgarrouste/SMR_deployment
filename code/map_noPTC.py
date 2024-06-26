@@ -145,7 +145,7 @@ colorbar_ticks = [6.21, 7.56,11.18,  17.3]
 colorbar_texts = ['1th: 6.2','Maximum state<br>level: 7.6', '10 year peak<br>(2008): 11.2', 'Median: 17.3']
 
 if two_graphs:
-	fig = make_subplots(rows=3, cols=1, row_heights=[0.4,0.2,0.4],
+	fig = make_subplots(rows=3, cols=1, row_heights=[0.4,0.2,0.4], vertical_spacing=0.01,
 										specs=[[{"type": "scattergeo"}], 
 								 					 [{'type':'xy'}],
 													 [{"type": "scattergeo"}]])
@@ -252,9 +252,9 @@ if two_graphs:
 
 	# Update layout
 	fig.update_layout(
-		height=1200,  # Set the height of the figure
-		width=1000,  # Increase the width
-		margin=dict(l=0, r=5, t=0, b=0, pad=.03),
+		height=1150,  # Set the height of the figure
+		width=950,  # Increase the width
+		margin=dict(l=0, r=5, t=0, b=0, pad=0),
 		legend=dict(
 				title="Industrial Application",
 				x=1.01,
