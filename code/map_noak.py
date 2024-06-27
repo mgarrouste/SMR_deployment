@@ -95,18 +95,21 @@ line_colors = [palette[anr] for anr in noak_positive['SMR']]
 
 # size based on deployed capacity
 def set_size(cap):
-	if cap <= 200:
-		size = 7
+	if cap <= 150:
+		size = 5
 	elif cap <= 500:
-		size = 15
+		size = 10
+	elif cap<=750:
+		size = 25
 	else:
-		size = 40
+		size = 35
 	return size
-
 noak_positive['size'] = noak_positive['Depl. ANR Cap. (MWe)'].apply(set_size)
 
 print(noak_positive['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
-max_rev = 12
+max_rev = 22
+sup = noak_positive[noak_positive['Annual Net Revenues (M$/y)'] > max_rev]
+
 noak_positive = noak_positive[noak_positive['Annual Net Revenues (M$/y)'] <= max_rev]
 
 
@@ -129,8 +132,8 @@ fig.add_trace(go.Scattergeo(
 						yanchor='bottom',
 						lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
 						len=0.7,  # Length of the colorbar (80% of figure width)
-						tickvals = [0.02,5.1,11.3,25,50,100,500],
-						ticktext = [0.01,5.1,11.3,25,50,100,500],
+						tickvals = [0.1,8.1,21],
+						ticktext = [0.09,8.1,21],
 						tickmode='array',
 						tickfont=dict(size=16)
 				),
@@ -141,6 +144,27 @@ fig.add_trace(go.Scattergeo(
 		),
 		showlegend=False
 ))
+
+supmarker_symbols = sup['Application'].map(markers_applications).to_list()
+
+# Get colors for each marker
+supline_colors = [palette[anr] for anr in sup['SMR']]
+# Add facilities above 90th perc revenue separately
+fig.add_trace(go.Scattergeo(
+		lon=sup['longitude'],
+		lat=sup['latitude'],
+		mode='markers',
+		marker=dict(
+				size=sup['size'],
+				color='black',
+				symbol=supmarker_symbols,
+				line_color=supline_colors,
+				line_width=3,
+				sizemode='diameter'
+		),
+		showlegend=False
+))
+
 
 
 # Create custom legend
@@ -178,7 +202,8 @@ for name, cm in custom_legend.items():
 # Custom legend for size
 sizes = noak_positive['size'].unique()
 sizes.sort()
-perc_cap = ['<200 MWe', '200-500 MWe', '>500 MWe']
+perc_cap = ['<100 MWe', '100-500 MWe', '>500 MWe']
+
 
 for size, cap in zip(sizes, perc_cap):
 	fig.add_trace(go.Scattergeo(
@@ -271,7 +296,7 @@ fig.write_image('./results/map_NOAK_cogen.png', scale=4)
 
 ### Plot waterfalls
 
-foak_positive = map_foak.load_foak_positive()
+#foak_positive = map_foak.load_foak_positive()
 
 def plot_bars(foak_positive, noak_positive):
 	df = foak_positive[['App', 'Emissions_mmtco2/y', 'Depl. ANR Cap. (MWe)']]
