@@ -101,13 +101,16 @@ line_colors = [palette[anr] for anr in noak_positive['SMR']]
 
 # size based on deployed capacity
 def set_size(cap):
-	if cap <= 200:
-		size = 8
+	if cap <= 150:
+		size = 5
 	elif cap <= 500:
-		size = 15
+		size = 10
+	elif cap<=750:
+		size = 25
 	else:
-		size = 40
+		size = 35
 	return size
+
 
 noak_positive['size'] = noak_positive['Depl. ANR Cap. (MWe)'].apply(set_size)
 
@@ -202,7 +205,8 @@ for name, cm in custom_legend.items():
 # Custom legend for size
 sizes = noak_positive['size'].unique()
 sizes.sort()
-perc_cap = ['<200 MWe', '200-500 MWe', '>500 MWe']
+perc_cap = ['<100 MWe', '100-500 MWe', '>500 MWe']
+
 
 for size, cap in zip(sizes, perc_cap):
 	fig.add_trace(go.Scattergeo(
