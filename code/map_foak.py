@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import ANR_application_comparison
 from plotly.subplots import make_subplots
 import numpy as np
+import waterfalls_cap_em 
 
 
 # Create figure
@@ -33,7 +34,7 @@ fig.add_trace(go.Choropleth(
 ))
 
 
-def load_foak_positive():
+def load_foak_positive_2():
 	h2_data = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='cogen')
 	h2_data = h2_data[['latitude', 'longitude', 'state', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
 										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/y)', 'IRR w PTC', 'IRR wo PTC' ]]
@@ -70,12 +71,20 @@ def save_foak_positive():
 	heat_data['application'] = 'Process Heat'
 	heat_data = heat_data.reset_index(names=['id'])
 
+	
 	foak_positive = pd.concat([h2_data, heat_data], ignore_index=True)
 	foak_positive = foak_positive[foak_positive['Annual Net Revenues (M$/y)'] >=0]
 	foak_positive.set_index('id', inplace=True)
 	foak_positive['Depl. ANR Cap. (MWe)'] = foak_positive['Depl. ANR Cap. (MWe)'].astype(int)
 	foak_positive['IRR (%)'] = foak_positive['IRR w PTC']*100
 	foak_positive.sort_values(by='IRR (%)', ascending=False)
+
+	foak_noPTC = waterfalls_cap_em.load_foaknoPTC()
+	foak_noPTC.set_index('id', inplace=True)
+	foak_to_drop = foak_noPTC.index.to_list()
+	foak_positive = foak_positive.drop(foak_to_drop, errors='ignore')
+	foak_positive = foak_positive.reset_index()
+
 
 	foak_positive = foak_positive.drop(columns=['Industry', 'Application', 'IRR w PTC'])
 
@@ -86,7 +95,7 @@ def save_foak_positive():
 
 
 
-foak_positive = load_foak_positive()
+foak_positive = waterfalls_cap_em.load_foak_positive()
 plot_data = save_foak_positive()
 print(foak_positive['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 print(foak_positive['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]))
@@ -140,14 +149,15 @@ def plot_irr(data, save_path):
 
 plot_irr(plot_data, save_path = './results/foak_IRR.png')
 def set_size(cap):
-	if cap <= 25:
+	if cap <= 150:
 		size = 5
-	elif cap <= 100:
-		size = 10
 	elif cap <= 500:
+		size = 10
+	elif cap<=750:
 		size = 25
 	else:
-		size = 40
+		size = 35
+
 	return size
 
 foak_positive['size'] = foak_positive['Depl. ANR Cap. (MWe)'].apply(set_size)
@@ -215,7 +225,7 @@ def plot_waterfall(foak_positive):
 
 	fig.write_image('./results/foak_cogen_positive_emissions_capacity.png')
 
-plot_waterfall(foak_positive)
+#plot_waterfall(foak_positive)
 
 scaler = 0.02
 
@@ -227,8 +237,11 @@ marker_symbols = foak_positive['Application'].map(markers_applications).to_list(
 # Get colors for each marker
 line_colors = [palette[anr] for anr in foak_positive['SMR']]
 
-max_rev = 510
+max_rev = 280
+sup = foak_positive[foak_positive['Annual Net Revenues (M$/y)'] > max_rev]
 foak_positive = foak_positive[foak_positive['Annual Net Revenues (M$/y)'] <= max_rev]
+
+foak_positive = foak_positive.sort_values(by=['Application'], ascending=False)
 
 fig.add_trace(go.Scattergeo(
 		lon=foak_positive['longitude'],
@@ -249,13 +262,33 @@ fig.add_trace(go.Scattergeo(
 						yanchor='bottom',
 						lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
 						len=0.8,  # Length of the colorbar (80% of figure width)
-						tickvals = [.03,50,100,250,500],
-						ticktext = [.02,50,100,250,500],
+						tickvals = [.03,50,100,260,500],
+						ticktext = [.02,50,100,260,500],
 						tickmode='array',
 						tickfont=dict(size=16)
 				),
 				symbol=marker_symbols,
 				line_color=line_colors,
+				line_width=3,
+				sizemode='diameter'
+		),
+		showlegend=False
+))
+
+supmarker_symbols = sup['Application'].map(markers_applications).to_list()
+
+# Get colors for each marker
+supline_colors = [palette[anr] for anr in sup['SMR']]
+# Add facilities above 90th perc revenue separately
+fig.add_trace(go.Scattergeo(
+		lon=sup['longitude'],
+		lat=sup['latitude'],
+		mode='markers',
+		marker=dict(
+				size=sup['size'],
+				color='black',
+				symbol=supmarker_symbols,
+				line_color=supline_colors,
 				line_width=3,
 				sizemode='diameter'
 		),
@@ -298,7 +331,7 @@ for name, cm in custom_legend.items():
 # Custom legend for size
 sizes = foak_positive['size'].unique()
 sizes.sort()
-perc_cap = ['<25 MWe', '25-100 MWe', '100-500 MWe', '>500 MWe']
+perc_cap = ['<100 MWe', '100-500 MWe', '>500 MWe']
 
 for size, cap in zip(sizes, perc_cap):
 	fig.add_trace(go.Scattergeo(
