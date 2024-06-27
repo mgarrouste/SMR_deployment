@@ -8,39 +8,42 @@ from utils import palette
 
 def load_foaknoPTC():
 	# profitable FOAK without the H2 PTC
-	h2_data = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='cogen')
-	h2_data = h2_data[['state','latitude', 'longitude', 'State price ($/MMBtu)','Depl. ANR Cap. (MWe)', 'BE wo PTC ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
-									 'Industry', 'Application', 'ANR', 'IRR wo PTC' ]]
-	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions', 'ANR':'SMR'}, inplace=True)
-	h2_data['App'] = h2_data.apply(lambda x: x['Application']+'-'+x['Industry'].capitalize(), axis=1)
-	h2_data = h2_data[h2_data['BE wo PTC ($/MMBtu)']<h2_data['State price ($/MMBtu)']]
-	h2_data.reset_index(inplace=True)
-
-	heat_data = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen')
-	heat_data = heat_data[['STATE','latitude', 'longitude', 'NG price ($/MMBtu)', 'Emissions_mmtco2/y', 'SMR',
-												'Depl. ANR Cap. (MWe)', 'Industry','BE wo PTC ($/MMBtu)', 'Application', 'IRR wo PTC']]
-	heat_data.rename(columns={'Emissions_mmtco2/y':'Ann. avoided CO2 emissions (MMT-CO2/year)',
+	heat = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen', with_PTC=False)
+	heat= heat[['STATE','latitude', 'longitude', 'NG price ($/MMBtu)', 'Emissions_mmtco2/y', 'SMR',
+											 'Depl. ANR Cap. (MWe)', 'Industry','Annual Net Revenues (M$/y)', 'Application', 'IRR wo PTC']]
+	heat = heat[heat['Annual Net Revenues (M$/y)']>0]
+	heat.rename(columns={'Emissions_mmtco2/y':'Ann. avoided CO2 emissions (MMT-CO2/year)',
 														'NG price ($/MMBtu)':'State price ($/MMBtu)', 'STATE':'state'}, inplace=True)
-	heat_data['application'] = 'Process Heat'
-	heat_data = heat_data[heat_data['BE wo PTC ($/MMBtu)']<heat_data['State price ($/MMBtu)']]
-	heat_data.reset_index(inplace=True, names=['id'])
+	heat['application'] = 'Process Heat'
+	heat.reset_index(inplace=True, names=['id'])
+	print('# process heat facilities profitable wo PTc :{}'.format(len(heat[heat['Annual Net Revenues (M$/y)']>0])))
+	print(heat['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+	print(heat['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+	print(heat['SMR'].unique())
 
-	noptc_be = pd.concat([heat_data,h2_data], ignore_index=True)
-	return noptc_be
+
+	h2 = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='cogen')
+	h2 = h2.loc[:,~h2.columns.duplicated()]
+	h2 = h2.reset_index()
+	h2['Annual Net Revenues wo PTC (M$/y)'] = h2['Electricity revenues ($/y)']+h2['Net Revenues ($/year)']
+	print('# process hydrogen facilities profitable wo PTc :{}'.format(len(h2[h2['Annual Net Revenues wo PTC (M$/y)']>0])))
+
+	return heat
 
 def load_foak_positive():
 	h2_data = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='cogen')
 	h2_data = h2_data[['latitude', 'longitude', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
-										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/y)' ]]
+										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/y)', 'state' ]]
 	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions', 'ANR':'SMR'}, inplace=True)
 	h2_data['App'] = h2_data.apply(lambda x: x['Application']+'-'+x['Industry'].capitalize(), axis=1)
 	h2_data.reset_index(inplace=True)
 
 	heat_data = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen')
-	heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'SMR',
+	heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'SMR', 'STATE',
 												'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)',
 												'Annual Net Revenues (M$/y)', 'Application']]
-	heat_data = heat_data.rename(columns={'Emissions_mmtco2/y':'Emissions','Breakeven NG price ($/MMBtu)':'Breakeven price ($/MMBtu)'})
+	heat_data = heat_data.rename(columns={'Emissions_mmtco2/y':'Emissions',
+																			 'Breakeven NG price ($/MMBtu)':'Breakeven price ($/MMBtu)', 'STATE':'state'})
 	heat_data['App'] = 'Process Heat'
 	heat_data.reset_index(inplace=True, names='id')
 
@@ -358,6 +361,9 @@ def abatement_cost_plot():
 	
 
 
+def main():
+	plot_bars(foak_noPTC=foak_noPTC, foak_positive=foak_positive, noak_positive=noak_positive, noak_noPTC=noak_noPTC)
+	abatement_cost_plot()
 
-plot_bars(foak_noPTC=foak_noPTC, foak_positive=foak_positive, noak_positive=noak_positive, noak_noPTC=noak_noPTC)
-abatement_cost_plot()
+if __name__ =='__main__':
+	main()
