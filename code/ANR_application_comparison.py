@@ -36,7 +36,7 @@ def load_h2_results(anr_tag, cogen_tag):
              'Net Revenues with H2 PTC with elec ($/year)']
     if anr_tag == 'FOAK':
       list_cols.append('Breakeven CAPEX ($/MWe)')
-      list_cols.append('Cost red CAPEX BE')
+      list_cols.append('Breakeven CAPEX wo PTC ($/MWe)')
       list_cols.append('State price ($/MMBtu)')
     df = df[list_cols]
     df['Industry'] = ind 
@@ -47,7 +47,7 @@ def load_h2_results(anr_tag, cogen_tag):
   if cogen_tag=='cogen': 
     all_df['Annual Net Revenues (M$/MWe/y)'] = all_df['Net Revenues with H2 PTC with elec ($/year)']/(1e6*all_df['Depl. ANR Cap. (MWe)'])
     all_df['Annual Net Revenues (M$/y)'] = all_df['Net Revenues with H2 PTC with elec ($/year)']/1e6
-    #all_df['Annual Net Revenues wo PTC (M$/y)'] = all_df.apply(lambda x: x['Net Revenues ($/year)'])+float(x['Electricity revenues ($/y)']))/1e6, axis=1)
+    #all_df['Annual Net Revenues wo PTC (M$/y)'] = all_df.apply(lambda x: (x['Net Revenues ($/year)']+x['Electricity revenues ($/y)'])/1e6, axis=1)
     # Net revenues includes costs and avoided ng costs
   else: 
     all_df['Annual Net Revenues (M$/MWe/y)'] = all_df['Net Annual Revenues with H2 PTC ($/MWe/y)']/(1e6)
