@@ -12,9 +12,10 @@ def load_foaknoPTC():
 	heat= heat[['STATE','latitude', 'longitude', 'NG price ($/MMBtu)', 'Emissions_mmtco2/y', 'SMR',
 											 'Depl. ANR Cap. (MWe)', 'Industry','Annual Net Revenues (M$/y)', 'Application', 'IRR wo PTC']]
 	heat = heat[heat['Annual Net Revenues (M$/y)']>0]
-	heat.rename(columns={'Emissions_mmtco2/y':'Ann. avoided CO2 emissions (MMT-CO2/year)',
+	heat.rename(columns={'Emissions_mmtco2/y':'Emissions',
 														'NG price ($/MMBtu)':'State price ($/MMBtu)', 'STATE':'state'}, inplace=True)
 	heat['application'] = 'Process Heat'
+	heat['App'] = 'Process Heat'
 	heat.reset_index(inplace=True, names=['id'])
 	print('# process heat facilities profitable wo PTc :{}'.format(len(heat[heat['Annual Net Revenues (M$/y)']>0])))
 	print(heat['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
@@ -30,7 +31,7 @@ def load_foaknoPTC():
 
 	return heat
 
-def load_foak_positive():
+def load_foak_positive(dropnoptc=False):
 	h2_data = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='cogen')
 	h2_data = h2_data[['latitude', 'longitude', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
 										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/y)', 'state' ]]
@@ -47,19 +48,20 @@ def load_foak_positive():
 	heat_data['App'] = 'Process Heat'
 	heat_data.reset_index(inplace=True, names='id')
 
-	foak_positive = pd.concat([h2_data, heat_data], ignore_index=True)
+	foak_positive = pd.concat([heat_data, h2_data], ignore_index=True)
 	foak_positive = foak_positive[foak_positive['Annual Net Revenues (M$/y)'] >=0]
 
-	foak_noPTC = load_foaknoPTC()
-	foak_positive.set_index('id', inplace=True)
-	foak_noPTC.set_index('id', inplace=True)
-	foak_to_drop = foak_noPTC.index.to_list()
-	foak_positive = foak_positive.drop(foak_to_drop, errors='ignore')
+	if dropnoptc:
+		foak_noPTC = load_foaknoPTC()
+		foak_positive.set_index('id', inplace=True)
+		foak_noPTC.set_index('id', inplace=True)
+		foak_to_drop = foak_noPTC.index.to_list()
+		foak_positive = foak_positive.drop(foak_to_drop, errors='ignore')
 	foak_positive = foak_positive.reset_index()
 	return foak_positive
 
 
-def load_noak_positive():
+def load_noak_positive(foak_ptc=True):
 	# NOAK data
 	h2_data = ANR_application_comparison.load_h2_results(anr_tag='NOAK', cogen_tag='cogen')
 	h2_data = h2_data[['latitude', 'longitude', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
@@ -80,30 +82,25 @@ def load_noak_positive():
 	noak_positive = pd.concat([heat_data, h2_data], ignore_index=True)
 	noak_positive = noak_positive[noak_positive['Annual Net Revenues (M$/y)'] >=0]
 
-	# Drop FOAK sites
 	noak_positive.set_index('id', inplace=True)
-	foak_positive = load_foak_positive()
-	foak_positive.set_index('id', inplace=True)
-	foak_to_drop = foak_positive.index.to_list()
-	noak_positive = noak_positive.drop(foak_to_drop, errors='ignore')
-
-	# Drop FOAK no PTC sites
-	foak_noPTC = load_foaknoPTC()
-	foak_noPTC.set_index('id', inplace=True)
-	foak_noPTC_todrop = foak_noPTC.index.to_list()
-	noak_positive = noak_positive.drop(foak_noPTC_todrop, errors='ignore')
-
-	# Drop NOAK no PTC sites
-	noak_noPTC = load_noak_noPTC()
-	noak_noPTC.set_index('id', inplace=True)
-	noak_noPTC_todrop = noak_noPTC.index.to_list()
-	noak_positive = noak_positive.drop(noak_noPTC_todrop, errors='ignore')
+	if foak_ptc:
+		# Drop FAOK PTC sites
+		foak_positive = load_foak_positive()
+		foak_positive.set_index('id', inplace=True)
+		foak_to_drop = foak_positive.index.to_list()
+		noak_positive = noak_positive.drop(foak_to_drop, errors='ignore')
+	else:
+		# Drop FOAK no PTC sites
+		foak_noPTC = load_foaknoPTC()
+		foak_noPTC.set_index('id', inplace=True)
+		foak_noPTC_todrop = foak_noPTC.index.to_list()
+		noak_positive = noak_positive.drop(foak_noPTC_todrop, errors='ignore')
 
 	noak_positive = noak_positive.reset_index()
 	return noak_positive
 
 
-def load_noak_noPTC():
+def load_noak_noPTC(foak_ptc=True):
 	# NOAK data
 	h2_data = ANR_application_comparison.load_h2_results(anr_tag='NOAK', cogen_tag='cogen')
 	h2_data = h2_data[['latitude', 'longitude', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
@@ -132,23 +129,34 @@ def load_noak_noPTC():
 	noak_positive.to_excel('./results/results_heat_h2_NOAK_noPTC.xlsx', index=False)
 	noak_positive.set_index('id', inplace=True)
 
-	# Drop FOAK no PTC sites
-	foak_noPTC = load_foaknoPTC()
-	foak_noPTC.set_index('id', inplace=True)
-	foak_noPTC_todrop = foak_noPTC.index.to_list()
-	noak_positive = noak_positive.drop(foak_noPTC_todrop, errors='ignore')
-	# Drop FOAK sites
-	foak_positive = load_foak_positive()
-	foak_positive.set_index('id', inplace=True)
-	foak_to_drop = foak_positive.index.to_list()
-	noak_positive = noak_positive.drop(foak_to_drop, errors='ignore')
+	if foak_ptc:
+		# Drop FAOK PTC sites
+		foak_positive = load_foak_positive()
+		foak_positive.set_index('id', inplace=True)
+		foak_to_drop = foak_positive.index.to_list()
+		noak_positive = noak_positive.drop(foak_to_drop, errors='ignore')
+	else:
+		# Drop FOAK no PTC sites
+		foak_noPTC = load_foaknoPTC()
+		foak_noPTC.set_index('id', inplace=True)
+		foak_noPTC_todrop = foak_noPTC.index.to_list()
+		noak_positive = noak_positive.drop(foak_noPTC_todrop, errors='ignore')
 	noak_positive = noak_positive.reset_index()
 	return noak_positive
 
-foak_noPTC = load_foaknoPTC()
-foak_positive = load_foak_positive()
-noak_positive = load_noak_positive()
-noak_noPTC = load_noak_noPTC()
+
+
+def get_aggregated_data(dftoagg, tag):
+	df = dftoagg[['App', 'Emissions', 'Depl. ANR Cap. (MWe)']]
+	df = df.rename(columns={'Depl. ANR Cap. (MWe)':'Capacity'})
+	df['Capacity'] = df['Capacity']/1e3
+	df = df.groupby('App').sum()
+	df = df.reset_index()
+	df.sort_values(by=['App'], ascending=False, inplace=True) # so that process heat is first
+	df = df.replace('Industrial Hydrogen-', '', regex=True)
+	df['measure'] = 'relative'
+	df['tag'] = tag
+	return df
 
 
 def plot_bars(foak_noPTC, foak_positive, noak_positive, noak_noPTC):
@@ -167,6 +175,7 @@ def plot_bars(foak_noPTC, foak_positive, noak_positive, noak_noPTC):
 	df['Capacity'] = df['Capacity']/1e3
 	df = df.groupby('App').sum()
 	df1 = df.reset_index()
+	df1.sort_values(by=['App'], ascending=False, inplace=True) # so that process heat is first
 	df1 = df1.replace('Industrial Hydrogen-', '', regex=True)
 	df1['measure'] = 'relative'
 	total_df1 = pd.DataFrame({'App':['Total'],'Emissions': [df1['Emissions'].sum()], 'Capacity':[df1['Capacity'].sum()], 'measure':['total'], 'tag':['FOAK']})
@@ -178,6 +187,7 @@ def plot_bars(foak_noPTC, foak_positive, noak_positive, noak_noPTC):
 	df['Capacity'] = df['Capacity']/1e3
 	df = df.groupby('App').sum()
 	df2 = df.reset_index()
+	df2.sort_values(by=['App'], ascending=False, inplace=True) # so that process heat is first
 	df2 = df2.replace('Industrial Hydrogen-', '', regex=True)
 	df2['measure'] = 'relative'
 	total_df2 = pd.DataFrame({'App':['Total'],'Emissions': [df2['Emissions'].sum()], 'Capacity':[df2['Capacity'].sum()], 'measure':['total'], 'tag':['NOAK-NoPTC']})
@@ -189,6 +199,7 @@ def plot_bars(foak_noPTC, foak_positive, noak_positive, noak_noPTC):
 	df['Capacity'] = df['Capacity']/1e3
 	df = df.groupby('App').sum()
 	df3 = df.reset_index()
+	df3.sort_values(by=['App'], ascending=False, inplace=True) # so that process heat is first
 	df3 = df3.replace('Industrial Hydrogen-', '', regex=True)
 	df3['measure'] = 'relative'
 	df3.sort_values(by=['Capacity', 'Emissions'], ascending=True, inplace=True)
@@ -202,7 +213,7 @@ def plot_bars(foak_noPTC, foak_positive, noak_positive, noak_noPTC):
 	#combined_df = pd.concat([df0, total_df0,df1, total_df1, df3, total_df3,df2, total_df2], ignore_index=True)
 	
 	# Combined DataFrame from df0, df1,... and using reset_index() to maintain correct order
-	combined_df = pd.concat([df0, df1, df2,df3, total_df3], ignore_index=True)
+	combined_df = pd.concat([df0, df1, df2, df3], ignore_index=True)#, df2,df3, total_df3], ignore_index=True)
 	combined_df = combined_df.replace('Process Heat', 'Process<br>Heat')
 
 	print(combined_df)
@@ -263,6 +274,148 @@ def plot_bars(foak_noPTC, foak_positive, noak_positive, noak_noPTC):
 	fig.update_xaxes(tickfont_color='black')
 	fig.write_image('./results/waterfall_foak_noak_noaknoPTC_emissions_capacity.png', scale=4)
 
+
+
+def plot_scenarios_waterfall(foak_noPTC, foak_positive, noak_noPTC_foaknoptc, noak_noPTC_foakptc, noak_positive_foaknoptc, noak_positive_foakptc):
+	totem_noptc = foak_noPTC['Emissions'].sum()+noak_noPTC_foaknoptc['Emissions'].sum()
+	totcap_noptc = foak_noPTC['Capacity'].sum()+noak_noPTC_foaknoptc['Capacity'].sum()
+	tot_noptc= pd.DataFrame({'App':['Total'],'Emissions': [totem_noptc], 'Capacity':[totcap_noptc], 'measure':['total'], 'tag':[' ']})
+	noptc = pd.concat([foak_noPTC, noak_noPTC_foaknoptc, tot_noptc], ignore_index=True)
+	noptc = noptc.replace('Process Heat', 'Process<br>Heat')
+	noptc['text_em'] = noptc.apply(lambda x: int(x['Emissions']) if x['Emissions']>=1 else round(x['Emissions'],1), axis=1)
+	noptc['text_cap'] = noptc.apply(lambda x: int(x['Capacity']) if x['Capacity']>=1 else round(x['Capacity'],1), axis=1)
+
+	fig = make_subplots(rows=2, cols=3, horizontal_spacing=0.01, shared_yaxes=True, vertical_spacing=0.25, column_widths=[.23,.35,.42],
+										 column_titles=['Without the H2 PTC', 'H2 PTC expires<br>after FOAK deployment', 'With the H2 PTC'])
+	fig.add_trace(go.Waterfall(
+		orientation = "v",
+		measure = noptc['measure'],
+		x = [noptc['tag'], noptc['App']],
+		textposition = "outside",
+		text = noptc['text_cap'],
+		y = noptc['Capacity'],
+		connector = {"line":{"color":"rgb(63, 63, 63)"}},
+		increasing = {"marker":{"color": "lightBlue"}},
+		decreasing = {"marker":{"color": "darkOrange"}},
+		totals = {"marker":{"color": "royalBlue"}}, 
+		showlegend=False
+		),
+		row=1, col=1
+	)
+	fig.add_trace(go.Waterfall(
+		orientation = "v",
+		measure = noptc['measure'], 
+		x = [noptc['tag'], noptc['App']],
+		textposition = "outside",
+		text = noptc['text_em'],
+		y = noptc['Emissions'],
+		connector = {"line":{"color":"rgb(63, 63, 63)"}},
+		increasing = {"marker":{"color": "paleGreen"}},
+		decreasing = {"marker":{"color": "firebrick"}},
+		totals = {"marker":{"color": "limeGreen"}},
+		showlegend=False
+		),
+		row=2, col=1
+	)
+
+	# FOAK PTC then NOAK no ptc
+	totem_ptcfirst = foak_positive['Emissions'].sum()+noak_noPTC_foakptc['Emissions'].sum()
+	totcap_ptcfirst = foak_positive['Capacity'].sum()+noak_noPTC_foakptc['Capacity'].sum()
+	tot_ptcfirst= pd.DataFrame({'App':['Total'],'Emissions': [totem_ptcfirst], 'Capacity':[totcap_ptcfirst], 'measure':['total'], 'tag':[' ']})
+	ptcfirst = pd.concat([foak_positive, noak_noPTC_foakptc, tot_ptcfirst], ignore_index=True)
+	ptcfirst = ptcfirst.replace('Process Heat', 'Process<br>Heat')
+	ptcfirst['text_em'] = ptcfirst.apply(lambda x: int(x['Emissions']) if x['Emissions']>=1 else round(x['Emissions'],1), axis=1)
+	ptcfirst['text_cap'] = ptcfirst.apply(lambda x: int(x['Capacity']) if x['Capacity']>=1 else round(x['Capacity'],1), axis=1)
+
+
+	fig.add_trace(go.Waterfall(
+		orientation = "v",
+		measure = ptcfirst['measure'],
+		x = [ptcfirst['tag'], ptcfirst['App']],
+		textposition = "outside",
+		text = ptcfirst['text_cap'],
+		y = ptcfirst['Capacity'],
+		connector = {"line":{"color":"rgb(63, 63, 63)"}},
+		increasing = {"marker":{"color": "lightBlue"}},
+		decreasing = {"marker":{"color": "darkOrange"}},
+		totals = {"marker":{"color": "royalBlue"}},
+		showlegend=False
+		),
+		row=1, col=2
+	)
+	fig.add_trace(go.Waterfall(
+		orientation = "v",
+		measure = ptcfirst['measure'], 
+		x = [ptcfirst['tag'], ptcfirst['App']],
+		textposition = "outside",
+		text = ptcfirst['text_em'],
+		y = ptcfirst['Emissions'],
+		connector = {"line":{"color":"rgb(63, 63, 63)"}},
+		increasing = {"marker":{"color": "paleGreen"}},
+		decreasing = {"marker":{"color": "firebrick"}},
+		totals = {"marker":{"color": "limeGreen"}},
+		showlegend=False
+		),
+		row=2, col=2
+	)
+
+	# FOAK PTC then NOAK with PTC
+	totem_ptc = foak_positive['Emissions'].sum()+noak_positive_foakptc['Emissions'].sum()
+	totcap_ptc = foak_positive['Capacity'].sum()+noak_positive_foakptc['Capacity'].sum()
+	tot_ptc= pd.DataFrame({'App':['Total'],'Emissions': [totem_ptc], 'Capacity':[totcap_ptc], 'measure':['total'], 'tag':[' ']})
+	ptc = pd.concat([foak_positive, noak_positive_foakptc, tot_ptc], ignore_index=True)
+	ptc = ptc.replace('Process Heat', 'Process<br>Heat')
+	ptc['text_em'] = ptc.apply(lambda x: int(x['Emissions']) if x['Emissions']>=1 else round(x['Emissions'],1), axis=1)
+	ptc['text_cap'] = ptc.apply(lambda x: int(x['Capacity']) if x['Capacity']>=1 else round(x['Capacity'],1), axis=1)
+
+
+	fig.add_trace(go.Waterfall(
+		orientation = "v",
+		measure = ptc['measure'],
+		x = [ptc['tag'], ptc['App']],
+		textposition = "outside",
+		text = ptc['text_cap'],
+		y = ptc['Capacity'],
+		connector = {"line":{"color":"rgb(63, 63, 63)"}},
+		increasing = {"marker":{"color": "lightBlue"}},
+		decreasing = {"marker":{"color": "darkOrange"}},
+		totals = {"marker":{"color": "royalBlue"}},
+		showlegend=False
+		),
+		row=1, col=3
+	)
+	fig.add_trace(go.Waterfall(
+		orientation = "v",
+		measure = ptc['measure'], 
+		x = [ptc['tag'], ptc['App']],
+		textposition = "outside",
+		text = ptc['text_em'],
+		y = ptc['Emissions'],
+		connector = {"line":{"color":"rgb(63, 63, 63)"}},
+		increasing = {"marker":{"color": "paleGreen"}},
+		decreasing = {"marker":{"color": "firebrick"}},
+		totals = {"marker":{"color": "limeGreen"}},
+		showlegend=False
+		),
+		row=2, col=3
+	)
+	fig.update_yaxes(title_text='Avoided emissions (MMtCO2/y)', row=2, col=1, titlefont_color='black')
+	fig.update_yaxes(title_text='SMR Capacity (GWe)', row=1, col=1, titlefont_color='black')
+	# Set chart layout
+	fig.update_layout(
+		margin=dict(l=0, r=0, t=40, b=0),
+		showlegend = False,
+		width=1120,  # Set the width of the figure
+		height=700,  # Set the height of the figure
+		plot_bgcolor='white', 
+	)
+	fig.update_yaxes(gridcolor='grey', gridwidth=0.1, tickfont_color='black' )
+	fig.update_yaxes(range=[0, 295], row=1, col=1)
+	fig.update_yaxes(range=[0, 245], row=2, col=1)
+	fig.update_xaxes(tickfont_color='black')
+	fig.update_xaxes(tickangle=56)
+	fig.write_image('./results/waterfall_scenarios.png', scale=4)
+	fig.show()
 
 
 
@@ -362,8 +515,15 @@ def abatement_cost_plot():
 
 
 def main():
-	plot_bars(foak_noPTC=foak_noPTC, foak_positive=foak_positive, noak_positive=noak_positive, noak_noPTC=noak_noPTC)
-	abatement_cost_plot()
+	foak_noPTC = get_aggregated_data(load_foaknoPTC(), tag='FOAK<br>NoPTC')
+	foak_positive = get_aggregated_data(load_foak_positive(dropnoptc=False), tag='FOAK')
+	noak_positive_foakptc = get_aggregated_data(load_noak_positive(foak_ptc=True), tag='NOAK')
+	noak_positive_foaknoptc = get_aggregated_data(load_noak_positive(foak_ptc=False), tag='NOAK')
+	noak_noPTC_foakptc= get_aggregated_data(load_noak_noPTC(foak_ptc=True), tag='NOAK<br>NoPTC')
+	noak_noPTC_foaknoptc= get_aggregated_data(load_noak_noPTC(foak_ptc=False), tag='NOAK<br>NoPTC')
+	#plot_bars(foak_noPTC=foak_noPTC, foak_positive=foak_positive, noak_positive=noak_positive, noak_noPTC=noak_noPTC)
+	#abatement_cost_plot()
+	plot_scenarios_waterfall(foak_noPTC, foak_positive, noak_noPTC_foaknoptc, noak_noPTC_foakptc, noak_positive_foaknoptc, noak_positive_foakptc)
 
 if __name__ =='__main__':
 	main()
