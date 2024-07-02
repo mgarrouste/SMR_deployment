@@ -505,7 +505,7 @@ def abatement_cost_plot():
 	h3, l3 = ax[0].get_legend_handles_labels()
 	h4, l4 = ax[1].get_legend_handles_labels()
 	by_label = dict(zip(l3+l4, h3+h4))
-	fig.legend(by_label.values(), by_label.keys(),  bbox_to_anchor=(1.,.8),ncol=1)
+	fig.legend(by_label.values(), by_label.keys(),  bbox_to_anchor=(1.,.82),ncol=1)
 
 
 	sns.despine()
@@ -522,7 +522,7 @@ def main():
 	noak_noPTC_foakptc= get_aggregated_data(load_noak_noPTC(foak_ptc=True), tag='NOAK<br>NoPTC')
 	noak_noPTC_foaknoptc= get_aggregated_data(load_noak_noPTC(foak_ptc=False), tag='NOAK<br>NoPTC')
 	#plot_bars(foak_noPTC=foak_noPTC, foak_positive=foak_positive, noak_positive=noak_positive, noak_noPTC=noak_noPTC)
-	#abatement_cost_plot()
+	abatement_cost_plot()
 	plot_scenarios_waterfall(foak_noPTC, foak_positive, noak_noPTC_foaknoptc, noak_noPTC_foakptc, noak_positive_foaknoptc, noak_positive_foakptc)
 
 if __name__ =='__main__':

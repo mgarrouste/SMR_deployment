@@ -45,7 +45,7 @@ def add_elec_layer(fig):
 	print(elec_df['average price ($/MWhe)'].describe())
 	max_tick_value = max(colorbar_ticks)
 	# List of colors for the colorscale (light to dark blue)
-	color_list = ["#ebf3fb","#85bcdb", "#4864e0", "#233fba", '#ffccff', '#ffb3ff', '#ff00ff','#b300b3']#"#57a0ce", "#3082be", "#1361a9", "#0a4a90", "#08306b"]
+	color_list = ["#d5e1f0","#abc9ed",'#ffccff', '#ffb3ff', '#ff00ff','#b300b3']#"#57a0ce", "#3082be", "#1361a9", "#0a4a90", "#08306b"]
 
 	# Compute the proportion of the actual max value against the maximum tick value
 	actual_data_proportion = max_actual_value / max_tick_value
@@ -63,7 +63,7 @@ def add_elec_layer(fig):
 			go.Choropleth(
 					locationmode='USA-states',  # Set the location mode to 'USA-states'
 					locations=elec_df['state'],  # Use the 'state' column from the dataframe for locations
-					z=[None],  # Use the 'average_price' column from the dataframe for coloring
+					z=elec_df['average price ($/MWhe)'],  # Use the 'average_price' column from the dataframe for coloring
 					marker_line_color='white',  # Set the state boundary color
 					marker_line_width=0.5,  # Set the state boundary width
 					zmin=min(colorbar_ticks),  # Optional: Adjust the zmin if desired
@@ -84,22 +84,6 @@ def add_elec_layer(fig):
 							tickfont=dict(size=16)
 					),
 			))
-	elec_df = elec_df.merge(pd.read_excel('./input_data/us_states_centers.xlsx'), on='state')
-	fig.add_trace(go.Scattergeo(
-		lon=elec_df['longitude'],
-		lat=elec_df['latitude'],
-		mode='markers',
-		marker=dict(
-				size=15,
-				color=elec_df['average price ($/MWhe)'],
-				colorscale='Blues',
-				symbol='triangle-up',
-				line_color='black',
-				line_width=1,
-		),
-		showlegend=False
-	))
-
 
 
 def save_to_latex(df):
@@ -290,7 +274,7 @@ def main():
 
 	add_smr_layer(fig,df)
 
-	add_nuclear_bans(fig)
+	#add_nuclear_bans(fig)
 	
 	fig.write_image('./results/map_noPTC.png', scale=4)
 
