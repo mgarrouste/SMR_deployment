@@ -4,6 +4,16 @@ from utils import palette
 from plotly.subplots import make_subplots
 import ANR_application_comparison, map_foak
 
+
+tag = 'all'
+if tag =='all':
+	foak_ptc, foak_noptc = False, False
+elif tag =='foak_ptc':
+	foak_ptc, foak_noptc = True, False
+# FOAK no ptc not possible since NOAK ptc in this script
+
+
+
 # Create figure
 fig = go.Figure()
 
@@ -18,18 +28,29 @@ all_states = ['AK', 'AL', 'AR', 'AZ', 'CA', 'CO', 'CT', 'DC', 'DE', 'FL', 'GA', 
 
 state_colors = {state: 1 if state in nuclear_restrictions else (2 if state in nuclear_ban else 0) for state in all_states}
 z = [state_colors[state] for state in state_colors.keys()]
-
+# nuclear moratoriums layers
+"""
 fig.add_trace(go.Choropleth(
 		locations=list(state_colors.keys()), # Spatial coordinates
 		z=z, # Data to be color-coded (state colors)
 		locationmode='USA-states', # Set of locations match entries in `locations`
 		showscale=False, # Hide color bar
 		colorscale='Reds',
+))"""
+
+fig.add_trace(go.Choropleth(
+    locationmode='USA-states',
+    locations=all_states,  # List of state codes
+    z=[1]*len(all_states),  # Dummy variable for coloring
+    colorscale=['white', 'white'],  # Set the color scale to white
+    showscale=False,  # Hide the color scale
+    marker_line_color='grey',  # Set the border color to grey
+    marker_line_width=0.7,  # Set the border width
 ))
 
 
 import waterfalls_cap_em
-def save_noak_positive():
+def save_noak_positive(tag):
 	# NOAK data
 	h2_data = ANR_application_comparison.load_h2_results(anr_tag='NOAK', cogen_tag='cogen')
 	h2_data = h2_data[['state', 'Depl. ANR Cap. (MWe)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
@@ -57,7 +78,7 @@ def save_noak_positive():
 
 	noak_positive['IRR (%)'] = noak_positive['IRR w PTC']*100
 	noak_positive = noak_positive.drop(columns=['Industry', 'Application', 'IRR w PTC'])
-	noak_positive.to_latex('./results/noak_positive.tex',float_format="{:0.1f}".format, longtable=True, escape=True,\
+	noak_positive.to_latex(f'./results/noak_positive_{tag}.tex',float_format="{:0.1f}".format, longtable=True, escape=True,\
                             label='tab:noak_positive_detailed_results',\
 														caption='Detailed results for NOAK deployment stage: Profitable industrial sites and associated SMR capacity deployed and annual revenues')
 	return noak_positive
@@ -65,14 +86,16 @@ def save_noak_positive():
 
 
 
-noak_positive = waterfalls_cap_em.load_noak_positive()
-plot_data = save_noak_positive()
+noak_positive = waterfalls_cap_em.load_noak_positive(foak_ptc=foak_ptc, foak_noptc=foak_noptc)
+plot_data = save_noak_positive(tag=tag)
 from map_foak import plot_irr
-plot_irr(plot_data, save_path='./results/noak_IRR.png')
+plot_irr(plot_data, save_path=f'./results/noak_IRR_{tag}.png')
 
 # Size based on capacity deployed
 percentiles =  noak_positive['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]).to_frame()
 
+
+print(f'Case NOAK positive :{tag}')
 print(noak_positive['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 print('Micro deployed capacity : ',sum(noak_positive[noak_positive.SMR=='Micro']['Depl. ANR Cap. (MWe)']))
 print('Micro deployed units : ',sum(noak_positive[noak_positive.SMR=='Micro']['Depl. ANR Cap. (MWe)'])/6.7)
@@ -107,7 +130,15 @@ def set_size(cap):
 noak_positive['size'] = noak_positive['Depl. ANR Cap. (MWe)'].apply(set_size)
 
 print(noak_positive['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
-max_rev = 22
+if tag=='all':
+	max_rev = 65
+	tickvals = [0.1,9.5,63]
+	ticktext = [0.1,9.5,63]
+elif tag=='foak_ptc':
+	max_rev = 22
+	tickvals = [0.1,7.8,21]
+	ticktext = [0.1,7.8,21]
+
 sup = noak_positive[noak_positive['Annual Net Revenues (M$/y)'] > max_rev]
 
 noak_positive = noak_positive[noak_positive['Annual Net Revenues (M$/y)'] <= max_rev]
@@ -132,8 +163,8 @@ fig.add_trace(go.Scattergeo(
 						yanchor='bottom',
 						lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
 						len=0.7,  # Length of the colorbar (80% of figure width)
-						tickvals = [0.1,8.1,21],
-						ticktext = [0.09,8.1,21],
+						tickvals = tickvals,
+						ticktext = ticktext,
 						tickmode='array',
 						tickfont=dict(size=16)
 				),
@@ -248,7 +279,7 @@ for app, marker in markers_applications.items():
 				),
 				name=app
 		))
-"""
+
 nuclear_legend = {'Nuclear ban':'darkRed', 
                   'Nuclear restrictions':'salmon'}
 for b, color in nuclear_legend.items():
@@ -262,7 +293,7 @@ for b, color in nuclear_legend.items():
       ),
       name=b
   ))
-
+"""
 
 # Update layout
 fig.update_layout(
@@ -290,7 +321,7 @@ fig.update_layout(
 )
 
 # Save
-fig.write_image('./results/map_NOAK_cogen.png', scale=4)
+fig.write_image(f'./results/map_NOAK_cogen_{tag}.png', scale=4)
 # Show figure
 
 
