@@ -4,7 +4,6 @@ from utils import palette
 import matplotlib.pyplot as plt
 import ANR_application_comparison
 from plotly.subplots import make_subplots
-import numpy as np
 import waterfalls_cap_em 
 
 
@@ -25,12 +24,23 @@ state_colors = {state: 1 if state in nuclear_restrictions else (2 if state in nu
 z = [state_colors[state] for state in state_colors.keys()]
 
 # nuclear moratoriums layers
+"""
 fig.add_trace(go.Choropleth(
 		locations=list(state_colors.keys()), # Spatial coordinates
 		z=z, # Data to be color-coded (state colors)
 		locationmode='USA-states', # Set of locations match entries in `locations`
 		showscale=False, # Hide color bar
 		colorscale='Reds',
+))"""
+
+fig.add_trace(go.Choropleth(
+    locationmode='USA-states',
+    locations=all_states,  # List of state codes
+    z=[1]*len(all_states),  # Dummy variable for coloring
+    colorscale=['white', 'white'],  # Set the color scale to white
+    showscale=False,  # Hide the color scale
+    marker_line_color='grey',  # Set the border color to grey
+    marker_line_width=0.7,  # Set the border width
 ))
 
 
@@ -87,6 +97,7 @@ def save_foak_positive():
 
 
 	foak_positive = foak_positive.drop(columns=['Industry', 'Application', 'IRR w PTC'])
+	foak_positive.set_index('id', inplace=True)
 
 	foak_positive.to_latex('./results/foak_positive.tex',float_format="{:0.1f}".format, longtable=True, escape=True,\
 														label='tab:foak_positive_detailed_results',\
