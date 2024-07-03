@@ -4,35 +4,43 @@ from utils import palette
 from plotly.subplots import make_subplots
 import ANR_application_comparison
 
-# Create figure
+
+tag = 'all'
+# If tag is 'all' all locations profitable at NOAK with PTC are on the map
+# if tag is 'foak_ptc' plot only additional profitable locations compared to foak with ptc
+# if tag is 'foak_noptc' plot only additional profitable locations compared to foak without ptc
+if tag =='all':
+	foak_ptc, foak_noptc = False, False
+elif tag =='foak_ptc':
+	foak_ptc, foak_noptc = True, False
+elif tag =='foak_noptc':
+	foak_ptc, foak_noptc = False, True
+
+
 fig = go.Figure()
 
 
-# Nuclear moratoriums layers
-nuclear_restrictions = ['CA', 'CT', 'VT', 'MA', 'IL', 'OR', 'NJ', 'HI', 'ME', 'RI', 'VT']
-nuclear_ban = ['MN', 'NY']
 all_states = ['AK', 'AL', 'AR', 'AZ', 'CA', 'CO', 'CT', 'DC', 'DE', 'FL', 'GA', 'HI', 'IA', 'ID', \
 							'IL', 'IN', 'KS', 'KY', 'LA', 'MA', 'MD', 'ME', 'MI', 'MN', 'MO', 'MS', 'MT', 'NC', \
 								'ND', 'NE', 'NH', 'NJ', 'NM', 'NV', 'NY', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', \
 									'TN', 'TX', 'UT', 'VA', 'VT', 'WA', 'WI', 'WV', 'WY']
 
-state_colors = {state: 1 if state in nuclear_restrictions else (2 if state in nuclear_ban else 0) for state in all_states}
-z = [state_colors[state] for state in state_colors.keys()]
-
 fig.add_trace(go.Choropleth(
-		locations=list(state_colors.keys()), # Spatial coordinates
-		z=z, # Data to be color-coded (state colors)
-		locationmode='USA-states', # Set of locations match entries in `locations`
-		showscale=False, # Hide color bar
-		colorscale='Reds',
+    locationmode='USA-states',
+    locations=all_states,  # List of state codes
+    z=[1]*len(all_states),  # Dummy variable for coloring
+    colorscale=['white', 'white'],  # Set the color scale to white
+    showscale=False,  # Hide the color scale
+    marker_line_color='grey',  # Set the border color to grey
+    marker_line_width=0.7,  # Set the border width
 ))
 
 import waterfalls_cap_em
 
-noak_positive = waterfalls_cap_em.load_noak_noPTC()
+noak_positive = waterfalls_cap_em.load_noak_noPTC(foak_ptc=foak_ptc, foak_noptc=foak_noptc)
 
 
-def save_noak_noPTC():
+def save_noak_noPTC(tag):
 	# NOAK data
 	h2_data = ANR_application_comparison.load_h2_results(anr_tag='NOAK', cogen_tag='cogen')
 	h2_data = h2_data[['state', 'Depl. ANR Cap. (MWe)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 'IRR wo PTC',
@@ -64,12 +72,12 @@ def save_noak_noPTC():
 	noak_positive = noak_positive.drop(foak_to_drop, errors='ignore')
 	noak_positive['Depl. ANR Cap. (MWe)'] = noak_positive['Depl. ANR Cap. (MWe)'].astype(int)
 	noak_positive = noak_positive.drop(columns=['Industry', 'Application'])
-	noak_positive.to_latex('./results/noak_noPTC_positive.tex',float_format="{:0.1f}".format, longtable=True, escape=True,\
+	noak_positive.to_latex(f'./results/noak_noPTC_positive_{tag}.tex',float_format="{:0.1f}".format, longtable=True, escape=True,\
                             label='tab:noak_noPTC_positive_detailed_results',\
 														caption='Detailed results for NOAK without the H2 PTC deployment stage: Profitable industrial sites and associated SMR capacity deployed and annual revenues')
 
 
-save_noak_noPTC()
+save_noak_noPTC(tag=tag)
 
 
 # Size based on capacity deployed
@@ -115,8 +123,21 @@ def set_size(cap):
 noak_positive['size'] = noak_positive['Depl. ANR Cap. (MWe)'].apply(set_size)
 
 
-print(noak_positive['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
-max_rev = 5.1
+print(noak_positive['Annual Net Revenues (M$/y)'].describe(percentiles=[.5,.9]))
+if tag=='all':
+	max_rev = 12
+	tickvals = [0.05,2.5,11]
+	ticktext = [0.03,2.5,9]
+elif tag=='foak_ptc': 
+	max_rev = 6
+	tickvals = [0.05,2.1,4.9]
+	ticktext = [0.04,2.1,4.9]
+elif tag=='foak_noptc':
+	max_rev = 6
+	tickvals = [0.04,2,4.8]
+	ticktext = [0.03,2,4.8]
+
+
 noak_above90th = noak_positive[noak_positive['Annual Net Revenues (M$/y)'] >max_rev]
 noak_positive = noak_positive[noak_positive['Annual Net Revenues (M$/y)'] <= max_rev]
 
@@ -140,8 +161,8 @@ fig.add_trace(go.Scattergeo(
 						yanchor='bottom',
 						lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
 						len=0.7,  # Length of the colorbar (80% of figure width)
-						tickvals = [0.4,2.1,5, 6.9],
-						ticktext = [0.4,2.1,5, 6.9],
+						tickvals = tickvals,
+						ticktext = ticktext,
 						tickmode='array',
 						tickfont=dict(size=16)
 				),
@@ -157,7 +178,6 @@ fig.add_trace(go.Scattergeo(
 fig.add_trace(go.Scattergeo(
 		lon=noak_above90th['longitude'],
 		lat=noak_above90th['latitude'],
-		text="Capacity: " + noak_positive['Depl. ANR Cap. (MWe)'].astype(str) + " MWe",
 		mode='markers',
 		marker=dict(
 				size=noak_above90th['size'],
@@ -223,21 +243,6 @@ for size, cap in zip(sizes, perc_cap):
 			))
 
 
-nuclear_legend = {'Nuclear ban':'darkRed', 
-									'Nuclear restrictions':'salmon'}
-for b, color in nuclear_legend.items():
-	fig.add_trace(go.Scattergeo(
-			lon=[None],
-			lat=[None],
-			marker=dict(
-					size=15,
-					color=color,
-					symbol='square',
-			),
-			name=b
-	))
-
-
 # Update layout
 fig.update_layout(
 		geo=dict(
@@ -264,4 +269,4 @@ fig.update_layout(
 )
 
 # Save
-fig.write_image('./results/map_NOAK_cogen_noPTC.png', scale=4)
+fig.write_image(f'./results/map_NOAK_cogen_noPTC_{tag}.png', scale=4)
