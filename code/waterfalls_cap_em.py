@@ -295,7 +295,8 @@ def plot_scenarios_waterfall(foak_noPTC, foak_positive, noak_noPTC_foaknoptc, no
 	noptc['text_cap'] = noptc.apply(lambda x: int(x['Capacity']) if x['Capacity']>=1 else round(x['Capacity'],1), axis=1)
 
 	fig = make_subplots(rows=2, cols=3, horizontal_spacing=0.01, shared_yaxes=True, vertical_spacing=0.25, column_widths=[.23,.35,.42],
-										 column_titles=['Without the H2 PTC', 'FOAK with the H2 PTC<br>NOAK without the H2 PTC', 'With the H2 PTC'])
+										 column_titles=['FOAK without the H2 PTC<br>NOAK without the H2 PTC', 'FOAK with the H2 PTC<br>NOAK without the H2 PTC', 
+													'FOAK with the H2 PTC<br>NOAK with the H2 PTC'])
 	fig.add_trace(go.Waterfall(
 		orientation = "v",
 		measure = noptc['measure'],
