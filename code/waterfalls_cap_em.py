@@ -40,9 +40,9 @@ def load_foak_positive(dropnoptc=False):
 	h2_data.reset_index(inplace=True)
 
 	heat_data = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen')
-	heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'SMR', 'STATE',
-												'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)',
-												'Annual Net Revenues (M$/y)', 'Application']]
+	heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'SMR','Pathway', 'Batch_Temp_degC', 'max_temp_degC', 'Surplus SMR Cap. (MWe)',
+												'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)','NG price ($/MMBtu)', 'Electricity revenues ($/y)','Avoided NG Cost ($/y)','H2 PTC',
+												  'Application', 'IRR w PTC','Annual Net Revenues (M$/y)']]
 	heat_data = heat_data.rename(columns={'Emissions_mmtco2/y':'Emissions',
 																			 'Breakeven NG price ($/MMBtu)':'Breakeven price ($/MMBtu)', 'STATE':'state'})
 	heat_data['App'] = 'Process Heat'
@@ -57,6 +57,7 @@ def load_foak_positive(dropnoptc=False):
 		foak_noPTC.set_index('id', inplace=True)
 		foak_to_drop = foak_noPTC.index.to_list()
 		foak_positive = foak_positive.drop(foak_to_drop, errors='ignore')
+	foak_positive.to_excel('./results/results_FOAK_PTC.xlsx')
 	foak_positive = foak_positive.reset_index()
 	return foak_positive
 
@@ -71,9 +72,10 @@ def load_noak_positive(foak_ptc=True, foak_noptc=False):
 	h2_data.reset_index(inplace=True)
 
 	heat_data = ANR_application_comparison.load_heat_results(anr_tag='NOAK', cogen_tag='cogen')
-	heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'SMR',
-												'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)',
-												  'Application', 'Annual Net Revenues (M$/y)']]
+	print(heat_data.columns)
+	heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'SMR','Pathway', 'Batch_Temp_degC', 'max_temp_degC', 'Surplus SMR Cap. (MWe)',
+												'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)','NG price ($/MMBtu)', 'Electricity revenues ($/y)','Avoided NG Cost ($/y)','H2 PTC',
+												  'Application', 'IRR w PTC','Annual Net Revenues (M$/y)']]
 	heat_data.rename(columns={'Breakeven NG price ($/MMBtu)':'Breakeven price ($/MMBtu)',
 													'Emissions_mmtco2/y':'Emissions'}, inplace=True)
 	heat_data.reset_index(inplace=True, names='id')
@@ -83,19 +85,23 @@ def load_noak_positive(foak_ptc=True, foak_noptc=False):
 	noak_positive = noak_positive[noak_positive['Annual Net Revenues (M$/y)'] >=0]
 
 	noak_positive.set_index('id', inplace=True)
+	tag='all'
 	if foak_ptc:
 		# Drop FAOK PTC sites
+		tag='foak_ptc'
 		foak_positive = load_foak_positive()
 		foak_positive.set_index('id', inplace=True)
 		foak_to_drop = foak_positive.index.to_list()
 		noak_positive = noak_positive.drop(foak_to_drop, errors='ignore')
 	elif foak_noptc:
 		# Drop FOAK no PTC sites
+		tag='foak_noptc'
 		foak_noPTC = load_foaknoPTC()
 		foak_noPTC.set_index('id', inplace=True)
 		foak_noPTC_todrop = foak_noPTC.index.to_list()
 		noak_positive = noak_positive.drop(foak_noPTC_todrop, errors='ignore')
-
+	
+	noak_positive.to_excel(f'./results/results_NOAK_PTC_{tag}.xlsx')
 	noak_positive = noak_positive.reset_index()
 	return noak_positive
 
@@ -114,9 +120,9 @@ def load_noak_noPTC(foak_ptc=True, foak_noptc=False):
 	h2_data.reset_index(inplace=True)
 
 	heat_data = ANR_application_comparison.load_heat_results(anr_tag='NOAK', cogen_tag='cogen', with_PTC=False)
-	heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'SMR',
-												'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)',
-													'Application', 'Annual Net Revenues (M$/y)', 'IRR wo PTC']]
+	heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'SMR','Pathway', 'Batch_Temp_degC', 'max_temp_degC', 'Surplus SMR Cap. (MWe)',
+												'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)', 'NG price ($/MMBtu)',
+													'Application', 'Annual Net Revenues (M$/y)', 'Electricity revenues ($/y)','Avoided NG Cost ($/y)','IRR wo PTC']]
 	heat_data.rename(columns={'Breakeven NG price ($/MMBtu)':'Breakeven price ($/MMBtu)',
 												'Emissions_mmtco2/y':'Emissions', 'IRR wo PTC': 'IRR (%)'}, inplace=True)
 	heat_data.reset_index(inplace=True, names=['id'])
@@ -126,21 +132,24 @@ def load_noak_noPTC(foak_ptc=True, foak_noptc=False):
 	noak_positive = pd.concat([heat_data, h2_data], ignore_index=True)
 	noak_positive = noak_positive[noak_positive['Annual Net Revenues (M$/y)'] >=0]
 	noak_positive['IRR (%)'] *=100
-	noak_positive.to_excel('./results/results_heat_h2_NOAK_noPTC.xlsx', index=False)
+	
 	noak_positive.set_index('id', inplace=True)
-
+	tag='all'
 	if foak_ptc:
 		# Drop FAOK PTC sites
+		tag='foak_ptc'
 		foak_positive = load_foak_positive()
 		foak_positive.set_index('id', inplace=True)
 		foak_to_drop = foak_positive.index.to_list()
 		noak_positive = noak_positive.drop(foak_to_drop, errors='ignore')
 	elif foak_noptc:
 		# Drop FOAK no PTC sites
+		tag='foak_noptc'
 		foak_noPTC = load_foaknoPTC()
 		foak_noPTC.set_index('id', inplace=True)
 		foak_noPTC_todrop = foak_noPTC.index.to_list()
 		noak_positive = noak_positive.drop(foak_noPTC_todrop, errors='ignore')
+	noak_positive.to_excel(f'./results/results_NOAK_noPTC_{tag}.xlsx')
 	noak_positive = noak_positive.reset_index()
 	return noak_positive
 

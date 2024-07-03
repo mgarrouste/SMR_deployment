@@ -119,7 +119,10 @@ print('PBR-HTGR deployed units: ',sum(foak_positive[foak_positive.SMR=='PBR-HTGR
 print('iPWR deployed capacity : ',sum(foak_positive[foak_positive.SMR=='iPWR']['Depl. ANR Cap. (MWe)']))
 print('iPWR deployed units : ',sum(foak_positive[foak_positive.SMR=='iPWR']['Depl. ANR Cap. (MWe)'])/77)
 print('Total capacity deployed GWe : ', sum(foak_positive['Depl. ANR Cap. (MWe)'])/1e3)
-print('Process heat capacity: ', sum(foak_positive[foak_positive.Application=='Process Heat']['Depl. ANR Cap. (MWe)'])/1e3 )
+processheat = foak_positive[foak_positive.Application=='Process Heat']
+print('Process heat capacity: ', sum(processheat['Depl. ANR Cap. (MWe)'])/1e3 )
+print('Process heat SMR-H2 capacity: ', sum(processheat[processheat.Pathway =='SMR-H2']['Depl. ANR Cap. (MWe)'])/1e3 )
+print('Process heat SMR+SMR-H2 capacity: ', sum(processheat[processheat.Pathway =='SMR+SMR-H2']['Depl. ANR Cap. (MWe)'])/1e3 )
 print('H2 AMmonia: ', sum(foak_positive[foak_positive.App=='Industrial Hydrogen-Ammonia']['Depl. ANR Cap. (MWe)'])/1e3 )
 print('H2 Steel: ', sum(foak_positive[foak_positive.App=='Industrial Hydrogen-Steel']['Depl. ANR Cap. (MWe)'])/1e3 )
 print('H2 Refining: ', sum(foak_positive[foak_positive.App=='Industrial Hydrogen-Refining']['Depl. ANR Cap. (MWe)'])/1e3 )
