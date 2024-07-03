@@ -108,6 +108,18 @@ print('PBR-HTGR deployed units: ',sum(noak_positive[noak_positive.SMR=='PBR-HTGR
 print('iPWR deployed capacity : ',sum(noak_positive[noak_positive.SMR=='iPWR']['Depl. ANR Cap. (MWe)']))
 print('iPWR deployed units : ',sum(noak_positive[noak_positive.SMR=='iPWR']['Depl. ANR Cap. (MWe)'])/77)
 print('Total capacity deployed GWe : ', sum(noak_positive['Depl. ANR Cap. (MWe)'])/1e3)
+processheat = noak_positive[noak_positive.Application=='Process Heat']
+print('Process heat capacity: ', sum(processheat['Depl. ANR Cap. (MWe)'])/1e3 )
+print('Process heat SMR-H2 capacity: ', sum(processheat[processheat.Pathway =='SMR-H2']['Depl. ANR Cap. (MWe)'])/1e3 )
+print('Process heat SMR+SMR-H2 capacity: ', sum(processheat[processheat.Pathway =='SMR+SMR-H2']['Depl. ANR Cap. (MWe)'])/1e3 )
+print('/n REvenues and IRR')
+print(noak_positive['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+heat = noak_positive[noak_positive.Application=='Process Heat']
+print('\n Heat')
+print(heat['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+print('\n H2')
+processh2 = noak_positive[noak_positive.Application!='Process Heat']
+print(processh2['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 
 scaler = 30
 

@@ -5,7 +5,7 @@ from plotly.subplots import make_subplots
 import ANR_application_comparison
 
 
-tag = 'all'
+tag = 'foak_noptc'
 # If tag is 'all' all locations profitable at NOAK with PTC are on the map
 # if tag is 'foak_ptc' plot only additional profitable locations compared to foak with ptc
 # if tag is 'foak_noptc' plot only additional profitable locations compared to foak without ptc
@@ -81,7 +81,6 @@ save_noak_noPTC(tag=tag)
 
 
 # Size based on capacity deployed
-percentiles =  noak_positive['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]).to_frame()
 print(noak_positive['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 print('Micro deployed capacity : ',sum(noak_positive[noak_positive.SMR=='Micro']['Depl. ANR Cap. (MWe)']))
 print('Micro deployed units : ',sum(noak_positive[noak_positive.SMR=='Micro']['Depl. ANR Cap. (MWe)'])/6.7)
@@ -94,14 +93,16 @@ print('iPWR deployed units : ',sum(noak_positive[noak_positive.SMR=='iPWR']['Dep
 print('Total capacity deployed GWe : ', sum(noak_positive['Depl. ANR Cap. (MWe)'])/1e3)
 
 print('$ \n')
-print(noak_positive['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
-print(noak_positive.columns)
 print(noak_positive['IRR (%)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+print('$ \n')
+print('HEat capacity: ',sum(noak_positive[noak_positive.Application=='Process Heat']['Depl. ANR Cap. (MWe)']))
+print('H2 capacity: ',sum(noak_positive[noak_positive.Application=='Industrial Hydrogen']['Depl. ANR Cap. (MWe)']))
 
 scaler = 30
 
 # Set marker symbol based on the application's type
-markers_applications = {'Industrial Hydrogen':'circle','Process Heat':'cross' }
+noak_positive = noak_positive.sort_values(by='Application', ascending=False)
+markers_applications = {'Process Heat':'cross' ,'Industrial Hydrogen':'circle'}
 marker_symbols = noak_positive['Application'].map(markers_applications).to_list()
 
 # Get colors for each marker
