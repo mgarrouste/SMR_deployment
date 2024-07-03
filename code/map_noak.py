@@ -5,7 +5,7 @@ from plotly.subplots import make_subplots
 import ANR_application_comparison
 
 
-tag = 'all'
+tag = 'foak_ptc'
 # If tag is 'all' all locations profitable at NOAK with PTC are on the map
 # if tag is 'foak_ptc' plot only additional profitable locations compared to foak with ptc
 if tag =='all':
@@ -131,7 +131,7 @@ def set_size(cap):
 	return size
 noak_positive['size'] = noak_positive['Depl. ANR Cap. (MWe)'].apply(set_size)
 
-print(noak_positive['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+print(noak_positive['Annual Net Revenues (M$/y)'].describe(percentiles=[.5,.9]))
 if tag=='all':
 	max_rev = 65
 	tickvals = [0.1,9.5,63]

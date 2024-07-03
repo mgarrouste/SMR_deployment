@@ -61,7 +61,7 @@ def load_foak_positive(dropnoptc=False):
 	return foak_positive
 
 
-def load_noak_positive(foak_ptc=True):
+def load_noak_positive(foak_ptc=True, foak_noptc=False):
 	# NOAK data
 	h2_data = ANR_application_comparison.load_h2_results(anr_tag='NOAK', cogen_tag='cogen')
 	h2_data = h2_data[['latitude', 'longitude', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
@@ -89,7 +89,7 @@ def load_noak_positive(foak_ptc=True):
 		foak_positive.set_index('id', inplace=True)
 		foak_to_drop = foak_positive.index.to_list()
 		noak_positive = noak_positive.drop(foak_to_drop, errors='ignore')
-	else:
+	elif foak_noptc:
 		# Drop FOAK no PTC sites
 		foak_noPTC = load_foaknoPTC()
 		foak_noPTC.set_index('id', inplace=True)
@@ -100,7 +100,7 @@ def load_noak_positive(foak_ptc=True):
 	return noak_positive
 
 
-def load_noak_noPTC(foak_ptc=True):
+def load_noak_noPTC(foak_ptc=True, foak_noptc=False):
 	# NOAK data
 	h2_data = ANR_application_comparison.load_h2_results(anr_tag='NOAK', cogen_tag='cogen')
 	h2_data = h2_data[['latitude', 'longitude', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
@@ -135,7 +135,7 @@ def load_noak_noPTC(foak_ptc=True):
 		foak_positive.set_index('id', inplace=True)
 		foak_to_drop = foak_positive.index.to_list()
 		noak_positive = noak_positive.drop(foak_to_drop, errors='ignore')
-	else:
+	elif foak_noptc:
 		# Drop FOAK no PTC sites
 		foak_noPTC = load_foaknoPTC()
 		foak_noPTC.set_index('id', inplace=True)
@@ -286,7 +286,7 @@ def plot_scenarios_waterfall(foak_noPTC, foak_positive, noak_noPTC_foaknoptc, no
 	noptc['text_cap'] = noptc.apply(lambda x: int(x['Capacity']) if x['Capacity']>=1 else round(x['Capacity'],1), axis=1)
 
 	fig = make_subplots(rows=2, cols=3, horizontal_spacing=0.01, shared_yaxes=True, vertical_spacing=0.25, column_widths=[.23,.35,.42],
-										 column_titles=['Without the H2 PTC', 'H2 PTC expires<br>after FOAK deployment', 'With the H2 PTC'])
+										 column_titles=['Without the H2 PTC', 'FOAK with the H2 PTC<br>NOAK without the H2 PTC', 'With the H2 PTC'])
 	fig.add_trace(go.Waterfall(
 		orientation = "v",
 		measure = noptc['measure'],
