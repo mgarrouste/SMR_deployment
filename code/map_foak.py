@@ -358,20 +358,6 @@ for size, cap in zip(sizes, perc_cap):
 					name=cap
 			))
 
-nuclear_legend = {'Nuclear ban':'darkRed', 
-									'Nuclear restrictions':'salmon'}
-for b, color in nuclear_legend.items():
-	fig.add_trace(go.Scattergeo(
-			lon=[None],
-			lat=[None],
-			marker=dict(
-					size=15,
-					color=color,
-					symbol='square',
-			),
-			name=b
-	))
-
 
 
 # Update layout

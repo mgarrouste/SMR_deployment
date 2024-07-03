@@ -211,33 +211,6 @@ def add_smr_layer(fig,df):
 						name=cap
 				))
 
-	nuclear_legend = {'Nuclear ban':'darkRed', 
-									'Nuclear restrictions':'salmon'}
-	for b, color in nuclear_legend.items():
-		fig.add_trace(go.Scattergeo(
-				lon=[None],
-				lat=[None],
-				marker=dict(
-						size=15,
-						color=color,
-						symbol='square',
-				),
-				name=b
-		))
-	
-	fig.add_trace(go.Scattergeo(
-		lon=[None],
-		lat=[None],
-		marker=dict(
-				size=15,
-				color='white',
-				symbol='triangle-up',
-				line_color='black',
-				line_width=1,
-		),
-		name='Average electricity price'
-
-	))
 
 	fig.update_layout(
 		geo=dict(
