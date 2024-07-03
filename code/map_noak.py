@@ -2,10 +2,12 @@ import pandas as pd
 import plotly.graph_objects as go
 from utils import palette
 from plotly.subplots import make_subplots
-import ANR_application_comparison, map_foak
+import ANR_application_comparison
 
 
 tag = 'all'
+# If tag is 'all' all locations profitable at NOAK with PTC are on the map
+# if tag is 'foak_ptc' plot only additional profitable locations compared to foak with ptc
 if tag =='all':
 	foak_ptc, foak_noptc = False, False
 elif tag =='foak_ptc':
