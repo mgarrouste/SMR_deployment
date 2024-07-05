@@ -529,11 +529,15 @@ def abatement_cost_plot():
 
 
 def cashflow_breakdown_plots(scenario, heat, h2):
-	fig, ax = plt.subplots(1,2, figsize=(9,6))
+	if scenario['OAK']=='NOAK' and scenario['PTC']==True:
+		width_ratios = [5,1]
+	else: width_ratios = [1,1]
+	fig, ax = plt.subplots(1,2, figsize=(9,6), width_ratios=width_ratios)
 	from utils import cashflows_color_map
 	OAK = scenario['OAK']
 	with_ptc = scenario['PTC']
 	cdf = heat.copy()
+	cdf.fillna(0, inplace=True)
 
 	cdf['SMR CAPEX'] = (-cdf[f'Annual_CAPEX_{OAK}']-cdf['Annual ANR CAPEX'])/1e6
 	cdf['H2 CAPEX'] = -cdf['Annual H2 CAPEX']/1e6
@@ -592,7 +596,11 @@ def cashflow_breakdown_plots(scenario, heat, h2):
 	by_label = dict(zip(l00+l01, h00+h01))
 	fig.legend(by_label.values(), by_label.keys(),  bbox_to_anchor=(.5,.1),loc='upper center', ncol=4)
 	plt.subplots_adjust(wspace=0.25)
-	fig.savefig(f'./results/cashflows_{OAK}_PTC_{with_ptc}.png')
+	if OAK =='NOAK':
+		savepath = './results/cashflows_{}_PTC_{}_FOAK_PTC_{}.png'.format(OAK, with_ptc, scenario['FOAK_PTC'])
+	else:
+		savepath = './results/cashflows_{}_PTC_{}.png'.format(OAK, with_ptc)
+	fig.savefig(savepath)
 
 def main():
 	foak_noPTC = get_aggregated_data(load_foaknoPTC(), tag='FOAK<br>NoPTC')
@@ -629,11 +637,58 @@ if __name__ =='__main__':
 			h2 = h2[h2['Annual Net Revenues (M$/y)']>0]
 			cashflow_breakdown_plots(scenario=scenario, heat=heat, h2=h2)
 		if args.cashflow == 'NOAK':
-			scenario = {'OAK':'NOAK', 'PTC':False}
-			heatf = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen', with_PTC=scenario['PTC'])
+			## NOAK no ptc after foak no ptc
+			scenario = {'OAK':'NOAK', 'PTC':False, 'FOAK_PTC':False}
+			# heat
+			heatf = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen', with_PTC=scenario['FOAK_PTC'])
 			heatf = heatf[heatf['Annual Net Revenues (M$/y)']>0]
 			heatn = ANR_application_comparison.load_heat_results(anr_tag='NOAK', cogen_tag='cogen', with_PTC=scenario['PTC'])
 			heatn = heatn[heatn['Annual Net Revenues (M$/y)']>0]
 			to_drop = heatf.index.to_list()
 			heatn = heatn.drop(to_drop, errors='ignore')
+			# h2
+			h2f = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='cogen', with_PTC=scenario['FOAK_PTC'])
+			h2f = h2f[h2f['Annual Net Revenues (M$/y)']>0]
+			h2n = ANR_application_comparison.load_h2_results(anr_tag='NOAK', cogen_tag='cogen', with_PTC=scenario['PTC'])
+			h2n = h2n[h2n['Annual Net Revenues (M$/y)']>0]
+			to_drop = h2f.index.to_list()
+			h2n = h2n.drop(to_drop, errors='ignore')
+			# Plot cashflows
+			cashflow_breakdown_plots(scenario=scenario, heat=heatn, h2=h2n)
+			## NOAK no ptc after foak ptc
+			scenario = {'OAK':'NOAK', 'PTC':False, 'FOAK_PTC':True}
+			# heat
+			heatf = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen', with_PTC=scenario['FOAK_PTC'])
+			heatf = heatf[heatf['Annual Net Revenues (M$/y)']>0]
+			heatn = ANR_application_comparison.load_heat_results(anr_tag='NOAK', cogen_tag='cogen', with_PTC=scenario['PTC'])
+			heatn = heatn[heatn['Annual Net Revenues (M$/y)']>0]
+			to_drop = heatf.index.to_list()
+			heatn = heatn.drop(to_drop, errors='ignore')
+			# h2
+			h2f = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='cogen', with_PTC=scenario['FOAK_PTC'])
+			h2f = h2f[h2f['Annual Net Revenues (M$/y)']>0]
+			h2n = ANR_application_comparison.load_h2_results(anr_tag='NOAK', cogen_tag='cogen', with_PTC=scenario['PTC'])
+			h2n = h2n[h2n['Annual Net Revenues (M$/y)']>0]
+			to_drop = h2f.index.to_list()
+			h2n = h2n.drop(to_drop, errors='ignore')
+			# Plot cashflows
+			cashflow_breakdown_plots(scenario=scenario, heat=heatn, h2=h2n)
+			# NOAK ptc after foak ptc
+			scenario = {'OAK':'NOAK', 'PTC':True, 'FOAK_PTC':True}
+			# heat
+			heatf = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen', with_PTC=scenario['FOAK_PTC'])
+			heatf = heatf[heatf['Annual Net Revenues (M$/y)']>0]
+			heatn = ANR_application_comparison.load_heat_results(anr_tag='NOAK', cogen_tag='cogen', with_PTC=scenario['PTC'])
+			heatn = heatn[heatn['Annual Net Revenues (M$/y)']>0]
+			to_drop = heatf.index.to_list()
+			heatn = heatn.drop(to_drop, errors='ignore')
+			# h2
+			h2f = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='cogen', with_PTC=scenario['FOAK_PTC'])
+			h2f = h2f[h2f['Annual Net Revenues (M$/y)']>0]
+			h2n = ANR_application_comparison.load_h2_results(anr_tag='NOAK', cogen_tag='cogen', with_PTC=scenario['PTC'])
+			h2n = h2n[h2n['Annual Net Revenues (M$/y)']>0]
+			to_drop = h2f.index.to_list()
+			h2n = h2n.drop(to_drop, errors='ignore')
+			# Plot cashflows
+			cashflow_breakdown_plots(scenario=scenario, heat=heatn, h2=h2n)
 			
