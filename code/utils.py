@@ -10,15 +10,15 @@ palette={'HTGR':'orange',
          'iPWR':'green', 
          'PBR-HTGR':'darkorchid', 
          'Micro':'darkgrey'}
-cashflows_color_map = {'ANR CAPEX': 'navy', 
+cashflows_color_map = {'SMR CAPEX': 'navy', 
              'ANR for H2 CAPEX': 'royalblue',
                'H2 CAPEX': 'lightsteelblue', 
-               'ANR O&M':'darkgreen', 
+               'SMR O&M':'darkgreen', 
                'ANR for H2 O&M':'forestgreen', 
                'H2 O&M':'palegreen',
                'Conversion':'grey',
                'Avoided Fossil Fuel Costs':'darkorchid', 
-               'H2 PTC':'plum', 
+               'H2 PTC':'red', 
                'Electricity':'pink'}
 #INflation
 conversion_2021usd_to_2020usd = 0.99 #2020$/2021$ source: data.bls.gov
