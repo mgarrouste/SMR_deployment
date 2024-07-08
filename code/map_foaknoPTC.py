@@ -10,8 +10,9 @@ def load_data():
 											 'Depl. ANR Cap. (MWe)', 'Industry','Annual Net Revenues (M$/y)', 'Application', 'IRR wo PTC']]
 	heat = heat[heat['Annual Net Revenues (M$/y)']>0]
 	heat.rename(columns={'Emissions_mmtco2/y':'Emissions',
-														'NG price ($/MMBtu)':'State price ($/MMBtu)', 'STATE':'state'}, inplace=True)
+														'NG price ($/MMBtu)':'State price ($/MMBtu)', 'STATE':'state', 'IRR wo PTC':'IRR (%)'}, inplace=True)
 	heat['application'] = 'Process Heat'
+	heat['IRR (%)'] *=100
 	heat.reset_index(inplace=True, names=['id'])
 	print('# process heat facilities profitable wo PTc :{}'.format(len(heat[heat['Annual Net Revenues (M$/y)']>0])))
 	print(heat['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
@@ -87,9 +88,7 @@ def add_elec_layer(fig):
 
 
 def save_to_latex(df):
-	tosave_noptc = df[['id','state', 'application', 'SMR','State price ($/MMBtu)', 'Annual Net Revenues (M$/y)', 'IRR wo PTC']]
-	tosave_noptc = tosave_noptc.rename(columns={'IRR wo PTC':'IRR (%)'})
-	tosave_noptc['IRR (%)'] *=100
+	tosave_noptc = df[['id','state', 'application', 'SMR','State price ($/MMBtu)', 'Annual Net Revenues (M$/y)', 'IRR (%)']]
 	tosave_noptc.set_index('id', inplace=True)
 	tosave_noptc.to_latex('./results/foak_noPTC.tex',float_format="{:0.1f}".format, longtable=True, escape=True,\
 													label='tab:foak_noPTC_detailed_results',\
@@ -241,6 +240,8 @@ def add_smr_layer(fig,df):
 
 def main():
 	df = load_data()
+	from map_foak import plot_irr 
+	plot_irr(data=df, save_path='./results/IRR_foaknoptc.png')
 	save_to_latex(df)
 	fig = go.Figure()
 	add_elec_layer(fig)

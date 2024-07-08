@@ -145,11 +145,11 @@ print('Restrictions % capacity : ', 100*sum(restrs['Depl. ANR Cap. (MWe)'])/sum(
 percentiles =  foak_positive['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]).to_frame()
 
 
-def plot_irr(data, save_path):
+def plot_irr(data, save_path, app_col='application'):
 	import seaborn as sns
 	fig, ax = plt.subplots(figsize=(5,3))
 	print(save_path)
-	sns.kdeplot(ax=ax, data=data, x='IRR (%)', cumulative=True, hue='application', common_norm=False, common_grid=True)
+	sns.kdeplot(ax=ax, data=data, x='IRR (%)', cumulative=True, hue=app_col, common_norm=False, common_grid=True)
 	#sns.stripplot(ax=ax, data=data, x='IRR (%)', y='application', palette=palette, hue='SMR', alpha=0.6)
 	#sns.boxplot(ax=ax, data=data, x='IRR (%)', y='application', color='black',fill=False, width=0.5)
 	sns.despine()
@@ -162,7 +162,7 @@ def plot_irr(data, save_path):
 	fig.tight_layout()
 	fig.savefig(save_path, bbox_inches='tight')
 
-plot_irr(plot_data, save_path = './results/foak_IRR.png')
+plot_irr(plot_data, save_path = './results/IRR_foak.png')
 def set_size(cap):
 	if cap <= 150:
 		size = 5

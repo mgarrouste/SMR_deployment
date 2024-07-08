@@ -5,7 +5,7 @@ from plotly.subplots import make_subplots
 import ANR_application_comparison
 
 
-tag = 'foak_noptc'
+tag = 'foak_ptc'
 # If tag is 'all' all locations profitable at NOAK with PTC are on the map
 # if tag is 'foak_ptc' plot only additional profitable locations compared to foak with ptc
 # if tag is 'foak_noptc' plot only additional profitable locations compared to foak without ptc
@@ -38,6 +38,9 @@ fig.add_trace(go.Choropleth(
 import waterfalls_cap_em
 
 noak_positive = waterfalls_cap_em.load_noak_noPTC(foak_ptc=foak_ptc, foak_noptc=foak_noptc)
+from map_foak import plot_irr
+print(noak_positive.columns)
+plot_irr(data=noak_positive, save_path=f'./results/IRR_noaknoPTC_{tag}.png', app_col='Application')
 
 
 def save_noak_noPTC(tag):

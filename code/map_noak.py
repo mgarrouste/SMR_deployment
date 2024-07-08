@@ -91,7 +91,7 @@ def save_noak_positive(tag):
 noak_positive = waterfalls_cap_em.load_noak_positive(foak_ptc=foak_ptc, foak_noptc=foak_noptc)
 plot_data = save_noak_positive(tag=tag)
 from map_foak import plot_irr
-plot_irr(plot_data, save_path=f'./results/noak_IRR_{tag}.png')
+plot_irr(plot_data, save_path=f'./results/IRR_noak_{tag}.png')
 
 # Size based on capacity deployed
 percentiles =  noak_positive['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]).to_frame()
