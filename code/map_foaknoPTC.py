@@ -16,6 +16,7 @@ def load_data():
 	heat.reset_index(inplace=True, names=['id'])
 	print('# process heat facilities profitable wo PTc :{}'.format(len(heat[heat['Annual Net Revenues (M$/y)']>0])))
 	print(heat['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+	print(heat['IRR (%)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 	print('iPWR')
 	print(heat[heat['SMR']=='iPWR']['Depl. ANR Cap. (MWe)'].sum())
 	print('iMSR')
@@ -136,9 +137,9 @@ def add_smr_layer(fig,df):
 	# DEployed capacity as size
 	def set_size(cap):
 		if cap <= 100:
-			size = 5
+			size = 6
 		elif cap <= 500:
-			size = 10
+			size = 12
 		else:
 			size = 25
 		return size
@@ -151,10 +152,10 @@ def add_smr_layer(fig,df):
 		mode='markers',
 		marker=dict(
 				size=df['size'],
-				color=df['Annual Net Revenues (M$/y)'],
+				color=df['IRR (%)'],
 				colorscale='Greys',
 				colorbar = dict(
-						title='Annual Net Revenues (M$/y)',
+						title='IRR (%)',
 						titlefont = dict(size=16),
 						orientation='h',  # Set the orientation to 'h' for horizontal
 						x=0.5,  # Center the colorbar horizontally
@@ -163,14 +164,14 @@ def add_smr_layer(fig,df):
 						yanchor='bottom',
 						lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
 						len=0.6,  # Length of the colorbar (80% of figure width)
-						tickvals = [.03,3.9,15,49],
-						ticktext = [.03,3.9,15,49],
+						tickvals = [5,8,11],
+						ticktext = [5,8,11],
 						tickmode='array',
 						tickfont=dict(size=16)
 				),
 				symbol=marker_symbols,
 				line_color=line_colors,
-				line_width=3,
+				line_width=2,
 				sizemode='diameter'
 		),
 		showlegend=False
