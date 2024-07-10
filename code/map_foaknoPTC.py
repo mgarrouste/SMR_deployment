@@ -16,6 +16,13 @@ def load_data():
 	heat.reset_index(inplace=True, names=['id'])
 	print('# process heat facilities profitable wo PTc :{}'.format(len(heat[heat['Annual Net Revenues (M$/y)']>0])))
 	print(heat['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+	print('iPWR')
+	print(heat[heat['SMR']=='iPWR']['Depl. ANR Cap. (MWe)'].sum())
+	print('iMSR')
+	print(heat[heat['SMR']=='iMSR']['Depl. ANR Cap. (MWe)'].sum())
+	print('PBRHTGR')
+	print(heat[heat['SMR']=='PBR-HTGR']['Depl. ANR Cap. (MWe)'].sum())
+	print('Total capacity')
 	print(heat['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 	print(heat['SMR'].unique())
 
