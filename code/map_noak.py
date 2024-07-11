@@ -116,10 +116,10 @@ print('/n REvenues and IRR')
 print(noak_positive['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 heat = noak_positive[noak_positive.Application=='Process Heat']
 print('\n Heat')
-print(heat['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+print(heat['IRR (%)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 print('\n H2')
 processh2 = noak_positive[noak_positive.Application!='Process Heat']
-print(processh2['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+print(processh2['IRR (%)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 
 scaler = 30
 
@@ -133,9 +133,9 @@ line_colors = [palette[anr] for anr in noak_positive['SMR']]
 # size based on deployed capacity
 def set_size(cap):
 	if cap <= 150:
-		size = 5
-	elif cap <= 500:
 		size = 10
+	elif cap <= 500:
+		size = 17
 	elif cap<=750:
 		size = 25
 	else:
@@ -143,32 +143,16 @@ def set_size(cap):
 	return size
 noak_positive['size'] = noak_positive['Depl. ANR Cap. (MWe)'].apply(set_size)
 
-print(noak_positive['Annual Net Revenues (M$/y)'].describe(percentiles=[.5,.9]))
-if tag=='all':
-	max_rev = 65
-	tickvals = [0.1,9.5,63]
-	ticktext = [0.1,9.5,63]
-elif tag=='foak_ptc':
-	max_rev = 22
-	tickvals = [0.1,7.8,21]
-	ticktext = [0.1,7.8,21]
-
-sup = noak_positive[noak_positive['Annual Net Revenues (M$/y)'] > max_rev]
-
-noak_positive = noak_positive[noak_positive['Annual Net Revenues (M$/y)'] <= max_rev]
-
-
 fig.add_trace(go.Scattergeo(
 		lon=noak_positive['longitude'],
 		lat=noak_positive['latitude'],
-		text="Capacity: " + noak_positive['Depl. ANR Cap. (MWe)'].astype(str) + " MWe",
 		mode='markers',
 		marker=dict(
 				size=noak_positive['size'],
-				color=noak_positive['Annual Net Revenues (M$/y)'],
+				color=noak_positive['IRR (%)'],
 				colorscale='Greys',
 				colorbar = dict(
-						title='Annual Net Revenues (M$/y)',
+						title='IRR (%)',
 						titlefont = dict(size=16),
 						orientation='h',  # Set the orientation to 'h' for horizontal
 						x=0.5,  # Center the colorbar horizontally
@@ -177,8 +161,8 @@ fig.add_trace(go.Scattergeo(
 						yanchor='bottom',
 						lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
 						len=0.7,  # Length of the colorbar (80% of figure width)
-						tickvals = tickvals,
-						ticktext = ticktext,
+						tickvals = [9,12,13],
+						ticktext = [9,12,13],
 						tickmode='array',
 						tickfont=dict(size=16)
 				),
@@ -190,25 +174,6 @@ fig.add_trace(go.Scattergeo(
 		showlegend=False
 ))
 
-supmarker_symbols = sup['Application'].map(markers_applications).to_list()
-
-# Get colors for each marker
-supline_colors = [palette[anr] for anr in sup['SMR']]
-# Add facilities above 90th perc revenue separately
-fig.add_trace(go.Scattergeo(
-		lon=sup['longitude'],
-		lat=sup['latitude'],
-		mode='markers',
-		marker=dict(
-				size=sup['size'],
-				color='black',
-				symbol=supmarker_symbols,
-				line_color=supline_colors,
-				line_width=3,
-				sizemode='diameter'
-		),
-		showlegend=False
-))
 
 
 
