@@ -107,8 +107,10 @@ def save_foak_positive():
 
 
 foak_positive = waterfalls_cap_em.load_foak_positive()
+foak_positive['IRR (%)'] = foak_positive['IRR w PTC']*100
 plot_data = save_foak_positive()
 print(foak_positive['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+print(foak_positive['IRR (%)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 print(foak_positive['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 print('Micro deployed capacity : ',sum(foak_positive[foak_positive.SMR=='Micro']['Depl. ANR Cap. (MWe)']))
 print('Micro deployed units : ',sum(foak_positive[foak_positive.SMR=='Micro']['Depl. ANR Cap. (MWe)'])/6.7)
@@ -127,7 +129,7 @@ print('H2 AMmonia: ', sum(foak_positive[foak_positive.App=='Industrial Hydrogen-
 print('H2 Steel: ', sum(foak_positive[foak_positive.App=='Industrial Hydrogen-Steel']['Depl. ANR Cap. (MWe)'])/1e3 )
 print('H2 Refining: ', sum(foak_positive[foak_positive.App=='Industrial Hydrogen-Refining']['Depl. ANR Cap. (MWe)'])/1e3 )
 
-print('/n REvenues and IRR')
+print('/n Revenues ')
 print(foak_positive['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 heat = foak_positive[foak_positive.Application=='Process Heat']
 print('\n Heat')
@@ -135,6 +137,13 @@ print(heat['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]
 print('\n H2')
 processh2 = foak_positive[foak_positive.Application!='Process Heat']
 print(processh2['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+
+print('/n IRR')
+print(foak_positive['IRR (%)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+print('\n Heat')
+print(heat['IRR (%)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+print('\n H2')
+print(processh2['IRR (%)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 
 print('\n Deployment in states with bans')
 banss = foak_positive[foak_positive.state.isin(nuclear_ban)]
@@ -165,9 +174,9 @@ def plot_irr(data, save_path, app_col='application'):
 plot_irr(plot_data, save_path = './results/IRR_foak.png')
 def set_size(cap):
 	if cap <= 150:
-		size = 5
-	elif cap <= 500:
 		size = 10
+	elif cap <= 500:
+		size = 17
 	elif cap<=750:
 		size = 25
 	else:
