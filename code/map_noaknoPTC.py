@@ -5,7 +5,7 @@ from plotly.subplots import make_subplots
 import ANR_application_comparison
 
 
-tag = 'foak_ptc'
+tag = 'foak_noptc'
 # If tag is 'all' all locations profitable at NOAK with PTC are on the map
 # if tag is 'foak_ptc' plot only additional profitable locations compared to foak with ptc
 # if tag is 'foak_noptc' plot only additional profitable locations compared to foak without ptc
@@ -97,9 +97,11 @@ print('Total capacity deployed GWe : ', sum(noak_positive['Depl. ANR Cap. (MWe)'
 
 print('$ \n')
 print(noak_positive['IRR (%)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+print('Heat irr: ',sum(noak_positive[noak_positive.Application=='Process Heat']['IRR (%)'].describe()))
+print('H2 irr: ',sum(noak_positive[noak_positive.Application!='Process Heat']['IRR (%)'].describe()))
 print('$ \n')
 print('HEat capacity: ',sum(noak_positive[noak_positive.Application=='Process Heat']['Depl. ANR Cap. (MWe)']))
-print('H2 capacity: ',sum(noak_positive[noak_positive.Application=='Industrial Hydrogen']['Depl. ANR Cap. (MWe)']))
+print('H2 capacity: ',sum(noak_positive[noak_positive.Application!='Process Heat']['Depl. ANR Cap. (MWe)']))
 
 scaler = 30
 
@@ -114,9 +116,9 @@ line_colors = [palette[anr] for anr in noak_positive['SMR']]
 # size based on deployed capacity
 def set_size(cap):
 	if cap <= 150:
-		size = 5
-	elif cap <= 500:
 		size = 10
+	elif cap <= 500:
+		size = 17
 	elif cap<=750:
 		size = 25
 	else:
@@ -142,21 +144,17 @@ elif tag=='foak_noptc':
 	ticktext = [0.03,2,4.8]
 
 
-noak_above90th = noak_positive[noak_positive['Annual Net Revenues (M$/y)'] >max_rev]
-noak_positive = noak_positive[noak_positive['Annual Net Revenues (M$/y)'] <= max_rev]
-
 
 fig.add_trace(go.Scattergeo(
 		lon=noak_positive['longitude'],
 		lat=noak_positive['latitude'],
-		text="Capacity: " + noak_positive['Depl. ANR Cap. (MWe)'].astype(str) + " MWe",
 		mode='markers',
 		marker=dict(
 				size=noak_positive['size'],
-				color=noak_positive['Annual Net Revenues (M$/y)'],
+				color=noak_positive['IRR (%)'],
 				colorscale='Greys',
 				colorbar = dict(
-						title='Annual Net Revenues (M$/y)',
+						title='IRR (%)',
 						titlefont = dict(size=16),
 						orientation='h',  # Set the orientation to 'h' for horizontal
 						x=0.5,  # Center the colorbar horizontally
@@ -165,8 +163,8 @@ fig.add_trace(go.Scattergeo(
 						yanchor='bottom',
 						lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
 						len=0.7,  # Length of the colorbar (80% of figure width)
-						tickvals = tickvals,
-						ticktext = ticktext,
+						tickvals = [8,10,11],
+						ticktext = [8,10,11],
 						tickmode='array',
 						tickfont=dict(size=16)
 				),
@@ -178,21 +176,6 @@ fig.add_trace(go.Scattergeo(
 		showlegend=False
 ))
 
-# Add points above 90th percentile separately
-fig.add_trace(go.Scattergeo(
-		lon=noak_above90th['longitude'],
-		lat=noak_above90th['latitude'],
-		mode='markers',
-		marker=dict(
-				size=noak_above90th['size'],
-				color='black',
-				symbol=marker_symbols,
-				line_color=line_colors,
-				line_width=2,
-				sizemode='diameter'
-		),
-		showlegend=False
-))
 
 # Create custom legend
 custom_legend = {'iMSR - Process Heat':[palette['iMSR'], 'cross'],
