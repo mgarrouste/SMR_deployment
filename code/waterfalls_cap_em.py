@@ -69,23 +69,27 @@ def load_noak_positive(foak_ptc=True, foak_noptc=False):
 	# NOAK data
 	h2_data = ANR_application_comparison.load_h2_results(anr_tag='NOAK', cogen_tag='cogen')
 	h2_data = h2_data[['latitude', 'longitude', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
-										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/y)' ]]
-	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions', 'ANR':'SMR'}, inplace=True)
+										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/y)','IRR w PTC']]
+	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions', 
+													'ANR':'SMR',
+													'IRR w PTC':'IRR (%)'}, inplace=True)
 	h2_data['App'] = h2_data.apply(lambda x: x['Application']+'-'+x['Industry'].capitalize(), axis=1)
 	h2_data.reset_index(inplace=True)
 
 	heat_data = ANR_application_comparison.load_heat_results(anr_tag='NOAK', cogen_tag='cogen')
-	print(heat_data.columns)
 	heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'SMR','Pathway', 'Batch_Temp_degC', 'max_temp_degC', 'Surplus SMR Cap. (MWe)',
-												'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)','NG price ($/MMBtu)', 'Electricity revenues ($/y)','Avoided NG Cost ($/y)','H2 PTC',
+												'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)','NG price ($/MMBtu)', 'Electricity revenues ($/y)',
+												'Avoided NG Cost ($/y)','H2 PTC',
 													'Application', 'IRR w PTC','Annual Net Revenues (M$/y)']]
 	heat_data.rename(columns={'Breakeven NG price ($/MMBtu)':'Breakeven price ($/MMBtu)',
-													'Emissions_mmtco2/y':'Emissions'}, inplace=True)
+													'Emissions_mmtco2/y':'Emissions', 
+													'IRR w PTC':'IRR (%)'}, inplace=True)
 	heat_data.reset_index(inplace=True, names='id')
 	heat_data['App'] = 'Process Heat'
 
 	noak_positive = pd.concat([heat_data, h2_data], ignore_index=True)
 	noak_positive = noak_positive[noak_positive['Annual Net Revenues (M$/y)'] >=0]
+	noak_positive['IRR (%)'] *=100
 
 	noak_positive.set_index('id', inplace=True)
 	tag='all'
