@@ -122,6 +122,7 @@ print('iPWR deployed capacity : ',sum(foak_positive[foak_positive.SMR=='iPWR']['
 print('iPWR deployed units : ',sum(foak_positive[foak_positive.SMR=='iPWR']['Depl. ANR Cap. (MWe)'])/77)
 print('Total capacity deployed GWe : ', sum(foak_positive['Depl. ANR Cap. (MWe)'])/1e3)
 processheat = foak_positive[foak_positive.Application=='Process Heat']
+processh2 = foak_positive[foak_positive.Application!='Process Heat']
 print('Process heat capacity: ', sum(processheat['Depl. ANR Cap. (MWe)'])/1e3 )
 print('Process heat SMR-H2 capacity: ', sum(processheat[processheat.Pathway =='SMR-H2']['Depl. ANR Cap. (MWe)'])/1e3 )
 print('Process heat SMR+SMR-H2 capacity: ', sum(processheat[processheat.Pathway =='SMR+SMR-H2']['Depl. ANR Cap. (MWe)'])/1e3 )
@@ -129,19 +130,12 @@ print('H2 AMmonia: ', sum(foak_positive[foak_positive.App=='Industrial Hydrogen-
 print('H2 Steel: ', sum(foak_positive[foak_positive.App=='Industrial Hydrogen-Steel']['Depl. ANR Cap. (MWe)'])/1e3 )
 print('H2 Refining: ', sum(foak_positive[foak_positive.App=='Industrial Hydrogen-Refining']['Depl. ANR Cap. (MWe)'])/1e3 )
 
-print('/n Revenues ')
-print(foak_positive['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
-heat = foak_positive[foak_positive.Application=='Process Heat']
-print('\n Heat')
-print(heat['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
-print('\n H2')
-processh2 = foak_positive[foak_positive.Application!='Process Heat']
-print(processh2['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+
 
 print('/n IRR')
 print(foak_positive['IRR (%)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 print('\n Heat')
-print(heat['IRR (%)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+print(processheat['IRR (%)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 print('\n H2')
 print(processh2['IRR (%)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 
@@ -261,23 +255,20 @@ marker_symbols = foak_positive['Application'].map(markers_applications).to_list(
 # Get colors for each marker
 line_colors = [palette[anr] for anr in foak_positive['SMR']]
 
-max_rev = 280
-sup = foak_positive[foak_positive['Annual Net Revenues (M$/y)'] > max_rev]
-foak_positive = foak_positive[foak_positive['Annual Net Revenues (M$/y)'] <= max_rev]
-
 foak_positive = foak_positive.sort_values(by=['Application'], ascending=False)
+sup = foak_positive[foak_positive['IRR (%)'] >=36]
+foak_positive = foak_positive[foak_positive['IRR (%)']<36]
 
 fig.add_trace(go.Scattergeo(
 		lon=foak_positive['longitude'],
 		lat=foak_positive['latitude'],
-		text="Capacity: " + foak_positive['Depl. ANR Cap. (MWe)'].astype(str) + " MWe",
 		mode='markers',
 		marker=dict(
 				size=foak_positive['size'],
-				color=foak_positive['Annual Net Revenues (M$/y)'],
+				color=foak_positive['IRR (%)'],
 				colorscale='Greys',
 				colorbar = dict(
-						title='Annual Net Revenues (M$/y)',
+						title='IRR (%)',
 						titlefont = dict(size=16),
 						orientation='h',  # Set the orientation to 'h' for horizontal
 						x=0.5,  # Center the colorbar horizontally
@@ -286,24 +277,20 @@ fig.add_trace(go.Scattergeo(
 						yanchor='bottom',
 						lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
 						len=0.8,  # Length of the colorbar (80% of figure width)
-						tickvals = [.03,50,100,260,500],
-						ticktext = [.02,50,100,260,500],
+						tickvals = [6,10,35],
+						ticktext = [6,10,35],
 						tickmode='array',
 						tickfont=dict(size=16)
 				),
 				symbol=marker_symbols,
 				line_color=line_colors,
-				line_width=3,
+				line_width=2,
 				sizemode='diameter'
 		),
 		showlegend=False
 ))
 
-supmarker_symbols = sup['Application'].map(markers_applications).to_list()
 
-# Get colors for each marker
-supline_colors = [palette[anr] for anr in sup['SMR']]
-# Add facilities above 90th perc revenue separately
 fig.add_trace(go.Scattergeo(
 		lon=sup['longitude'],
 		lat=sup['latitude'],
@@ -311,15 +298,13 @@ fig.add_trace(go.Scattergeo(
 		marker=dict(
 				size=sup['size'],
 				color='black',
-				symbol=supmarker_symbols,
-				line_color=supline_colors,
-				line_width=3,
+				symbol=marker_symbols,
+				line_color=line_colors,
+				line_width=2,
 				sizemode='diameter'
 		),
 		showlegend=False
 ))
-
-
 # Create custom legend
 custom_legend = {'iMSR - Process Heat':[palette['iMSR'], 'cross'],
 								 #'HTGR - Process Heat':[palette['HTGR'], 'cross'],
