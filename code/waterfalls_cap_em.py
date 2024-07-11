@@ -37,7 +37,7 @@ def load_foaknoPTC(printinfo=False):
 def load_foak_positive(dropnoptc=False):
 	h2_data = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='cogen')
 	h2_data = h2_data[['latitude', 'longitude', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
-										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/y)', 'state' ]]
+										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/y)', 'state','IRR w PTC']]
 	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions', 'ANR':'SMR'}, inplace=True)
 	h2_data['App'] = h2_data.apply(lambda x: x['Application']+'-'+x['Industry'].capitalize(), axis=1)
 	h2_data.reset_index(inplace=True)
@@ -531,8 +531,10 @@ def abatement_cost_plot():
 def cashflow_breakdown_plots(scenario, heat, h2):
 	if scenario['OAK']=='NOAK' and scenario['PTC']==True:
 		width_ratios = [5,1]
+	elif scenario['OAK']=='FOAK' and scenario['PTC']==False:
+		width_ratios = [10,1]
 	else: width_ratios = [1,1]
-	fig, ax = plt.subplots(1,2, figsize=(9,6), width_ratios=width_ratios)
+	fig, ax = plt.subplots(1,2, figsize=(9,5), width_ratios=width_ratios)
 	from utils import cashflows_color_map
 	OAK = scenario['OAK']
 	with_ptc = scenario['PTC']
@@ -546,9 +548,9 @@ def cashflow_breakdown_plots(scenario, heat, h2):
 	cdf['Conversion'] = -(cdf['Conversion'])/1e6
 	cdf['Avoided Fossil Fuel Costs'] = cdf['Avoided NG Cost ($/y)']/1e6
 	cdf['H2 PTC'] = cdf['H2 PTC']/1e6
-	cdf['Electricity'] = cdf['Electricity revenues ($/y)']/1e6
+	cdf['Electricity (cogen)'] = cdf['Electricity revenues ($/y)']/1e6
 	cdfheat = cdf.sort_values(by='Annual Net Revenues (M$/y)', ascending=True, ignore_index=True)
-	cashflow_list = ['SMR CAPEX','H2 CAPEX','SMR O&M',	'H2 O&M','Conversion','Avoided Fossil Fuel Costs','H2 PTC', 'Electricity']
+	cashflow_list = ['SMR CAPEX','H2 CAPEX','SMR O&M',	'H2 O&M','Conversion','Avoided Fossil Fuel Costs','H2 PTC', 'Electricity (cogen)']
 
 
 	cdf = h2.copy()
@@ -560,7 +562,7 @@ def cashflow_breakdown_plots(scenario, heat, h2):
 	cdf['Conversion'] = -cdf['Conversion costs ($/year)']/1e6
 	cdf['Avoided Fossil Fuel Costs'] = cdf['Avoided NG costs ($/year)']/1e6
 	cdf['H2 PTC'] = cdf['H2 PTC Revenues ($/year)']/1e6
-	cdf['Electricity'] = cdf['Electricity revenues ($/y)']/1e6
+	cdf['Electricity (cogen)'] = cdf['Electricity revenues ($/y)']/1e6
 	cdfh2 = cdf.sort_values(by='Annual Net Revenues (M$/y)', ascending=True)
 	
 	if len(cdfheat)>0:
