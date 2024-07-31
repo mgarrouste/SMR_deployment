@@ -31,7 +31,7 @@ def load_foaknoPTC(printinfo=False):
 	h2 = h2.reset_index()
 	h2['Annual Net Revenues wo PTC (M$/y)'] = h2['Electricity revenues ($/y)']+h2['Net Revenues ($/year)']
 	if printinfo:	print('# process hydrogen facilities profitable wo PTc :{}'.format(len(h2[h2['Annual Net Revenues wo PTC (M$/y)']>0])))
-
+	heat.to_excel('./results/results_FOAK_noPTC.xlsx')
 	return heat
 
 def load_foak_positive(dropnoptc=False):
@@ -43,7 +43,7 @@ def load_foak_positive(dropnoptc=False):
 	h2_data.reset_index(inplace=True)
 
 	heat_data = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen')
-	heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'SMR','Pathway', 'Batch_Temp_degC', 'max_temp_degC', 'Surplus SMR Cap. (MWe)',
+	heat_data = heat_data[['latitude', 'longitude', 'STATE','Emissions_mmtco2/y', 'SMR','Pathway', 'Batch_Temp_degC', 'max_temp_degC', 'Surplus SMR Cap. (MWe)',
 												'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)','NG price ($/MMBtu)', 'Electricity revenues ($/y)','Avoided NG Cost ($/y)','H2 PTC',
 													'Application', 'IRR w PTC','Annual Net Revenues (M$/y)']]
 	heat_data = heat_data.rename(columns={'Emissions_mmtco2/y':'Emissions',
@@ -68,7 +68,7 @@ def load_foak_positive(dropnoptc=False):
 def load_noak_positive(foak_ptc=True, foak_noptc=False):
 	# NOAK data
 	h2_data = ANR_application_comparison.load_h2_results(anr_tag='NOAK', cogen_tag='cogen')
-	h2_data = h2_data[['latitude', 'longitude', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
+	h2_data = h2_data[['latitude', 'longitude', 'state', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
 										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/y)','IRR w PTC']]
 	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions', 
 													'ANR':'SMR',
@@ -77,13 +77,14 @@ def load_noak_positive(foak_ptc=True, foak_noptc=False):
 	h2_data.reset_index(inplace=True)
 
 	heat_data = ANR_application_comparison.load_heat_results(anr_tag='NOAK', cogen_tag='cogen')
-	heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'SMR','Pathway', 'Batch_Temp_degC', 'max_temp_degC', 'Surplus SMR Cap. (MWe)',
+	heat_data = heat_data[['latitude', 'longitude', 'STATE', 'Emissions_mmtco2/y', 'SMR','Pathway', 'Batch_Temp_degC', 'max_temp_degC', 'Surplus SMR Cap. (MWe)',
 												'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)','NG price ($/MMBtu)', 'Electricity revenues ($/y)',
 												'Avoided NG Cost ($/y)','H2 PTC',
 													'Application', 'IRR w PTC','Annual Net Revenues (M$/y)']]
 	heat_data.rename(columns={'Breakeven NG price ($/MMBtu)':'Breakeven price ($/MMBtu)',
 													'Emissions_mmtco2/y':'Emissions', 
-													'IRR w PTC':'IRR (%)'}, inplace=True)
+													'IRR w PTC':'IRR (%)', 
+													'STATE':'state'}, inplace=True)
 	heat_data.reset_index(inplace=True, names='id')
 	heat_data['App'] = 'Process Heat'
 
@@ -117,7 +118,7 @@ def load_noak_noPTC(foak_ptc=True, foak_noptc=False):
 	# NOAK data
 	h2_data = ANR_application_comparison.load_h2_results(anr_tag='NOAK', cogen_tag='cogen')
 	h2_data = h2_data[['latitude', 'longitude', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
-										'Industry', 'Application', 'ANR', 'Net Revenues ($/year)','Electricity revenues ($/y)', 'IRR wo PTC']]
+										'Industry', 'Application', 'ANR', 'Net Revenues ($/year)','Electricity revenues ($/y)', 'IRR wo PTC', 'state']]
 
 	h2_data['Annual Net Revenues (M$/y)'] =h2_data.loc[:,['Net Revenues ($/year)','Electricity revenues ($/y)']].sum(axis=1)
 	h2_data['Annual Net Revenues (M$/y)'] /=1e6
@@ -127,11 +128,11 @@ def load_noak_noPTC(foak_ptc=True, foak_noptc=False):
 	h2_data.reset_index(inplace=True)
 
 	heat_data = ANR_application_comparison.load_heat_results(anr_tag='NOAK', cogen_tag='cogen', with_PTC=False)
-	heat_data = heat_data[['latitude', 'longitude', 'Emissions_mmtco2/y', 'SMR','Pathway', 'Batch_Temp_degC', 'max_temp_degC', 'Surplus SMR Cap. (MWe)',
+	heat_data = heat_data[['latitude', 'longitude', 'STATE','Emissions_mmtco2/y', 'SMR','Pathway', 'Batch_Temp_degC', 'max_temp_degC', 'Surplus SMR Cap. (MWe)',
 												'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)', 'NG price ($/MMBtu)',
 													'Application', 'Annual Net Revenues (M$/y)', 'Electricity revenues ($/y)','Avoided NG Cost ($/y)','IRR wo PTC']]
 	heat_data.rename(columns={'Breakeven NG price ($/MMBtu)':'Breakeven price ($/MMBtu)',
-												'Emissions_mmtco2/y':'Emissions', 'IRR wo PTC': 'IRR (%)'}, inplace=True)
+												'Emissions_mmtco2/y':'Emissions', 'IRR wo PTC': 'IRR (%)', 'STATE':'state'}, inplace=True)
 	heat_data.reset_index(inplace=True, names=['id'])
 	heat_data['App'] = 'Process Heat'
 
@@ -572,12 +573,12 @@ def cashflow_breakdown_plots(scenario, heat, h2):
 	if len(cdfheat)>0:
 		cdfheat[cashflow_list].plot(ax=ax[0], kind='bar', stacked=True, color=cashflows_color_map, width=1)
 		ax02 = ax[0].twinx()
-		cdfheat[['Annual Net Revenues (M$/y)']].plot(ax=ax02, color='cyan', marker='+', linestyle='')
+		cdfheat[['Annual Net Revenues (M$/y)']].plot(ax=ax02, color='royalblue', marker='+', linestyle='')
 		ax[0].tick_params(axis='x', which='both', bottom=False, labelbottom=False)
 		ax[0].set_ylabel('Cashflow (M$/y)')
-		ax[0].set_xlabel('')
+		ax[0].set_xlabel('Industrial site')
 		ax02.get_legend().set_visible(False)
-		ax02.tick_params(axis='y', colors='c')
+		ax02.tick_params(axis='y', colors='royalblue')
 		ax[0].yaxis.grid(True)
 		ax[0].get_legend().set_visible(False)
 		ax[0].set_title('Process Heat')
@@ -585,28 +586,28 @@ def cashflow_breakdown_plots(scenario, heat, h2):
 	if len(cdfh2)>0:
 		cdfh2[cashflow_list].plot(ax=ax[1], kind='bar', stacked=True, color=cashflows_color_map, width=1)
 		ax12 = ax[1].twinx()
-		cdfh2[['Annual Net Revenues (M$/y)']].plot(ax=ax12, color='cyan', marker='+', linestyle='')
+		cdfh2[['Annual Net Revenues (M$/y)']].plot(ax=ax12, color='royalblue', marker='+', linestyle='')
 		ax[1].tick_params(axis='x', which='both', bottom=False, labelbottom=False)
-		ax[1].set_xlabel('')
-		ax12.set_ylabel('Annual Net Revenues (M$/y)', color='cyan')
+		ax[1].set_xlabel('Industrial site')
+		ax12.set_ylabel('Annual Net Revenues (M$/y)', color='royalblue')
 		ax12.get_legend().set_visible(False)
-		ax12.tick_params(axis='y', colors='c')
+		ax12.tick_params(axis='y', colors='royalblue')
 		ax[1].yaxis.grid(True)
 		ax[1].get_legend().set_visible(False)
 		ax[1].set_title('Process Hydrogen')
 	else: 
 		ax[1].axis('off')
-		ax02.set_ylabel('Annual Net Revenues (M$/y)', color='cyan')
+		ax02.set_ylabel('Annual Net Revenues (M$/y)', color='royalblue')
 	h00, l00 = ax[0].get_legend_handles_labels()
 	h01, l01 = ax[1].get_legend_handles_labels()
 	by_label = dict(zip(l00+l01, h00+h01))
-	fig.legend(by_label.values(), by_label.keys(),  bbox_to_anchor=(.5,.1),loc='upper center', ncol=4)
+	fig.legend(by_label.values(), by_label.keys(),  bbox_to_anchor=(.5,.075),loc='upper center', ncol=4)
 	plt.subplots_adjust(wspace=0.25)
 	if OAK =='NOAK':
 		savepath = './results/cashflows_{}_PTC_{}_FOAK_PTC_{}.png'.format(OAK, with_ptc, scenario['FOAK_PTC'])
 	else:
 		savepath = './results/cashflows_{}_PTC_{}.png'.format(OAK, with_ptc)
-	fig.savefig(savepath)
+	fig.savefig(savepath,bbox_inches='tight')
 
 def main():
 	foak_noPTC = get_aggregated_data(load_foaknoPTC(), tag='FOAK<br>NoPTC')
@@ -614,7 +615,7 @@ def main():
 	noak_positive_foakptc = get_aggregated_data(load_noak_positive(foak_ptc=True), tag='NOAK')
 	noak_positive_foaknoptc = get_aggregated_data(load_noak_positive(foak_ptc=False), tag='NOAK')
 	noak_noPTC_foakptc= get_aggregated_data(load_noak_noPTC(foak_ptc=True), tag='NOAK<br>NoPTC')
-	noak_noPTC_foaknoptc= get_aggregated_data(load_noak_noPTC(foak_ptc=False), tag='NOAK<br>NoPTC')	
+	noak_noPTC_foaknoptc= get_aggregated_data(load_noak_noPTC(foak_ptc=False, foak_noptc=True), tag='NOAK<br>NoPTC')	
 	plot_scenarios_waterfall(foak_noPTC, foak_positive, noak_noPTC_foaknoptc, noak_noPTC_foakptc, noak_positive_foaknoptc, noak_positive_foakptc)
 
 if __name__ =='__main__':
