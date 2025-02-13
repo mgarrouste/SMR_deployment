@@ -8,13 +8,13 @@ import numpy as np
 from utils import compute_average_electricity_prices
 
 with_elec = True
-two_graphs = True
+two_graphs = False
 # Create figure
 fig = go.Figure()
 
 
 
-def add_elec_layer(fig, col, row):
+def add_elec_layer(fig, col=None, row=None):
 	# Electricity: average state prices and breakeven prices
 	elec_path = './results/average_electricity_prices_MidCase_2024.xlsx'
 	if os.path.isfile(elec_path):
@@ -45,31 +45,59 @@ def add_elec_layer(fig, col, row):
 	# Ensure the last color anchors at 1.0
 	colorscale.append((1, color_list[-1]))
 
-	fig.add_trace(
-			go.Choropleth(
-					locationmode='USA-states',  # Set the location mode to 'USA-states'
-					locations=elec_df['state'],  # Use the 'state' column from the dataframe for locations
-					z=elec_df['average price ($/MWhe)'],  # Use the 'average_price' column from the dataframe for coloring
-					marker_line_color='white',  # Set the state boundary color
-					marker_line_width=0.5,  # Set the state boundary width
-					zmin=min(colorbar_ticks),  # Optional: Adjust the zmin if desired
-					zmax=max_tick_value,       # Extending zmax to cover custom tick values
-					autocolorscale=False,
-					colorscale=colorscale,     # Custom colorscale defined above
-					colorbar = dict(
-							title='Electricity<br>price ($/MWhe)',
-							orientation='v',  # Set the orientation to 'h' for horizontal
-							x=1.11,  # Center the colorbar horizontally
-							y=0.0,  # Position the colorbar below the x-axis
-							xanchor='center',
-							yanchor='bottom',
-							lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
-							len=0.4,  # Length of the colorbar (80% of figure width)
-							tickvals=colorbar_ticks,  # Custom tick values
-							ticktext=colorbar_texts,
-							tickfont=dict(size=16)
-					),
-			), row=row, col=col)
+	if row and col:
+		fig.add_trace(
+				go.Choropleth(
+						locationmode='USA-states',  # Set the location mode to 'USA-states'
+						locations=elec_df['state'],  # Use the 'state' column from the dataframe for locations
+						z=elec_df['average price ($/MWhe)'],  # Use the 'average_price' column from the dataframe for coloring
+						marker_line_color='white',  # Set the state boundary color
+						marker_line_width=0.5,  # Set the state boundary width
+						zmin=min(colorbar_ticks),  # Optional: Adjust the zmin if desired
+						zmax=max_tick_value,       # Extending zmax to cover custom tick values
+						autocolorscale=False,
+						colorscale=colorscale,     # Custom colorscale defined above
+						colorbar = dict(
+								title='Electricity<br>price ($/MWhe)',
+								orientation='v',  # Set the orientation to 'h' for horizontal
+								x=1.11,  # Center the colorbar horizontally
+								y=0.0,  # Position the colorbar below the x-axis
+								xanchor='center',
+								yanchor='bottom',
+								lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
+								len=0.4,  # Length of the colorbar (80% of figure width)
+								tickvals=colorbar_ticks,  # Custom tick values
+								ticktext=colorbar_texts,
+								tickfont=dict(size=16)
+						),
+				), row=row, col=col)
+	else:
+		fig.add_trace(
+				go.Choropleth(
+						locationmode='USA-states',  # Set the location mode to 'USA-states'
+						locations=elec_df['state'],  # Use the 'state' column from the dataframe for locations
+						z=elec_df['average price ($/MWhe)'],  # Use the 'average_price' column from the dataframe for coloring
+						marker_line_color='white',  # Set the state boundary color
+						marker_line_width=0.5,  # Set the state boundary width
+						zmin=min(colorbar_ticks),  # Optional: Adjust the zmin if desired
+						zmax=max_tick_value,       # Extending zmax to cover custom tick values
+						autocolorscale=False,
+						colorscale=colorscale,     # Custom colorscale defined above
+						colorbar = dict(
+								title='Electricity<br>price ($/MWhe)',
+								orientation='v',  # Set the orientation to 'h' for horizontal
+								x=1.11,  # Center the colorbar horizontally
+								y=0.0,  # Position the colorbar below the x-axis
+								xanchor='center',
+								yanchor='bottom',
+								lenmode='fraction',  # Use 'fraction' to specify length in terms of fraction of the plot area
+								len=0.4,  # Length of the colorbar (80% of figure width)
+								tickvals=colorbar_ticks,  # Custom tick values
+								ticktext=colorbar_texts,
+								tickfont=dict(size=16)
+						),
+				), row=row, col=col)
+
 
 
 
@@ -340,5 +368,5 @@ else:
 
 
 # Save
-fig.write_image('./results/map_noPTC.png', scale=4)
+fig.write_image('./results/map_noPTC.pdf',scale=4)
 
