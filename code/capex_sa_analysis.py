@@ -86,7 +86,7 @@ def plot_comparison_margins(amdf, redf, stdf, heat):
   plt.subplots_adjust(wspace=.1,
                     hspace=0.1)
 
-  fig.savefig('./results/capex_sa_be_analysis_margin.png')
+  fig.savefig('./results/capex_sa_be_analysis_margin.pdf')
   plt.show()
 
 

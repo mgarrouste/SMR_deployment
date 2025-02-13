@@ -300,7 +300,7 @@ fig.update_layout(
 )
 
 # Save
-fig.write_image(f'./results/map_NOAK_cogen_{tag}.png', scale=4)
+fig.write_image(f'./results/map_NOAK_cogen_{tag}.pdf', scale=4)
 # Show figure
 
 

@@ -384,5 +384,5 @@ fig.update_layout(
 )
 
 # Save
-fig.write_image('./results/map_FOAK_cogen.png', scale=4)
+fig.write_image('./results/map_FOAK_cogen.pdf', scale=4)
 

@@ -22,7 +22,7 @@ def load_elec_results(anr_tag):
   return df
   
 
-def load_h2_results(anr_tag, cogen_tag):
+def load_h2_results(anr_tag, cogen_tag, with_PTC=True):
   """"Loads all hydrogen results and returns results sorted by breakeven prices"""
   h2_results_path = f'./results/clean_results_anr_{anr_tag}_h2_wacc_0.077.xlsx'
   industries = ['refining','steel','ammonia']
@@ -32,8 +32,10 @@ def load_h2_results(anr_tag, cogen_tag):
     list_cols = ['state', 'latitude', 'longitude','H2 Dem. (kg/day)','Net Revenues with H2 PTC ($/year)',\
                  'Net Revenues ($/year)','Electricity revenues ($/y)','IRR w PTC', 'IRR wo PTC',\
                   'Net Annual Revenues with H2 PTC ($/MWe/y)', 'HTSE', 'Depl. ANR Cap. (MWe)', 'ANR type', \
-             '# ANR modules', 'Breakeven price ($/MMBtu)', 'BE wo PTC ($/MMBtu)','Ann. avoided CO2 emissions (MMT-CO2/year)', 'Electricity revenues ($/y)', \
-             'Net Revenues with H2 PTC with elec ($/year)']
+             '# ANR modules', 'Breakeven price ($/MMBtu)', 'BE wo PTC ($/MMBtu)','Ann. avoided CO2 emissions (MMT-CO2/year)', \
+             'Net Revenues with H2 PTC with elec ($/year)', 
+             'ANR CAPEX ($/year)', 'H2 CAPEX ($/year)', 'ANR O&M ($/year)', 'H2 O&M ($/year)', 'Conversion costs ($/year)',
+             'Avoided NG costs ($/year)', 'H2 PTC Revenues ($/year)']
     if anr_tag == 'FOAK':
       list_cols.append('Breakeven CAPEX ($/MWe)')
       list_cols.append('Breakeven CAPEX wo PTC ($/MWe)')
@@ -45,14 +47,18 @@ def load_h2_results(anr_tag, cogen_tag):
   all_df['Application'] = 'Industrial Hydrogen'
   all_df['ANR'] = all_df['ANR type']
   if cogen_tag=='cogen': 
-    all_df['Annual Net Revenues (M$/MWe/y)'] = all_df['Net Revenues with H2 PTC with elec ($/year)']/(1e6*all_df['Depl. ANR Cap. (MWe)'])
-    all_df['Annual Net Revenues (M$/y)'] = all_df['Net Revenues with H2 PTC with elec ($/year)']/1e6
-    #all_df['Annual Net Revenues wo PTC (M$/y)'] = all_df.apply(lambda x: (x['Net Revenues ($/year)']+x['Electricity revenues ($/y)'])/1e6, axis=1)
+    if with_PTC:
+      all_df['Annual Net Revenues (M$/MWe/y)'] = all_df['Net Revenues with H2 PTC with elec ($/year)']/(1e6*all_df['Depl. ANR Cap. (MWe)'])
+      all_df['Annual Net Revenues (M$/y)'] = all_df['Net Revenues with H2 PTC with elec ($/year)']/1e6
+    else:
+      all_df['Annual Net Revenues (M$/y)'] = all_df.apply(lambda x: (x['Net Revenues ($/year)']+x['Electricity revenues ($/y)'])/1e6, axis=1)
     # Net revenues includes costs and avoided ng costs
   else: 
-    all_df['Annual Net Revenues (M$/MWe/y)'] = all_df['Net Annual Revenues with H2 PTC ($/MWe/y)']/(1e6)
-    all_df['Annual Net Revenues (M$/y)'] = all_df['Net Revenues with H2 PTC ($/year)']
-    all_df['Annual Net Revenues wo PTC (M$/y)'] = all_df['Net Revenues ($/year)']/1e6 # Net revenues includes costs and avoided ng costs
+    if with_PTC:
+      all_df['Annual Net Revenues (M$/MWe/y)'] = all_df['Net Annual Revenues with H2 PTC ($/MWe/y)']/(1e6)
+      all_df['Annual Net Revenues (M$/y)'] = all_df['Net Revenues with H2 PTC ($/year)']
+    else:
+      all_df['Annual Net Revenues (M$/y)'] = all_df['Net Revenues ($/year)']/1e6 # Net revenues includes costs and avoided ng costs
   all_df.sort_values(by='Breakeven price ($/MMBtu)', inplace=True)
   return all_df 
 

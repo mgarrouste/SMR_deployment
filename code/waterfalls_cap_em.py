@@ -289,7 +289,7 @@ def plot_bars(foak_noPTC, foak_positive, noak_positive, noak_noPTC):
 	)
 	fig.update_yaxes(gridcolor='grey', gridwidth=0.3, tickfont_color='black')
 	fig.update_xaxes(tickfont_color='black')
-	fig.write_image('./results/waterfall_foak_noak_noaknoPTC_emissions_capacity.png', scale=4)
+	fig.write_image('./results/waterfall_foak_noak_noaknoPTC_emissions_capacity.pdf', scale=4)
 
 
 
@@ -432,13 +432,13 @@ def plot_scenarios_waterfall(foak_noPTC, foak_positive, noak_noPTC_foaknoptc, no
 	fig.update_yaxes(range=[0, 245], row=2, col=1)
 	fig.update_xaxes(tickfont_color='black')
 	fig.update_xaxes(tickangle=56)
-	fig.write_image('./results/waterfall_scenarios.png', scale=4)
+	fig.write_image('./results/waterfall_scenarios.pdf', scale=4)
 	fig.show()
 
 
 
 def abatement_cost_plot():
-	save_path = './results/abatement_cost_cogen.png'
+	save_path = './results/abatement_cost_cogen.pdf'
 	
 	fig, ax = plt.subplots(2,1, figsize=(7,4),sharex=True)
 	xmin = -50
@@ -534,8 +534,8 @@ def abatement_cost_plot():
 
 
 def cashflow_breakdown_plots(scenario, heat, h2):
-	if scenario['OAK']=='NOAK' and scenario['PTC']==True:
-		width_ratios = [5,1]
+	if scenario['OAK']=='NOAK':
+		width_ratios = [10,1]
 	elif scenario['OAK']=='FOAK' and scenario['PTC']==False:
 		width_ratios = [10,1]
 	else: width_ratios = [1,1]
@@ -604,9 +604,9 @@ def cashflow_breakdown_plots(scenario, heat, h2):
 	fig.legend(by_label.values(), by_label.keys(),  bbox_to_anchor=(.5,.075),loc='upper center', ncol=4)
 	plt.subplots_adjust(wspace=0.25)
 	if OAK =='NOAK':
-		savepath = './results/cashflows_{}_PTC_{}_FOAK_PTC_{}.png'.format(OAK, with_ptc, scenario['FOAK_PTC'])
+		savepath = './results/cashflows_{}_PTC_{}_FOAK_PTC_{}.pdf'.format(OAK, with_ptc, scenario['FOAK_PTC'])
 	else:
-		savepath = './results/cashflows_{}_PTC_{}.png'.format(OAK, with_ptc)
+		savepath = './results/cashflows_{}_PTC_{}.pdf'.format(OAK, with_ptc)
 	fig.savefig(savepath,bbox_inches='tight')
 
 def main():

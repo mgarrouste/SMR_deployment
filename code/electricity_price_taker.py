@@ -322,12 +322,48 @@ def add_vertical_line(ax, x, ymin, ymax, color):
   ax.axvline(x, ymin, ymax, color=color, linestyle='-', linewidth=1)
 
 
+
+def compute_average_electricity_prices(cambium_scenario, year):
+  import glob
+  folder = f'./input_data/cambium_{cambium_scenario.lower()}_state_hourly_electricity_prices'
+  list_csv_files = glob.glob(folder+'/Cambium*.csv')
+  state_prices = pd.DataFrame(columns=['average price ($/MWhe)', 'state'])
+  state_prices.set_index('state', inplace=True)
+  for file in list_csv_files:
+    if str(year) in file:
+      state = file.split('_')[-2]
+      avg_price = pd.read_csv(file, skiprows=5)['energy_cost_enduse'].mean()
+      state_prices.loc[state, 'average price ($/MWhe)'] = avg_price
+  state_prices.to_excel(f'./results/average_electricity_prices_{cambium_scenario}_{year}.xlsx')
+
+def compute_with_average_elec_price(oak):
+  year= 2024
+  try:
+    elec_prices_df = pd.read_excel(f'./results/average_electricity_prices_{cambium_scenario}_{year}.xlsx')
+  except FileNotFoundError:
+    compute_average_electricity_prices(cambium_scenario, year)
+  smrs = pd.read_excel('./ANRs.xlsx', sheet_name=oak)
+  df = elec_prices_df.merge(right=smrs, how='cross')
+  print(df.columns)
+  df['Electricity sales ($/y)'] = df['average price ($/MWhe)']*df['Power in MWe']*8760
+  from utils import WACC
+  df['CRF'] = df.apply(lambda x: WACC/(1 - (1/(1+WACC)**float(x['Life (y)']))), axis=1)
+  df['CAPEX ($/y)'] = df['Power in MWe']*df['CAPEX $/MWe']*df['CRF']
+  df['OM ($/y)'] = df['Power in MWe']*df['FOPEX $/MWe-y']+df['Power in MWe']*df['VOM in $/MWh-e']*8760
+  df['Annual Net Revenues (M$/y)'] = (df['Electricity sales ($/y)'] - (df['CAPEX ($/y)']+df['OM ($/y)']))/1e6
+  print(df['Annual Net Revenues (M$/y)'].describe())
+  df.to_csv('./results/electricity_avg_price_{oak}_results.csv')
+
+
+
+
 if __name__ == '__main__':
   os.chdir(os.path.dirname(os.path.abspath(__file__)))
   parser = argparse.ArgumentParser()
   parser.add_argument('-p','--plot', required=False, help='Only plot results, does not run model, indicate FOAK or NOAK for corresponding net revenues plot')
   parser.add_argument('-c', '--compare', required=False, help='Compare via a plot FOAK and NOAK results')
   parser.add_argument('-b', '--breakeven', required=False, help='Compute cost reduction needed for breakeven')
+  parser.add_argument('-a', '--average', required=False, help='Compute revenues with average electricity price instead of price taker ')
   args = parser.parse_args()
   if args.compare:
     compare_deployment_stages()
@@ -341,5 +377,7 @@ if __name__ == '__main__':
       exit()
   elif args.breakeven:
     compute_cost_reduction()
+  elif args.average:
+    compute_with_average_elec_price(args.average)
   else:
     main()
