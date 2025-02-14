@@ -233,11 +233,11 @@ def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results):
     return Co
 
   ############## SOLVE ###################
-  solver = SolverFactory('cplex')
+  solver = SolverFactory('cplex_direct')
   solver.options['timelimit'] = 240
-  solver.options['mip pool relgap'] = 0.02
-  solver.options['mip tolerances absmipgap'] = 1e-4
-  solver.options['mip tolerances mipgap'] = 5e-3
+  solver.options['mip_pool_relgap'] = 0.02
+  solver.options['mip_tolerances_absmipgap'] = 1e-4
+  solver.options['mip_tolerances_mipgap'] = 5e-3
   results = solver.solve(model, tee = print_results)
 
   results_ref = {}
@@ -289,8 +289,9 @@ def solve_ammonia_plant_deployment(ANR_data, H2_data, plant, print_results):
     print(f'Ammonia plant {plant} solved')
     return results_ref
   else:
-    print('Not feasible.')
-    return None
+    print(f'{plant} not feasible.')
+    empty_dic = {}
+    return empty_dic
   
 
 def compute_ng_breakeven_price(results_ref):
