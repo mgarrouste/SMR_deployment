@@ -3,7 +3,7 @@ import numpy as np
 import glob
 
 N=1000
-LEARNING = 'FOAK_esc'
+LEARNING = 'FOAK_act'
 
 palette={'HTGR':'orange', 
          'iMSR':'blue', 
@@ -11,10 +11,10 @@ palette={'HTGR':'orange',
          'PBR-HTGR':'darkorchid', 
          'Micro':'darkgrey'}
 cashflows_color_map = {'SMR CAPEX': 'navy', 
-             'ANR for H2 CAPEX': 'royalblue',
+             'SMR for H2 CAPEX': 'royalblue',
                'H2 CAPEX': 'lightsteelblue', 
                'SMR O&M':'darkgreen', 
-               'ANR for H2 O&M':'forestgreen', 
+               'SMR for H2 O&M':'forestgreen', 
                'H2 O&M':'palegreen',
                'Conversion':'grey',
                'Avoided Fossil Fuel Costs':'darkorchid', 
@@ -36,11 +36,11 @@ mcf_to_mmbtu = 1.038 #mmbtu/mcf
 #cost of captial
 WACC = 0.077
 # Credits
-ITC_ANR = 0.3 #%
+ITC_SMR = 0.3 #%
 ITC_H2 = 0.3 #%
 h2_ptc = 3 #$/kgH2 clean
 elec_ptc = 25 #$/MWhe
-# ANR-H2
+# SMR-H2
 avg_elec_cons_h2 = 0.022 #MWhe/kgh2, calculated from avg thermal efficiency (micro, PBR-HTGR, iMSR) and coupling efficiency with HTSE
 # Ammonia process modelling parameters
 nh3_carbon_intensity = 2.30 # tcO2/tNH3
@@ -141,16 +141,16 @@ def get_ng_price_aeo(state):
   return ng_price
 
 
-def update_capex_costs(ANR_data, learning_rate_anr_capex, H2_data, learning_rate_h2_capex, N=N):
-  ANR_data['CAPEX $/MWe'] = ANR_data.apply(lambda x: x['CAPEX $/MWe']*np.power(N, np.log2(1-learning_rate_anr_capex)), axis=1)
+def update_capex_costs(SMR_data, learning_rate_SMR_capex, H2_data, learning_rate_h2_capex, N=N):
+  SMR_data['CAPEX $/MWe'] = SMR_data.apply(lambda x: x['CAPEX $/MWe']*np.power(N, np.log2(1-learning_rate_SMR_capex)), axis=1)
   H2_data['CAPEX ($/MWe)'] = H2_data.apply(lambda x: x['CAPEX ($/MWe)']*np.power(N, np.log2(1-learning_rate_h2_capex)), axis=1)
-  return ANR_data, H2_data
+  return SMR_data, H2_data
 
 
-def load_data(anr_tag='FOAK_esc'):
+def load_data(SMR_tag='FOAK_esc'):
   H2_data = pd.read_excel('./h2_tech.xlsx', sheet_name='Summary', index_col=[0,1])
-  ANR_data = pd.read_excel('./SMR_inputs.xlsx', sheet_name=anr_tag, index_col=0)
-  return ANR_data, H2_data
+  SMR_data = pd.read_excel('./SMR_inputs.xlsx', sheet_name=SMR_tag, index_col=0)
+  return SMR_data, H2_data
 
 
 if __name__ =='__main__':
