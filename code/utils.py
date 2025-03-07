@@ -5,11 +5,11 @@ import glob
 N=1000
 LEARNING = 'FOAK_act'
 
-palette={'HTGR':'orange', 
-         'iMSR':'blue', 
-         'iPWR':'green', 
-         'PBR-HTGR':'darkorchid', 
-         'Micro':'darkgrey'}
+palette={'HTR':'orange', 
+         'MSR':'blue', 
+         'PWR':'green', 
+         'SFR':'darkorchid', 
+         'MR':'darkgrey'}
 cashflows_color_map = {'SMR CAPEX': 'navy', 
              'SMR for H2 CAPEX': 'royalblue',
                'H2 CAPEX': 'lightsteelblue', 
