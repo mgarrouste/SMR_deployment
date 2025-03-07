@@ -3,7 +3,7 @@ import numpy as np
 import glob
 
 N=1000
-LEARNING = 'FOAK'
+LEARNING = 'FOAK_esc'
 
 palette={'HTGR':'orange', 
          'iMSR':'blue', 
@@ -147,10 +147,9 @@ def update_capex_costs(ANR_data, learning_rate_anr_capex, H2_data, learning_rate
   return ANR_data, H2_data
 
 
-def load_data(anr_tag='FOAK'):
+def load_data(anr_tag='FOAK_esc'):
   H2_data = pd.read_excel('./h2_tech.xlsx', sheet_name='Summary', index_col=[0,1])
-  ANR_data = pd.read_excel('./ANRs.xlsx', sheet_name=anr_tag, index_col=0)
-  #ANR_data, H2_data = update_capex_costs(ANR_data, learning_rate_anr_capex, H2_data, learning_rate_h2_capex)
+  ANR_data = pd.read_excel('./SMR_inputs.xlsx', sheet_name=anr_tag, index_col=0)
   return ANR_data, H2_data
 
 
