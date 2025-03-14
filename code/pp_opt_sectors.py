@@ -56,13 +56,13 @@ def pp_refining(results_path, clean_save_path, OAK):
             be_capex = (affc+ elec - SMRh2_costs)/alpha
         return be_capex
     df['Breakeven CAPEX ($/MWe)'] = df.apply(lambda x: compute_ref_capex_breakeven(
-    x['SMR CRF'], x['Depl. SMR Cap. (MWe)'], x['H2 CAPEX ($/year)'], x['SMR O&M ($/year)'], x['H2 O&M ($/year)'], 
-    x['Conversion costs ($/year)'], x['Avoided NG costs ($/year)'], x['H2 PTC Revenues ($/year)'], 
-    x['Electricity revenues ($/y)']), axis=1)
+                                    x['SMR CRF'], x['Depl. SMR Cap. (MWe)'], x['H2 CAPEX ($/year)'], x['SMR O&M ($/year)'], x['H2 O&M ($/year)'], 
+                                    x['Conversion costs ($/year)'], x['Avoided NG costs ($/year)'], x['H2 PTC Revenues ($/year)'], 
+                                    x['Electricity revenues ($/y)']), axis=1)
     df['Breakeven CAPEX wo PTC ($/MWe)'] = df.apply(lambda x: compute_ref_capex_breakeven(
-    x['SMR CRF'], x['Depl. SMR Cap. (MWe)'], x['H2 CAPEX ($/year)'], x['SMR O&M ($/year)'], x['H2 O&M ($/year)'], 
-    x['Conversion costs ($/year)'], x['Avoided NG costs ($/year)'], x['H2 PTC Revenues ($/year)'], 
-    x['Electricity revenues ($/y)'], ptc=False), axis=1)
+                                    x['SMR CRF'], x['Depl. SMR Cap. (MWe)'], x['H2 CAPEX ($/year)'], x['SMR O&M ($/year)'], x['H2 O&M ($/year)'], 
+                                    x['Conversion costs ($/year)'], x['Avoided NG costs ($/year)'], x['H2 PTC Revenues ($/year)'], 
+                                    x['Electricity revenues ($/y)'], ptc=False), axis=1)
     df['IRR w PTC'] = df.apply(lambda x: utils.calculate_irr(x['Initial investment ($)'], x['Electricity revenues ($/y)'], x['H2 PTC Revenues ($/year)'], x['Avoided NG costs ($/year)']), axis=1)
     df['IRR wo PTC'] = df.apply(lambda x: utils.calculate_irr(x['Initial investment ($)'], x['Electricity revenues ($/y)'], x['H2 PTC Revenues ($/year)'], x['Avoided NG costs ($/year)'], ptc=False), axis=1)
     df_clean = df[["id", 'state',  'latitude', 'longitude','H2 Dem. (kg/day)', 'HTSE', 'SMR type', '# SMR modules', \

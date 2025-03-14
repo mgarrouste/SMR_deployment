@@ -1,13 +1,13 @@
 import pandas as pd
-from ANR_application_comparison import load_heat_results, load_h2_results
+from SMR_application_comparison import load_heat_results, load_h2_results
 import plotly.graph_objects as go
 import os 
 from utils import compute_average_electricity_prices, palette
 
 def load_data():
-	heat = load_heat_results(anr_tag='FOAK', cogen_tag='cogen', with_PTC=False)
+	heat = load_heat_results(OAK='FOAK', cogen=True, with_PTC=False)
 	heat= heat[['STATE','latitude', 'longitude', 'NG price ($/MMBtu)', 'Emissions_mmtco2/y', 'SMR',
-											 'Depl. ANR Cap. (MWe)', 'Industry','Annual Net Revenues (M$/y)', 'Application', 'IRR wo PTC']]
+											 'Depl. SMR Cap. (MWe)', 'Annual Net Revenues (M$/y)', 'Application', 'IRR wo PTC']]
 	heat = heat[heat['Annual Net Revenues (M$/y)']>0]
 	heat.rename(columns={'Emissions_mmtco2/y':'Emissions',
 														'NG price ($/MMBtu)':'State price ($/MMBtu)', 'STATE':'state', 'IRR wo PTC':'IRR (%)'}, inplace=True)
@@ -17,18 +17,18 @@ def load_data():
 	print('# process heat facilities profitable wo PTc :{}'.format(len(heat[heat['Annual Net Revenues (M$/y)']>0])))
 	print(heat['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 	print(heat['IRR (%)'].describe(percentiles=[.1,.25,.5,.75,.9]))
-	print('iPWR')
-	print(heat[heat['SMR']=='iPWR']['Depl. ANR Cap. (MWe)'].sum())
-	print('iMSR')
-	print(heat[heat['SMR']=='iMSR']['Depl. ANR Cap. (MWe)'].sum())
-	print('PBRHTGR')
-	print(heat[heat['SMR']=='PBR-HTGR']['Depl. ANR Cap. (MWe)'].sum())
+	print('PWR')
+	print(heat[heat['SMR']=='PWR']['Depl. SMR Cap. (MWe)'].sum())
+	print('MSR')
+	print(heat[heat['SMR']=='MSR']['Depl. SMR Cap. (MWe)'].sum())
+	print('PBRHTR')
+	print(heat[heat['SMR']=='SFR']['Depl. SMR Cap. (MWe)'].sum())
 	print('Total capacity')
-	print(heat['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+	print(heat['Depl. SMR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 	print(heat['SMR'].unique())
 
 
-	h2 = load_h2_results(anr_tag='FOAK', cogen_tag='cogen')
+	h2 = load_h2_results(OAK='FOAK', cogen_tag='cogen')
 	h2 = h2.loc[:,~h2.columns.duplicated()]
 	h2 = h2.reset_index()
 	h2['Annual Net Revenues wo PTC (M$/y)'] = h2['Electricity revenues ($/y)']+h2['Net Revenues ($/year)']
@@ -48,7 +48,7 @@ def add_elec_layer(fig):
 	# Define tick values and corresponding custom tick texts
 	colorbar_ticks = [20, 34, 46.1, 52.2, 56.9, 77.8, 116.9]
 	colorbar_texts = ['20', '34',
-										'iMSR: 46', 'PBR-HTGR: 52', 'iPWR: 57', 'HTGR: 78', 'Micro: 117']
+										'MSR: 46', 'SFR: 52', 'PWR: 57', 'HTR: 78', 'MR: 117']
 
 	max_actual_value = max(elec_df['average price ($/MWhe)'])
 	print(elec_df['average price ($/MWhe)'].describe())
@@ -133,7 +133,7 @@ def add_smr_layer(fig,df):
 	markers_applications = {'Process Heat':'cross', 'Industrial Hydrogen':'circle'}
 	marker_symbols = df['Application'].map(markers_applications).to_list()
 	# SMR colors
-	line_colors = [palette[anr] for anr in df['SMR']]
+	line_colors = [palette[SMR] for SMR in df['SMR']]
 	# DEployed capacity as size
 	def set_size(cap):
 		if cap <= 100:
@@ -144,7 +144,7 @@ def add_smr_layer(fig,df):
 			size = 25
 		return size
 
-	df['size'] = df['Depl. ANR Cap. (MWe)'].apply(set_size)
+	df['size'] = df['Depl. SMR Cap. (MWe)'].apply(set_size)
 
 	fig.add_trace(go.Scattergeo(
 		lon=df['longitude'],
@@ -156,7 +156,7 @@ def add_smr_layer(fig,df):
 				colorscale='Greys',
 				colorbar = dict(
 						title='IRR (%)',
-						titlefont = dict(size=16),
+						#titlefont = dict(size=16),
 						orientation='h',  # Set the orientation to 'h' for horizontal
 						x=0.5,  # Center the colorbar horizontally
 						y=-0.15,  # Position the colorbar below the x-axis
@@ -178,9 +178,9 @@ def add_smr_layer(fig,df):
 	))
 
 	# Custom legend
-	custom_legend = {'iMSR - Process Heat':[palette['iMSR'], 'cross'],
-									'iPWR - Process Heat':[palette['iPWR'], 'cross'],
-									'PBR-HTGR - Process Heat':[palette['PBR-HTGR'], 'cross']}
+	custom_legend = {'MSR - Process Heat':[palette['MSR'], 'cross'],
+									'PWR - Process Heat':[palette['PWR'], 'cross'],
+									'SFR - Process Heat':[palette['SFR'], 'cross']}
 	reactors_used = df['SMR'].unique()
 
 	# Create symbol and color legend traces
@@ -258,7 +258,7 @@ def main():
 
 	#add_nuclear_bans(fig)
 	
-	fig.write_image('./results/map_noPTC.png', scale=4)
+	fig.write_image('./results/map_FOAK_noPTC.png', scale=4)
 
 if __name__ == '__main__':
 	main()

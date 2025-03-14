@@ -3,7 +3,7 @@ import numpy as np
 import glob
 
 N=1000
-LEARNING = 'FOAK_act'
+LEARNING = 'FOAK'
 
 palette={'HTR':'orange', 
          'MSR':'blue', 
