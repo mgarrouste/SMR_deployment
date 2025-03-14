@@ -200,7 +200,7 @@ def main(OAK,with_PTC,cogen,cambium_scenario,year):
     smr_depl.to_csv(f'./results/process_heat_h2all_{OAK}_{ptc_tag}_{cogen_tag}.csv', index=False)
 
 if __name__ == '__main__':
-    OAK = 'FOAK_act'
+    OAK = 'FOAK'
     with_PTC = False
     cogen = True
     cambium_scenario = 'MidCase'

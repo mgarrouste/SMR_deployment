@@ -329,7 +329,7 @@ def main(OAK,wacc,cambium_scenario,year):
 
 
 if __name__ == '__main__':
-    OAK = 'FOAK_act'
+    OAK = 'FOAK'
     wacc = utils.WACC
     cambium_scenario = 'MidCase'
     year = 2024

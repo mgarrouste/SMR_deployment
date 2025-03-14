@@ -48,7 +48,7 @@ def main(OAK,with_PTC,cogen,cambium_scenario,year):
 
 
 if __name__ == '__main__':
-    OAK = 'FOAK_act'
+    OAK = 'FOAK'
     with_PTC = False
     cogen = True
     cambium_scenario = 'MidCase'

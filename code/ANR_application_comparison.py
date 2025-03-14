@@ -11,32 +11,32 @@ color_map = {'Industrial Hydrogen':'blue', 'Process Heat':'red', 'Total':'Green'
              'NOAK':'forestgreen','FOAK\nNo-Cogeneration':'limegreen','FOAK\nCogeneration':'lightsteelblue', 
            'NOAK\nNo-Cogeneration':'forestgreen','NOAK\nCogeneration':'slategrey'}
 
-def load_elec_results(anr_tag):
-  elec_results_path = f'./results/price_taker_{anr_tag}_MidCase.xlsx'
+def load_elec_results(OAK):
+  elec_results_path = f'./results/price_taker_{OAK}_MidCase.xlsx'
   elec_df = pd.read_excel(elec_results_path)
   elec_df['Annual Net Revenues (M$/MWe/y)'] = elec_df['Annual Net Revenues ($/year/MWe)']/1e6
   # Only keep the best design for each state and year
   df = elec_df.loc[elec_df.groupby('state')['Annual Net Revenues (M$/MWe/y)'].transform(max) == elec_df['Annual Net Revenues (M$/MWe/y)']]
   df['Application'] = 'Electricity'
-  df.rename(columns={'ANR type':'ANR'}, inplace=True)
+  df.rename(columns={'SMR type':'SMR'}, inplace=True)
   return df
   
 
-def load_h2_results(anr_tag, cogen_tag, with_PTC=True):
+def load_h2_results(OAK, cogen_tag, with_PTC=True):
   """"Loads all hydrogen results and returns results sorted by breakeven prices"""
-  h2_results_path = f'./results/clean_results_anr_{anr_tag}_h2_wacc_0.077.xlsx'
+  h2_results_path = f'./results/clean_results_SMR_{OAK}_h2_wacc_0.077.xlsx'
   industries = ['refining','steel','ammonia']
   list_df = []
   for ind in industries:
     df = pd.read_excel(h2_results_path, sheet_name=ind, index_col='id')
     list_cols = ['state', 'latitude', 'longitude','H2 Dem. (kg/day)','Net Revenues with H2 PTC ($/year)',\
                  'Net Revenues ($/year)','Electricity revenues ($/y)','IRR w PTC', 'IRR wo PTC',\
-                  'Net Annual Revenues with H2 PTC ($/MWe/y)', 'HTSE', 'Depl. ANR Cap. (MWe)', 'ANR type', \
-             '# ANR modules', 'Breakeven price ($/MMBtu)', 'BE wo PTC ($/MMBtu)','Ann. avoided CO2 emissions (MMT-CO2/year)', \
+                  'Net Annual Revenues with H2 PTC ($/MWe/y)', 'HTSE', 'Depl. SMR Cap. (MWe)', 'SMR type', \
+             '# SMR modules', 'Breakeven price ($/MMBtu)', 'BE wo PTC ($/MMBtu)','Ann. avoided CO2 emissions (MMT-CO2/year)', \
              'Net Revenues with H2 PTC with elec ($/year)', 
-             'ANR CAPEX ($/year)', 'H2 CAPEX ($/year)', 'ANR O&M ($/year)', 'H2 O&M ($/year)', 'Conversion costs ($/year)',
+             'SMR CAPEX ($/year)', 'H2 CAPEX ($/year)', 'SMR O&M ($/year)', 'H2 O&M ($/year)', 'Conversion costs ($/year)',
              'Avoided NG costs ($/year)', 'H2 PTC Revenues ($/year)']
-    if anr_tag == 'FOAK':
+    if OAK == 'FOAK':
       list_cols.append('Breakeven CAPEX ($/MWe)')
       list_cols.append('Breakeven CAPEX wo PTC ($/MWe)')
       list_cols.append('State price ($/MMBtu)')
@@ -45,10 +45,10 @@ def load_h2_results(anr_tag, cogen_tag, with_PTC=True):
     list_df.append(df)
   all_df = pd.concat(list_df)
   all_df['Application'] = 'Industrial Hydrogen'
-  all_df['ANR'] = all_df['ANR type']
+  all_df['SMR'] = all_df['SMR type']
   if cogen_tag=='cogen': 
     if with_PTC:
-      all_df['Annual Net Revenues (M$/MWe/y)'] = all_df['Net Revenues with H2 PTC with elec ($/year)']/(1e6*all_df['Depl. ANR Cap. (MWe)'])
+      all_df['Annual Net Revenues (M$/MWe/y)'] = all_df['Net Revenues with H2 PTC with elec ($/year)']/(1e6*all_df['Depl. SMR Cap. (MWe)'])
       all_df['Annual Net Revenues (M$/y)'] = all_df['Net Revenues with H2 PTC with elec ($/year)']/1e6
     else:
       all_df['Annual Net Revenues (M$/y)'] = all_df.apply(lambda x: (x['Net Revenues ($/year)']+x['Electricity revenues ($/y)'])/1e6, axis=1)
@@ -63,11 +63,13 @@ def load_h2_results(anr_tag, cogen_tag, with_PTC=True):
   return all_df 
 
 
-def load_heat_results(anr_tag, cogen_tag, with_PTC=True):
+def load_heat_results(OAK, cogen_tag, with_PTC=True):
   """Loads direct process heat results and returns them sorted by breakeven prices"""
-  heat_results_path = f'./results/process_heat/best_pathway_{anr_tag}_{cogen_tag}_PTC_{with_PTC}.xlsx'
-  heat_df = pd.read_excel(heat_results_path, index_col='FACILITY_ID')
-  heat_df['Annual Net Revenues (M$/MWe/y)']  = heat_df['Pathway Net Ann. Rev. (M$/y)']/heat_df['Depl. ANR Cap. (MWe)']
+  if with_PTC: ptc_tag = 'PTC'
+  else: ptc_tag = 'noPTC'
+  heat_results_path = f'./results/process_heat_{OAK}_{ptc_tag}_{cogen_tag}.csv'
+  heat_df = pd.read_csv(heat_results_path, index_col='FACILITY_ID')
+  heat_df['Annual Net Revenues (M$/MWe/y)']  = heat_df['Pathway Net Ann. Rev. (M$/y)']/heat_df['Depl. SMR Cap. (MWe)']
   heat_df['Annual Net Revenues (M$/y)'] = heat_df['Pathway Net Ann. Rev. (M$/y)']
   heat_df.sort_values(by=['Breakeven NG price ($/MMBtu)', 'Annual Net Revenues (M$/MWe/y)'], inplace=True)
   heat_df['Application'] = 'Process Heat'
@@ -97,7 +99,7 @@ def combine_emissions(applications_results):
   return total_df
 
 
-def plot_cumulative_avoided_emissions(applications_results, anr_tag, cogen_tag, fig=None):
+def plot_cumulative_avoided_emissions(applications_results, OAK, cogen_tag, fig=None):
   if fig: ax = fig.add_subplot()
   else: fig, ax = plt.subplots(figsize=(7,3))
   xmax = 50
@@ -125,7 +127,7 @@ def plot_cumulative_avoided_emissions(applications_results, anr_tag, cogen_tag, 
   lines, labels = [sum(lol, []) for lol in zip(*lines_labels)]
   fig.legend(lines, labels, loc='upper right', ncol=1)
   if not fig:
-    fig.savefig(f'./results/all_applications_viable_avoided_emissions_{anr_tag}_{cogen_tag}.png', bbox_inches='tight')
+    fig.savefig(f'./results/all_applications_viable_avoided_emissions_{OAK}_{cogen_tag}.png', bbox_inches='tight')
   
 
 
@@ -141,13 +143,13 @@ def concat_results(results):
   return df
 
 
-def plot_net_annual_revenues_all_app(df, anr_tag, cogen_tag):
+def plot_net_annual_revenues_all_app(df, OAK, cogen_tag):
   fig, ax = plt.subplots(figsize=(10,4))
-  save_path = f'./results/ANR_application_comparison_{anr_tag}_{cogen_tag}.png'
+  save_path = f'./results/SMR_application_comparison_{OAK}_{cogen_tag}.png'
   print(save_path)
   
   sns.stripplot(ax=ax, data=df, x='Annual Net Revenues (M$/MWe/y)', y='Application',\
-                  palette=palette, hue='ANR', alpha=0.6)
+                  palette=palette, hue='SMR', alpha=0.6)
   sns.boxplot(ax=ax, data=df, x='Annual Net Revenues (M$/MWe/y)', y='Application', color='black',\
                   fill=False, width=0.5)
   sns.despine()
@@ -163,9 +165,9 @@ def plot_net_annual_revenues_all_app(df, anr_tag, cogen_tag):
 
 
 def compare_oak_net_annual_revenues(cogen_tag):
-  save_path = f'./results/ANR_application_comparison_FOAK_vs_NOAK_{cogen_tag}.png'
-  noak_df = pd.read_excel(f'./results/ANR_application_comparison_NOAK_{cogen_tag}.xlsx')
-  foak_df = pd.read_excel(f'./results/ANR_application_comparison_FOAK_{cogen_tag}.xlsx')
+  save_path = f'./results/SMR_application_comparison_FOAK_vs_NOAK_{cogen_tag}.png'
+  noak_df = pd.read_excel(f'./results/SMR_application_comparison_NOAK_{cogen_tag}.xlsx')
+  foak_df = pd.read_excel(f'./results/SMR_application_comparison_FOAK_{cogen_tag}.xlsx')
   noak_df['Stage'] = 'NOAK'
   foak_df['Stage'] = 'FOAK'
   total_df = pd.concat([foak_df, noak_df], ignore_index=True)
@@ -173,7 +175,7 @@ def compare_oak_net_annual_revenues(cogen_tag):
   fig, ax = plt.subplots(len(applications), 1, sharex=True, figsize=(9,6))
   for c, app in enumerate(applications):
     sns.stripplot(ax=ax[c], data = total_df[total_df.Application == app], x='Annual Net Revenues (M$/MWe/y)', y = 'Stage',\
-                   palette=palette, hue='ANR', alpha=0.5)
+                   palette=palette, hue='SMR', alpha=0.5)
     sns.boxplot(ax=ax[c], data =total_df[total_df.Application == app], x='Annual Net Revenues (M$/MWe/y)', y='Stage', \
                 color='black', fill=False, width=0.5)
     sns.despine()
@@ -241,7 +243,7 @@ def compare_cogen_net_annual_revenues(fig, dfs):
   (h2fig, heatfig) = fig.subfigures(1,2)
 
   h2ax = h2fig.subplots()
-  sns.stripplot(ax=h2ax, data=h2comb, x='Annual Net Revenues (M$/MWe/y)', y='Case', palette=palette, hue='ANR', alpha=.6)
+  sns.stripplot(ax=h2ax, data=h2comb, x='Annual Net Revenues (M$/MWe/y)', y='Case', palette=palette, hue='SMR', alpha=.6)
   sns.boxplot(ax=h2ax, data=h2comb, x='Annual Net Revenues (M$/MWe/y)', y='Case', color='black', fill=False, width=0.5)
   sns.despine()
   h2ax.xaxis.grid(True)
@@ -250,7 +252,7 @@ def compare_cogen_net_annual_revenues(fig, dfs):
   letter_annotation(h2ax, -.25, 1, 'I')
 
   heatax = heatfig.subplots()
-  sns.stripplot(ax=heatax, data=heatcomb, x='Annual Net Revenues (M$/MWe/y)', y = 'Case', palette=palette, hue='ANR', alpha=.6)
+  sns.stripplot(ax=heatax, data=heatcomb, x='Annual Net Revenues (M$/MWe/y)', y = 'Case', palette=palette, hue='SMR', alpha=.6)
   sns.boxplot(ax=heatax, data=heatcomb, x='Annual Net Revenues (M$/MWe/y)', y='Case', color='black', fill=False, width=0.5)
   sns.despine()
   heatax.xaxis.grid(True)
@@ -268,10 +270,10 @@ def compare_cogen_net_annual_revenues(fig, dfs):
 def combined_avoided_emissions_oak_cogen():
   save_path = f'./results/all_applications_oak_cogen_emissions.png'
   # Load data for net annual revenues
-  noak_co = pd.read_excel(f'./results/ANR_application_comparison_NOAK_cogen.xlsx')
-  noak_no = pd.read_excel(f'./results/ANR_application_comparison_NOAK_nocogen.xlsx')
-  foak_no = pd.read_excel(f'./results/ANR_application_comparison_FOAK_nocogen.xlsx')
-  foak_co = pd.read_excel(f'./results/ANR_application_comparison_FOAK_cogen.xlsx')
+  noak_co = pd.read_excel(f'./results/SMR_application_comparison_NOAK_cogen.xlsx')
+  noak_no = pd.read_excel(f'./results/SMR_application_comparison_NOAK_nocogen.xlsx')
+  foak_no = pd.read_excel(f'./results/SMR_application_comparison_FOAK_nocogen.xlsx')
+  foak_co = pd.read_excel(f'./results/SMR_application_comparison_FOAK_cogen.xlsx')
   noak_co['Case'] = 'NOAK\nCogeneration'
   noak_no['Case'] = 'NOAK\nNo-Cogeneration'
   foak_co['Case'] = 'FOAK\nCogeneration'
@@ -325,24 +327,24 @@ def combined_avoided_emissions_oak_cogen():
 
 
 
-def heat_abatement_plot(fig, df, anr_tag, cogen_tag):
-  df['Cost ANR ($/y)'] = (df['CAPEX ($/y)']+df['O&M ($/y)']+df['Conversion']-df['Avoided NG Cost ($/y)'])
-  df['Abatement cost ($/tCO2)'] = df['Cost ANR ($/y)']/(df['Emissions_mmtco2/y']*1e6)
-  df['Abatement potential (tCO2/y-MWe)'] = 1e6*df['Emissions_mmtco2/y']/df['Depl. ANR Cap. (MWe)']
+def heat_abatement_plot(fig, df, OAK, cogen_tag):
+  df['Cost SMR ($/y)'] = (df['CAPEX ($/y)']+df['O&M ($/y)']+df['Conversion']-df['Avoided NG Cost ($/y)'])
+  df['Abatement cost ($/tCO2)'] = df['Cost SMR ($/y)']/(df['Emissions_mmtco2/y']*1e6)
+  df['Abatement potential (tCO2/y-MWe)'] = 1e6*df['Emissions_mmtco2/y']/df['Depl. SMR Cap. (MWe)']
   for ind in df['Pathway'].unique():
-    pp_industrial_hydrogen.print_stats(ind, f'./results/process_heat/heat_abatement_cost_stats_{anr_tag}_cogen_{cogen_tag}.xlsx', \
+    pp_industrial_hydrogen.print_stats(ind, f'./results/process_heat/heat_abatement_cost_stats_{OAK}_cogen_{cogen_tag}.xlsx', \
                     df[df['Pathway']==ind], column_name='Abatement cost ($/tCO2)')
-    pp_industrial_hydrogen.print_stats(ind, f'./results/process_heat/heat_abatement_pot_stats_{anr_tag}_cogen_{cogen_tag}.xlsx', \
+    pp_industrial_hydrogen.print_stats(ind, f'./results/process_heat/heat_abatement_pot_stats_{OAK}_cogen_{cogen_tag}.xlsx', \
                     df[df['Pathway']==ind], column_name='Abatement potential (tCO2/y-MWe)')
   ax = fig.subplots(2,1)
   sns.boxplot(ax=ax[0], data=df, y='Pathway', x='Abatement cost ($/tCO2)',color='black',fill=False, width=.5)
-  sns.stripplot(ax=ax[0], data=df, y='Pathway', x='Abatement cost ($/tCO2)', hue='ANR', palette = palette,alpha=.6)
+  sns.stripplot(ax=ax[0], data=df, y='Pathway', x='Abatement cost ($/tCO2)', hue='SMR', palette = palette,alpha=.6)
   letter_annotation(ax[0], -.25, 1, 'II-a')
   ax[0].set_ylabel('')
   ax[0].set_xlim(-50,5000)
   ax[0].get_legend().set_visible(False)
   sns.boxplot(ax=ax[1], data=df, y='Pathway', x='Abatement potential (tCO2/y-MWe)',color='black', fill=False, width=.5)
-  sns.stripplot(ax=ax[1], data=df, y='Pathway',x='Abatement potential (tCO2/y-MWe)',hue='ANR', palette=palette,alpha=.6)
+  sns.stripplot(ax=ax[1], data=df, y='Pathway',x='Abatement potential (tCO2/y-MWe)',hue='SMR', palette=palette,alpha=.6)
   letter_annotation(ax[1], -.25, 1, 'II-b')
   ax[1].set_ylabel('')
   ax[1].get_legend().set_visible(False)
@@ -352,41 +354,41 @@ def heat_abatement_plot(fig, df, anr_tag, cogen_tag):
   fig.legend(lines, labels, loc='upper right', ncol=1)
   sns.despine()
 
-def combined_avoided_emissions_abatement(applications_results, anr_tag, cogen_tag):
-  save_path = f'./results/all_applications_emissions_abatement_{anr_tag}_{cogen_tag}.png'
+def combined_avoided_emissions_abatement(applications_results, OAK, cogen_tag):
+  save_path = f'./results/all_applications_emissions_abatement_{OAK}_{cogen_tag}.png'
   fig = plt.figure(figsize=(8, 8))
   (topfig, bottomfig) = fig.subfigures(2, 1, height_ratios=[2,1])
   (h2fig, heatfig) = topfig.subfigures(1,2)
   # Emissions
-  plot_cumulative_avoided_emissions(applications_results, anr_tag, cogen_tag, fig = bottomfig)
+  plot_cumulative_avoided_emissions(applications_results, OAK, cogen_tag, fig = bottomfig)
   # Hydrogen
   import pp_industrial_hydrogen
-  h2_data = pp_industrial_hydrogen.load_data(anr_tag)
-  pp_industrial_hydrogen.plot_abatement_cost(h2_data, OAK=anr_tag, fig=h2fig)
+  h2_data = pp_industrial_hydrogen.load_data(OAK)
+  pp_industrial_hydrogen.plot_abatement_cost(h2_data, OAK=OAK, fig=h2fig)
   # Direct heat
-  heat_data = pd.read_excel(f'./results/process_heat/best_pathway_{anr_tag}_{cogen_tag}.xlsx')
-  heat_abatement_plot(fig = heatfig, df= heat_data, anr_tag=anr_tag, cogen_tag=cogen_tag)
+  heat_data = pd.read_excel(f'./results/process_heat/best_pathway_{OAK}_{cogen_tag}.xlsx')
+  heat_abatement_plot(fig = heatfig, df= heat_data, OAK=OAK, cogen_tag=cogen_tag)
   fig.savefig(save_path, bbox_inches='tight')
   plt.close()
 
 
 
-def combined_heat_ff_plot(anr_tag, cogen_tag):
+def combined_heat_ff_plot(OAK, cogen_tag):
   """Plot heat results: 
   - TOP: left breakeven prices distribution (boxplot), right net annual revenues
   - BOTTOM: average cashflows
   """
-  save_path = f'./results/combined_heat_ff_{anr_tag}_{cogen_tag}.png'
+  save_path = f'./results/combined_heat_ff_{OAK}_{cogen_tag}.png'
   fig = plt.figure(figsize=(8, 7))
   (topfig, botfig) = fig.subfigures(2,1, height_ratios=[1,1.25])
   (befig, revfig) = topfig.subfigures(1,2)
   
   # Breakeven prices distribution plot
   # Load results
-  heat_df = pd.read_excel(f'./results/process_heat/best_pathway_{anr_tag}_{cogen_tag}.xlsx')
+  heat_df = pd.read_excel(f'./results/process_heat/best_pathway_{OAK}_{cogen_tag}.xlsx')
   beax = befig.subplots()
   sns.boxplot(ax=beax, data=heat_df, y='Pathway', x='Breakeven NG price ($/MMBtu)', color='black', fill=False, width=.5)
-  sns.stripplot(ax=beax, data=heat_df, x='Breakeven NG price ($/MMBtu)', y='Pathway', hue='ANR', palette=palette, alpha=.6)
+  sns.stripplot(ax=beax, data=heat_df, x='Breakeven NG price ($/MMBtu)', y='Pathway', hue='SMR', palette=palette, alpha=.6)
   beax.get_legend().set_visible(False)
   beax.set_xlim(0,250)
   beax.set_ylabel('')
@@ -397,7 +399,7 @@ def combined_heat_ff_plot(anr_tag, cogen_tag):
   # NEt annual revenues plot
   revax = revfig.subplots()
   sns.boxplot(ax=revax, data=heat_df, y='Pathway', x='Pathway Net Ann. Rev. (M$/y/MWe)', color='black', fill=False, width=.5)
-  sns.stripplot(ax=revax, data=heat_df, x='Pathway Net Ann. Rev. (M$/y/MWe)', y='Pathway', hue='ANR', palette=palette, alpha=.6)
+  sns.stripplot(ax=revax, data=heat_df, x='Pathway Net Ann. Rev. (M$/y/MWe)', y='Pathway', hue='SMR', palette=palette, alpha=.6)
   revax.get_legend().set_visible(False)
   revax.set_xlabel('Net Annual Revenue (M$/MWe/y)')
   revax.set_ylabel('')
@@ -406,47 +408,47 @@ def combined_heat_ff_plot(anr_tag, cogen_tag):
   letter_annotation(revax, -.25, 1, 'II')
 
   # Average cashflows on bottom figure
-  OAK = anr_tag
-  cashflows_df_anr_anrh2 = heat_df[heat_df.Pathway=='ANR+ANR-H2']
-  cashflows_df_anr_anrh2['ANR CAPEX'] = -cashflows_df_anr_anrh2[f'Annual_CAPEX_{OAK}']/(1e6*cashflows_df_anr_anrh2['Depl. ANR Cap. (MWe)'])
-  cashflows_df_anr_anrh2['ANR for H2 CAPEX'] = -cashflows_df_anr_anrh2['Annual ANR CAPEX']/(1e6*cashflows_df_anr_anrh2['Depl. ANR Cap. (MWe)'])
-  cashflows_df_anr_anrh2['H2 CAPEX'] = -cashflows_df_anr_anrh2['Annual H2 CAPEX']/(1e6*cashflows_df_anr_anrh2['Depl. ANR Cap. (MWe)'])
-  cashflows_df_anr_anrh2['ANR O&M'] = -(cashflows_df_anr_anrh2[f'FOPEX_{OAK}']+cashflows_df_anr_anrh2[f'VOPEX_{OAK}'])/(1e6*cashflows_df_anr_anrh2['Depl. ANR Cap. (MWe)'])
-  cashflows_df_anr_anrh2['ANR for H2 O&M'] = -(cashflows_df_anr_anrh2['ANR VOM']+cashflows_df_anr_anrh2['ANR FOM'])/(1e6*cashflows_df_anr_anrh2['Depl. ANR Cap. (MWe)'])
-  cashflows_df_anr_anrh2['H2 O&M'] = -(cashflows_df_anr_anrh2['H2 VOM']+cashflows_df_anr_anrh2['H2 FOM'])/(1e6*cashflows_df_anr_anrh2['Depl. ANR Cap. (MWe)'])
-  cashflows_df_anr_anrh2['Conversion'] = -(cashflows_df_anr_anrh2['Conversion'])/(1e6*cashflows_df_anr_anrh2['Depl. ANR Cap. (MWe)'])
-  cashflows_df_anr_anrh2['Avoided Fossil Fuel Costs'] = cashflows_df_anr_anrh2['Avoided NG Cost ($/y)']/(1e6*cashflows_df_anr_anrh2['Depl. ANR Cap. (MWe)'])
-  cashflows_df_anr_anrh2['H2 PTC'] = cashflows_df_anr_anrh2['H2 PTC']/(1e6*cashflows_df_anr_anrh2['Depl. ANR Cap. (MWe)'])
-  if cogen_tag == 'cogen': cashflows_df_anr_anrh2['Electricity'] = cashflows_df_anr_anrh2['Electricity revenues ($/y)']/(1e6*cashflows_df_anr_anrh2['Depl. ANR Cap. (MWe)'])
+  OAK = OAK
+  cashflows_df_SMR_SMRh2 = heat_df[heat_df.Pathway=='SMR+SMR-H2']
+  cashflows_df_SMR_SMRh2['SMR CAPEX'] = -cashflows_df_SMR_SMRh2[f'Annual_CAPEX_{OAK}']/(1e6*cashflows_df_SMR_SMRh2['Depl. SMR Cap. (MWe)'])
+  cashflows_df_SMR_SMRh2['SMR for H2 CAPEX'] = -cashflows_df_SMR_SMRh2['Annual SMR CAPEX']/(1e6*cashflows_df_SMR_SMRh2['Depl. SMR Cap. (MWe)'])
+  cashflows_df_SMR_SMRh2['H2 CAPEX'] = -cashflows_df_SMR_SMRh2['Annual H2 CAPEX']/(1e6*cashflows_df_SMR_SMRh2['Depl. SMR Cap. (MWe)'])
+  cashflows_df_SMR_SMRh2['SMR O&M'] = -(cashflows_df_SMR_SMRh2[f'FOPEX_{OAK}']+cashflows_df_SMR_SMRh2[f'VOPEX_{OAK}'])/(1e6*cashflows_df_SMR_SMRh2['Depl. SMR Cap. (MWe)'])
+  cashflows_df_SMR_SMRh2['SMR for H2 O&M'] = -(cashflows_df_SMR_SMRh2['SMR VOM']+cashflows_df_SMR_SMRh2['SMR FOM'])/(1e6*cashflows_df_SMR_SMRh2['Depl. SMR Cap. (MWe)'])
+  cashflows_df_SMR_SMRh2['H2 O&M'] = -(cashflows_df_SMR_SMRh2['H2 VOM']+cashflows_df_SMR_SMRh2['H2 FOM'])/(1e6*cashflows_df_SMR_SMRh2['Depl. SMR Cap. (MWe)'])
+  cashflows_df_SMR_SMRh2['Conversion'] = -(cashflows_df_SMR_SMRh2['Conversion'])/(1e6*cashflows_df_SMR_SMRh2['Depl. SMR Cap. (MWe)'])
+  cashflows_df_SMR_SMRh2['Avoided Fossil Fuel Costs'] = cashflows_df_SMR_SMRh2['Avoided NG Cost ($/y)']/(1e6*cashflows_df_SMR_SMRh2['Depl. SMR Cap. (MWe)'])
+  cashflows_df_SMR_SMRh2['H2 PTC'] = cashflows_df_SMR_SMRh2['H2 PTC']/(1e6*cashflows_df_SMR_SMRh2['Depl. SMR Cap. (MWe)'])
+  if cogen_tag == 'cogen': cashflows_df_SMR_SMRh2['Electricity'] = cashflows_df_SMR_SMRh2['Electricity revenues ($/y)']/(1e6*cashflows_df_SMR_SMRh2['Depl. SMR Cap. (MWe)'])
 
-  cashflows_df_anrh2 = heat_df[heat_df.Pathway=='ANR-H2']
-  cashflows_df_anrh2['ANR CAPEX'] = 0
-  cashflows_df_anrh2['ANR for H2 CAPEX'] = -cashflows_df_anrh2['Annual ANR CAPEX']/(1e6*cashflows_df_anrh2['Depl. ANR Cap. (MWe)'])
-  cashflows_df_anrh2['H2 CAPEX'] = -cashflows_df_anrh2['Annual H2 CAPEX']/(1e6*cashflows_df_anrh2['Depl. ANR Cap. (MWe)'])
-  cashflows_df_anrh2['ANR O&M'] = 0
-  cashflows_df_anrh2['ANR for H2 O&M'] = -(cashflows_df_anrh2['ANR VOM']+cashflows_df_anrh2['ANR FOM'])/(1e6*cashflows_df_anrh2['Depl. ANR Cap. (MWe)'])
-  cashflows_df_anrh2['H2 O&M'] = -(cashflows_df_anrh2['H2 VOM']+cashflows_df_anrh2['H2 FOM'])/(1e6*cashflows_df_anrh2['Depl. ANR Cap. (MWe)'])
-  cashflows_df_anrh2['Conversion'] = -(cashflows_df_anrh2['Conversion'])/(1e6*cashflows_df_anrh2['Depl. ANR Cap. (MWe)'])
-  cashflows_df_anrh2['Avoided Fossil Fuel Costs'] = cashflows_df_anrh2['Avoided NG Cost ($/y)']/(1e6*cashflows_df_anrh2['Depl. ANR Cap. (MWe)'])
-  cashflows_df_anrh2['H2 PTC'] = cashflows_df_anrh2['H2 PTC']/(1e6*cashflows_df_anrh2['Depl. ANR Cap. (MWe)'])
-  if cogen_tag == 'cogen': cashflows_df_anrh2['Electricity'] = cashflows_df_anrh2['Electricity revenues ($/y)']/(1e6*cashflows_df_anrh2['Depl. ANR Cap. (MWe)'])
+  cashflows_df_SMRh2 = heat_df[heat_df.Pathway=='SMR-H2']
+  cashflows_df_SMRh2['SMR CAPEX'] = 0
+  cashflows_df_SMRh2['SMR for H2 CAPEX'] = -cashflows_df_SMRh2['Annual SMR CAPEX']/(1e6*cashflows_df_SMRh2['Depl. SMR Cap. (MWe)'])
+  cashflows_df_SMRh2['H2 CAPEX'] = -cashflows_df_SMRh2['Annual H2 CAPEX']/(1e6*cashflows_df_SMRh2['Depl. SMR Cap. (MWe)'])
+  cashflows_df_SMRh2['SMR O&M'] = 0
+  cashflows_df_SMRh2['SMR for H2 O&M'] = -(cashflows_df_SMRh2['SMR VOM']+cashflows_df_SMRh2['SMR FOM'])/(1e6*cashflows_df_SMRh2['Depl. SMR Cap. (MWe)'])
+  cashflows_df_SMRh2['H2 O&M'] = -(cashflows_df_SMRh2['H2 VOM']+cashflows_df_SMRh2['H2 FOM'])/(1e6*cashflows_df_SMRh2['Depl. SMR Cap. (MWe)'])
+  cashflows_df_SMRh2['Conversion'] = -(cashflows_df_SMRh2['Conversion'])/(1e6*cashflows_df_SMRh2['Depl. SMR Cap. (MWe)'])
+  cashflows_df_SMRh2['Avoided Fossil Fuel Costs'] = cashflows_df_SMRh2['Avoided NG Cost ($/y)']/(1e6*cashflows_df_SMRh2['Depl. SMR Cap. (MWe)'])
+  cashflows_df_SMRh2['H2 PTC'] = cashflows_df_SMRh2['H2 PTC']/(1e6*cashflows_df_SMRh2['Depl. SMR Cap. (MWe)'])
+  if cogen_tag == 'cogen': cashflows_df_SMRh2['Electricity'] = cashflows_df_SMRh2['Electricity revenues ($/y)']/(1e6*cashflows_df_SMRh2['Depl. SMR Cap. (MWe)'])
   if cogen_tag =='cogen':
-    cashflows_df_anr_anrh2 = cashflows_df_anr_anrh2[['ANR', 'ANR CAPEX','ANR for H2 CAPEX','H2 CAPEX','ANR O&M','ANR for H2 O&M', 
+    cashflows_df_SMR_SMRh2 = cashflows_df_SMR_SMRh2[['SMR', 'SMR CAPEX','SMR for H2 CAPEX','H2 CAPEX','SMR O&M','SMR for H2 O&M', 
                                                   'H2 O&M','Conversion','Avoided Fossil Fuel Costs','H2 PTC', 'Electricity']]
-    cashflows_df_anrh2 = cashflows_df_anrh2[['ANR', 'ANR CAPEX','ANR for H2 CAPEX','H2 CAPEX','ANR O&M','ANR for H2 O&M', 
+    cashflows_df_SMRh2 = cashflows_df_SMRh2[['SMR', 'SMR CAPEX','SMR for H2 CAPEX','H2 CAPEX','SMR O&M','SMR for H2 O&M', 
                                                   'H2 O&M','Conversion','Avoided Fossil Fuel Costs','H2 PTC', 'Electricity']]
   else:
-    cashflows_df_anr_anrh2 = cashflows_df_anr_anrh2[['ANR', 'ANR CAPEX','ANR for H2 CAPEX','H2 CAPEX','ANR O&M','ANR for H2 O&M', 
+    cashflows_df_SMR_SMRh2 = cashflows_df_SMR_SMRh2[['SMR', 'SMR CAPEX','SMR for H2 CAPEX','H2 CAPEX','SMR O&M','SMR for H2 O&M', 
                                                   'H2 O&M','Conversion','Avoided Fossil Fuel Costs','H2 PTC']]
-    cashflows_df_anrh2 = cashflows_df_anrh2[['ANR', 'ANR CAPEX','ANR for H2 CAPEX','H2 CAPEX','ANR O&M','ANR for H2 O&M', 
+    cashflows_df_SMRh2 = cashflows_df_SMRh2[['SMR', 'SMR CAPEX','SMR for H2 CAPEX','H2 CAPEX','SMR O&M','SMR for H2 O&M', 
                                                     'H2 O&M','Conversion','Avoided Fossil Fuel Costs','H2 PTC']]
-  cashflows_df_anr_anrh2 = cashflows_df_anr_anrh2.groupby(['ANR']).mean()
-  cashflows_df_anrh2 = cashflows_df_anrh2.groupby(['ANR']).mean()
+  cashflows_df_SMR_SMRh2 = cashflows_df_SMR_SMRh2.groupby(['SMR']).mean()
+  cashflows_df_SMRh2 = cashflows_df_SMRh2.groupby(['SMR']).mean()
 
 
   ax = botfig.subplots(1,2,sharey=True)
   axup = ax[0]
-  cashflows_df_anr_anrh2.plot(ax = axup, kind ='bar', stacked=True, color=cashflows_color_map, width=0.4)
+  cashflows_df_SMR_SMRh2.plot(ax = axup, kind ='bar', stacked=True, color=cashflows_color_map, width=0.4)
   axup.set_ylabel('Average Normalized\nCashflows (M$/MWe/y)')
   axup.set_xlabel('')
   axup.yaxis.grid(True)
@@ -455,10 +457,10 @@ def combined_heat_ff_plot(anr_tag, cogen_tag):
   axup.set_ylim(-1.02, 0.52)
   axup.yaxis.set_ticks(np.arange(-1.75, 1, 0.25))
   axup.get_legend().set_visible(False)
-  letter_annotation(axup, -.25, 1.04, 'III-a: ANR+ANR-H2')
+  letter_annotation(axup, -.25, 1.04, 'III-a: SMR+SMR-H2')
 
   lax = ax[1]
-  cashflows_df_anrh2.plot(ax = lax, kind ='bar', stacked=True, color=cashflows_color_map, width=0.25)
+  cashflows_df_SMRh2.plot(ax = lax, kind ='bar', stacked=True, color=cashflows_color_map, width=0.25)
   lax.set_ylabel('Average Normalized\nCashflows (M$/MWe/y)')
   lax.set_xlabel('')
   lax.yaxis.grid(True)
@@ -467,7 +469,7 @@ def combined_heat_ff_plot(anr_tag, cogen_tag):
   lax.set_ylim(-1.02, 0.52)
   lax.yaxis.set_ticks(np.arange(-1.75, 1, 0.25))
   lax.get_legend().set_visible(False)
-  letter_annotation(lax, -.25, 1.04, 'III-b: ANR-H2')
+  letter_annotation(lax, -.25, 1.04, 'III-b: SMR-H2')
 
 
   #Common legend for whole figure
@@ -484,21 +486,21 @@ def combined_heat_ff_plot(anr_tag, cogen_tag):
   plt.close()
 
 
-def combined_h2_ff_plot(anr_tag, cogen_tag):
+def combined_h2_ff_plot(OAK, cogen_tag):
   """Plot heat results: 
   - TOP: left breakeven prices distribution (boxplot), right net annual revenues
   - BOTTOM: average cashflows
   """
-  save_path = f'./results/combined_h2_ff_{anr_tag}_{cogen_tag}.png'
+  save_path = f'./results/combined_h2_ff_{OAK}_{cogen_tag}.png'
   fig = plt.figure(figsize=(8, 7))
   (topfig, botfig) = fig.subfigures(2,1, height_ratios=[1,1.25])
   (befig, revfig) = topfig.subfigures(1,2)
 
-  h2_data = pp_industrial_hydrogen.load_data(OAK=anr_tag)
+  h2_data = pp_industrial_hydrogen.load_data(OAK=OAK)
   # Breakeven prices
   beax = befig.subplots()
   sns.boxplot(ax=beax, data=h2_data, y='Industry', x='Breakeven price ($/MMBtu)', color='black', fill=False, width=.5)
-  sns.stripplot(ax=beax, data=h2_data, y='Industry', x='Breakeven price ($/MMBtu)', hue='ANR type', palette=palette, alpha=.6)
+  sns.stripplot(ax=beax, data=h2_data, y='Industry', x='Breakeven price ($/MMBtu)', hue='SMR type', palette=palette, alpha=.6)
   beax.get_legend().set_visible(False)
   #beax.set_xlim(0,250)
   beax.set_ylabel('')
@@ -508,11 +510,11 @@ def combined_h2_ff_plot(anr_tag, cogen_tag):
 
   # Net annual revenues
   revax = revfig.subplots()
-  h2_data = pp_industrial_hydrogen.compute_normalized_net_revenues(h2_data, OAK=anr_tag)
+  h2_data = pp_industrial_hydrogen.compute_normalized_net_revenues(h2_data, OAK=OAK)
   if cogen_tag=='cogen': x = 'Net Annual Revenues with H2 PTC with elec (M$/MWe/y)'
   elif cogen_tag == 'nocogen': x = 'Net Annual Revenues with H2 PTC (M$/MWe/y)'
   sns.boxplot(ax=revax, data=h2_data, y='Industry', x=x, color='black',fill=False, width=.5)
-  sns.stripplot(ax=revax, data=h2_data, y='Industry', x=x, hue='ANR type', palette=palette)
+  sns.stripplot(ax=revax, data=h2_data, y='Industry', x=x, hue='SMR type', palette=palette)
   revax.set_ylabel('')
   revax.set_xlabel('Net Annual Revenues (M$/MWe/y)')
   revax.get_legend().set_visible(False)
@@ -525,28 +527,28 @@ def combined_h2_ff_plot(anr_tag, cogen_tag):
   #Average cashflows
   # Cashflows in M$/MWe/y
   df = h2_data.copy()
-  df['ANR CAPEX'] = -df['ANR CAPEX ($/year)']/(1e6*df['Depl. ANR Cap. (MWe)'])
-  df['H2 CAPEX'] = -df['H2 CAPEX ($/year)']/(1e6*df['Depl. ANR Cap. (MWe)'])
-  df['ANR O&M'] = -df['ANR O&M ($/year)']/(1e6*df['Depl. ANR Cap. (MWe)'])
-  df['H2 O&M'] = -df['H2 O&M ($/year)']/(1e6*df['Depl. ANR Cap. (MWe)'])
-  df['Conversion'] = -df['Conversion costs ($/year)']/(1e6*df['Depl. ANR Cap. (MWe)'])
-  df['Avoided Fossil Fuel Costs'] = df['Avoided NG costs ($/year)']/(1e6*df['Depl. ANR Cap. (MWe)'])
-  df['H2 PTC'] = df['H2 PTC Revenues ($/year)']/(1e6*df['Depl. ANR Cap. (MWe)'])
+  df['SMR CAPEX'] = -df['SMR CAPEX ($/year)']/(1e6*df['Depl. SMR Cap. (MWe)'])
+  df['H2 CAPEX'] = -df['H2 CAPEX ($/year)']/(1e6*df['Depl. SMR Cap. (MWe)'])
+  df['SMR O&M'] = -df['SMR O&M ($/year)']/(1e6*df['Depl. SMR Cap. (MWe)'])
+  df['H2 O&M'] = -df['H2 O&M ($/year)']/(1e6*df['Depl. SMR Cap. (MWe)'])
+  df['Conversion'] = -df['Conversion costs ($/year)']/(1e6*df['Depl. SMR Cap. (MWe)'])
+  df['Avoided Fossil Fuel Costs'] = df['Avoided NG costs ($/year)']/(1e6*df['Depl. SMR Cap. (MWe)'])
+  df['H2 PTC'] = df['H2 PTC Revenues ($/year)']/(1e6*df['Depl. SMR Cap. (MWe)'])
   if cogen_tag:
-    df['Electricity'] = df['Electricity revenues ($/y)']/(1e6*df['Depl. ANR Cap. (MWe)'])
-    design_df = df[['Industry','ANR type','ANR CAPEX', 'H2 CAPEX', 'ANR O&M', 'H2 O&M', 'Conversion', 'Avoided Fossil Fuel Costs', \
+    df['Electricity'] = df['Electricity revenues ($/y)']/(1e6*df['Depl. SMR Cap. (MWe)'])
+    design_df = df[['Industry','SMR type','SMR CAPEX', 'H2 CAPEX', 'SMR O&M', 'H2 O&M', 'Conversion', 'Avoided Fossil Fuel Costs', \
                     'H2 PTC', 'Electricity']]
   else:
-    design_df = df[['Industry','ANR type','ANR CAPEX', 'H2 CAPEX', 'ANR O&M', 'H2 O&M', 'Conversion', 'Avoided Fossil Fuel Costs', 'H2 PTC']]
+    design_df = df[['Industry','SMR type','SMR CAPEX', 'H2 CAPEX', 'SMR O&M', 'H2 O&M', 'Conversion', 'Avoided Fossil Fuel Costs', 'H2 PTC']]
   am_df = design_df[design_df.Industry == 'Ammonia']
   am_df = am_df.drop(columns=['Industry'])
-  am_df = am_df.groupby('ANR type').mean()
+  am_df = am_df.groupby('SMR type').mean()
   ref_df = design_df[design_df.Industry == 'Refining']
   ref_df = ref_df.drop(columns=['Industry'])
-  ref_df = ref_df.groupby(['ANR type']).mean()
+  ref_df = ref_df.groupby(['SMR type']).mean()
   st_df = design_df[design_df.Industry == 'Steel']
   st_df = st_df.drop(columns=['Industry'])
-  st_df = st_df.groupby(['ANR type']).mean()
+  st_df = st_df.groupby(['SMR type']).mean()
   cax = botfig.subplots(1,3, sharey=True)
   am_df.plot(ax=cax[0], kind='bar', stacked=True, color=cashflows_color_map)
   ref_df.plot(ax=cax[1], kind='bar', stacked=True, color=cashflows_color_map)
@@ -590,13 +592,13 @@ def combined_h2_ff_plot(anr_tag, cogen_tag):
 
 
 def run_case(oak, cogen):
-  if oak: anr_tag = 'NOAK'
-  else: anr_tag = 'FOAK'
+  if oak: OAK = 'NOAK'
+  else: OAK = 'FOAK'
   if cogen: cogen_tag = 'cogen'
   else: cogen_tag = 'nocogen'
-  h2_df = load_h2_results(anr_tag, cogen)
+  h2_df = load_h2_results(OAK, cogen)
   h2_df = compute_cumulative_avoided_emissions(h2_df)
-  heat_df = load_heat_results(anr_tag, cogen_tag)
+  heat_df = load_heat_results(OAK, cogen_tag)
   heat_df = compute_cumulative_avoided_emissions(heat_df, emissions_label='Emissions_mmtco2/y')
   applications_results = {'Industrial Hydrogen':{'data':h2_df, 
                                                  'emissions_label':'Ann. avoided CO2 emissions (MMT-CO2/year)',
@@ -604,15 +606,15 @@ def run_case(oak, cogen):
                           ,'Process Heat':{'data':heat_df, 
                                                    'emissions_label':'Emissions_mmtco2/y',
                                                    'price_label':'Breakeven NG price ($/MMBtu)'}}
-  plot_cumulative_avoided_emissions(applications_results, anr_tag, cogen_tag)
-  combined_avoided_emissions_abatement(applications_results, anr_tag, cogen_tag)
-  elec_df = load_elec_results(anr_tag)
+  plot_cumulative_avoided_emissions(applications_results, OAK, cogen_tag)
+  combined_avoided_emissions_abatement(applications_results, OAK, cogen_tag)
+  elec_df = load_elec_results(OAK)
   applications_results['Electricity'] = {'data':elec_df, 
                                          'emissions_label':None, 
                                          'price_label':None}
   results = concat_results(applications_results)
   results_stats = results[['Application', 'Annual Net Revenues (M$/MWe/y)']].describe([.1,.25, .5, .75,.9])
-  excel_file = f'./results/ANR_application_comparison_{anr_tag}_{cogen_tag}.xlsx'
+  excel_file = f'./results/SMR_application_comparison_{OAK}_{cogen_tag}.xlsx'
   try:
     with pd.ExcelFile(excel_file, engine='openpyxl') as xls:
       with pd.ExcelWriter(excel_file, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
@@ -624,9 +626,9 @@ def run_case(oak, cogen):
     with pd.ExcelFile(excel_file, engine='openpyxl') as xls:
       with pd.ExcelWriter(excel_file, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
         results_stats.to_excel(writer, sheet_name='stats')
-  plot_net_annual_revenues_all_app(results,anr_tag, cogen_tag)
-  combined_heat_ff_plot(cogen_tag=cogen_tag, anr_tag=anr_tag)
-  combined_h2_ff_plot(cogen_tag=cogen_tag, anr_tag=anr_tag)
+  plot_net_annual_revenues_all_app(results,OAK, cogen_tag)
+  combined_heat_ff_plot(cogen_tag=cogen_tag, OAK=OAK)
+  combined_h2_ff_plot(cogen_tag=cogen_tag, OAK=OAK)
   
 
 def main():
