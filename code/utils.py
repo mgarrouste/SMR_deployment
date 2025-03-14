@@ -125,6 +125,7 @@ def compute_cogen(df, surplus_cap_col_name, state_col_name, cambium_scenario, ye
   except FileNotFoundError:
     compute_average_electricity_prices(cambium_scenario, year)
     elec_prices_df = pd.read_excel(f'./results/average_electricity_prices_{cambium_scenario}_{year}.xlsx', index_col=0)
+  df = df[~df[state_col_name].isin(['HI', 'AK'])]
   df['Electricity revenues ($/y)'] = df.apply(lambda x: x[surplus_cap_col_name]*elec_prices_df.loc[x[state_col_name]]*8760, axis=1)
   return df
   

@@ -30,7 +30,7 @@ def load_results(OAK,with_PTC,cogen,cambium_scenario,year):
     h2all['Pathway Net Ann. Rev. ($/year)'] = h2all['SMR-H2 Net Ann. Rev. ($/year)']
     return h2comp, h2all
 
-def main(OAK,with_PTC,cogen,cambium_scenario,year):
+def main(OAK,with_PTC,cogen,cambium_scenario='MidCase',year=2024):
     if cogen: cogen_tag = 'cogen'
     else: cogen_tag = 'nocogen'
     if with_PTC: ptc_tag = 'PTC'
@@ -49,7 +49,7 @@ def main(OAK,with_PTC,cogen,cambium_scenario,year):
 
 if __name__ == '__main__':
     OAK = 'FOAK'
-    with_PTC = False
+    with_PTC = True
     cogen = True
     cambium_scenario = 'MidCase'
     year = 2024

@@ -1,7 +1,7 @@
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import ANR_application_comparison
+import SMR_application_comparison
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os, argparse
@@ -10,9 +10,9 @@ from utils import palette
 
 def load_foaknoPTC(printinfo=False):
 	# profitable FOAK without the H2 PTC
-	heat = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen', with_PTC=False)
+	heat = SMR_application_comparison.load_heat_results(OAK='FOAK', cogen=True, with_PTC=False)
 	heat= heat[['STATE','latitude', 'longitude', 'NG price ($/MMBtu)', 'Emissions_mmtco2/y', 'SMR',
-											 'Depl. ANR Cap. (MWe)', 'Industry','Annual Net Revenues (M$/y)', 'Application', 'IRR wo PTC']]
+											 'Depl. SMR Cap. (MWe)','Annual Net Revenues (M$/y)', 'Application', 'IRR wo PTC']]
 	heat = heat[heat['Annual Net Revenues (M$/y)']>0]
 	heat.rename(columns={'Emissions_mmtco2/y':'Emissions',
 														'NG price ($/MMBtu)':'State price ($/MMBtu)', 'STATE':'state'}, inplace=True)
@@ -22,11 +22,11 @@ def load_foaknoPTC(printinfo=False):
 	if printinfo:
 		print('# process heat facilities profitable wo PTc :{}'.format(len(heat[heat['Annual Net Revenues (M$/y)']>0])))
 		print(heat['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
-		print(heat['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+		print(heat['Depl. SMR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 		print(heat['SMR'].unique())
 
 
-	h2 = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='cogen')
+	h2 = SMR_application_comparison.load_h2_results(OAK='FOAK', cogen_tag='cogen')
 	h2 = h2.loc[:,~h2.columns.duplicated()]
 	h2 = h2.reset_index()
 	h2['Annual Net Revenues wo PTC (M$/y)'] = h2['Electricity revenues ($/y)']+h2['Net Revenues ($/year)']
@@ -35,19 +35,18 @@ def load_foaknoPTC(printinfo=False):
 	return heat
 
 def load_foak_positive(dropnoptc=False):
-	h2_data = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='cogen')
-	h2_data = h2_data[['latitude', 'longitude', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
-										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/y)', 'state','IRR w PTC']]
-	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions', 'ANR':'SMR'}, inplace=True)
+	h2_data = SMR_application_comparison.load_h2_results(OAK='FOAK', cogen_tag='cogen')
+	h2_data = h2_data[['latitude', 'longitude', 'Depl. SMR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
+										'Industry', 'Application', 'SMR', 'Annual Net Revenues (M$/y)', 'state','IRR w PTC']]
+	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions', 'SMR':'SMR'}, inplace=True)
 	h2_data['App'] = h2_data.apply(lambda x: x['Application']+'-'+x['Industry'].capitalize(), axis=1)
 	h2_data.reset_index(inplace=True)
 
-	heat_data = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen')
+	heat_data = SMR_application_comparison.load_heat_results(OAK='FOAK', cogen=True)
 	heat_data = heat_data[['latitude', 'longitude', 'STATE','Emissions_mmtco2/y', 'SMR','Pathway', 'Batch_Temp_degC', 'max_temp_degC', 'Surplus SMR Cap. (MWe)',
-												'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)','NG price ($/MMBtu)', 'Electricity revenues ($/y)','Avoided NG Cost ($/y)','H2 PTC',
-													'Application', 'IRR w PTC','Annual Net Revenues (M$/y)']]
-	heat_data = heat_data.rename(columns={'Emissions_mmtco2/y':'Emissions',
-																			 'Breakeven NG price ($/MMBtu)':'Breakeven price ($/MMBtu)', 'STATE':'state'})
+							'Depl. SMR Cap. (MWe)', 'Breakeven NG price ($/MMBtu)','NG price ($/MMBtu)', 'Electricity revenues ($/y)',
+							'Avoided NG Cost ($/y)','H2 PTC','Application', 'IRR w PTC','Annual Net Revenues (M$/y)']]
+	heat_data = heat_data.rename(columns={'Emissions_mmtco2/y':'Emissions','Breakeven NG price ($/MMBtu)':'Breakeven price ($/MMBtu)', 'STATE':'state'})
 	heat_data['App'] = 'Process Heat'
 	heat_data.reset_index(inplace=True, names='id')
 
@@ -67,18 +66,18 @@ def load_foak_positive(dropnoptc=False):
 
 def load_noak_positive(foak_ptc=True, foak_noptc=False):
 	# NOAK data
-	h2_data = ANR_application_comparison.load_h2_results(anr_tag='NOAK', cogen_tag='cogen')
-	h2_data = h2_data[['latitude', 'longitude', 'state', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
-										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/y)','IRR w PTC']]
+	h2_data = SMR_application_comparison.load_h2_results(OAK='NOAK', cogen_tag='cogen')
+	h2_data = h2_data[['latitude', 'longitude', 'state', 'Depl. SMR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
+										'Industry', 'Application', 'SMR', 'Annual Net Revenues (M$/y)','IRR w PTC']]
 	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions', 
-													'ANR':'SMR',
+													'SMR':'SMR',
 													'IRR w PTC':'IRR (%)'}, inplace=True)
 	h2_data['App'] = h2_data.apply(lambda x: x['Application']+'-'+x['Industry'].capitalize(), axis=1)
 	h2_data.reset_index(inplace=True)
 
-	heat_data = ANR_application_comparison.load_heat_results(anr_tag='NOAK', cogen_tag='cogen')
+	heat_data = SMR_application_comparison.load_heat_results(OAK='NOAK', cogen_tag='cogen')
 	heat_data = heat_data[['latitude', 'longitude', 'STATE', 'Emissions_mmtco2/y', 'SMR','Pathway', 'Batch_Temp_degC', 'max_temp_degC', 'Surplus SMR Cap. (MWe)',
-												'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)','NG price ($/MMBtu)', 'Electricity revenues ($/y)',
+												'Depl. SMR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)','NG price ($/MMBtu)', 'Electricity revenues ($/y)',
 												'Avoided NG Cost ($/y)','H2 PTC',
 													'Application', 'IRR w PTC','Annual Net Revenues (M$/y)']]
 	heat_data.rename(columns={'Breakeven NG price ($/MMBtu)':'Breakeven price ($/MMBtu)',
@@ -116,20 +115,20 @@ def load_noak_positive(foak_ptc=True, foak_noptc=False):
 
 def load_noak_noPTC(foak_ptc=True, foak_noptc=False):
 	# NOAK data
-	h2_data = ANR_application_comparison.load_h2_results(anr_tag='NOAK', cogen_tag='cogen')
-	h2_data = h2_data[['latitude', 'longitude', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
-										'Industry', 'Application', 'ANR', 'Net Revenues ($/year)','Electricity revenues ($/y)', 'IRR wo PTC', 'state']]
+	h2_data = SMR_application_comparison.load_h2_results(OAK='NOAK', cogen_tag='cogen')
+	h2_data = h2_data[['latitude', 'longitude', 'Depl. SMR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
+										'Industry', 'Application', 'SMR', 'Net Revenues ($/year)','Electricity revenues ($/y)', 'IRR wo PTC', 'state']]
 
 	h2_data['Annual Net Revenues (M$/y)'] =h2_data.loc[:,['Net Revenues ($/year)','Electricity revenues ($/y)']].sum(axis=1)
 	h2_data['Annual Net Revenues (M$/y)'] /=1e6
-	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions', 'ANR':'SMR', 'IRR wo PTC': 'IRR (%)'}, inplace=True)
+	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions', 'SMR':'SMR', 'IRR wo PTC': 'IRR (%)'}, inplace=True)
 	h2_data['App'] = h2_data.apply(lambda x: x['Application']+'-'+x['Industry'].capitalize(), axis=1)
 	h2_data = h2_data.drop(columns=['Net Revenues ($/year)','Electricity revenues ($/y)' ])
 	h2_data.reset_index(inplace=True)
 
-	heat_data = ANR_application_comparison.load_heat_results(anr_tag='NOAK', cogen_tag='cogen', with_PTC=False)
+	heat_data = SMR_application_comparison.load_heat_results(OAK='NOAK', cogen_tag='cogen', with_PTC=False)
 	heat_data = heat_data[['latitude', 'longitude', 'STATE','Emissions_mmtco2/y', 'SMR','Pathway', 'Batch_Temp_degC', 'max_temp_degC', 'Surplus SMR Cap. (MWe)',
-												'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)', 'NG price ($/MMBtu)',
+												'Depl. SMR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)', 'NG price ($/MMBtu)',
 													'Application', 'Annual Net Revenues (M$/y)', 'Electricity revenues ($/y)','Avoided NG Cost ($/y)','IRR wo PTC']]
 	heat_data.rename(columns={'Breakeven NG price ($/MMBtu)':'Breakeven price ($/MMBtu)',
 												'Emissions_mmtco2/y':'Emissions', 'IRR wo PTC': 'IRR (%)', 'STATE':'state'}, inplace=True)
@@ -164,8 +163,8 @@ def load_noak_noPTC(foak_ptc=True, foak_noptc=False):
 
 
 def get_aggregated_data(dftoagg, tag):
-	df = dftoagg[['App', 'Emissions', 'Depl. ANR Cap. (MWe)']]
-	df = df.rename(columns={'Depl. ANR Cap. (MWe)':'Capacity'})
+	df = dftoagg[['App', 'Emissions', 'Depl. SMR Cap. (MWe)']]
+	df = df.rename(columns={'Depl. SMR Cap. (MWe)':'Capacity'})
 	df['Capacity'] = df['Capacity']/1e3
 	df = df.groupby('App').sum()
 	df = df.reset_index()
@@ -177,8 +176,8 @@ def get_aggregated_data(dftoagg, tag):
 
 
 def plot_bars(foak_noPTC, foak_positive, noak_positive, noak_noPTC):
-	df = foak_noPTC[['App', 'Emissions', 'Depl. ANR Cap. (MWe)']]
-	df = df.rename(columns={'Depl. ANR Cap. (MWe)':'Capacity'})
+	df = foak_noPTC[['App', 'Emissions', 'Depl. SMR Cap. (MWe)']]
+	df = df.rename(columns={'Depl. SMR Cap. (MWe)':'Capacity'})
 	df['Capacity'] = df['Capacity']/1e3
 	df = df.groupby('App').sum()
 	df0 = df.reset_index()
@@ -187,8 +186,8 @@ def plot_bars(foak_noPTC, foak_positive, noak_positive, noak_noPTC):
 	total_df0 = pd.DataFrame({'App':['Total'],'Emissions': [df0['Emissions'].sum()], 'Capacity':[df0['Capacity'].sum()], 'measure':['total'], 'tag':['FOAK-NoPTC']})
 	df0['tag'] = 'FOAK<br>NoPTC'
 
-	df = foak_positive[['App', 'Emissions', 'Depl. ANR Cap. (MWe)']]
-	df = df.rename(columns={'Depl. ANR Cap. (MWe)':'Capacity'})
+	df = foak_positive[['App', 'Emissions', 'Depl. SMR Cap. (MWe)']]
+	df = df.rename(columns={'Depl. SMR Cap. (MWe)':'Capacity'})
 	df['Capacity'] = df['Capacity']/1e3
 	df = df.groupby('App').sum()
 	df1 = df.reset_index()
@@ -199,8 +198,8 @@ def plot_bars(foak_noPTC, foak_positive, noak_positive, noak_noPTC):
 	df1['tag'] = 'FOAK'
 
 
-	df = noak_noPTC[['App', 'Emissions', 'Depl. ANR Cap. (MWe)']]
-	df = df.rename(columns={'Depl. ANR Cap. (MWe)':'Capacity'})
+	df = noak_noPTC[['App', 'Emissions', 'Depl. SMR Cap. (MWe)']]
+	df = df.rename(columns={'Depl. SMR Cap. (MWe)':'Capacity'})
 	df['Capacity'] = df['Capacity']/1e3
 	df = df.groupby('App').sum()
 	df2 = df.reset_index()
@@ -211,8 +210,8 @@ def plot_bars(foak_noPTC, foak_positive, noak_positive, noak_noPTC):
 	df2['tag'] = 'NOAK<br>NoPTC'
 
 
-	df = noak_positive[['App', 'Emissions', 'Depl. ANR Cap. (MWe)']]
-	df = df.rename(columns={'Depl. ANR Cap. (MWe)':'Capacity'})
+	df = noak_positive[['App', 'Emissions', 'Depl. SMR Cap. (MWe)']]
+	df = df.rename(columns={'Depl. SMR Cap. (MWe)':'Capacity'})
 	df['Capacity'] = df['Capacity']/1e3
 	df = df.groupby('App').sum()
 	df3 = df.reset_index()
@@ -448,23 +447,23 @@ def abatement_cost_plot():
 	rff_scc = 185
 
 	# FOAK on the left
-	anr_tag = 'FOAK'
+	OAK = 'FOAK'
 	import pp_industrial_hydrogen
-	h2_data = pp_industrial_hydrogen.load_data(anr_tag)
+	h2_data = pp_industrial_hydrogen.load_data(OAK)
 	# Select only profitable sites  !
 	h2_data = h2_data[h2_data['Net Annual Revenues with H2 PTC ($/MWe/y)']>=0]
-	h2_data['Cost ANR ($/y)'] = h2_data['ANR CAPEX ($/year)']+h2_data['H2 CAPEX ($/year)']+h2_data['ANR O&M ($/year)']+h2_data['H2 O&M ($/year)']\
+	h2_data['Cost SMR ($/y)'] = h2_data['SMR CAPEX ($/year)']+h2_data['H2 CAPEX ($/year)']+h2_data['SMR O&M ($/year)']+h2_data['H2 O&M ($/year)']\
 												+h2_data['Conversion costs ($/year)']-h2_data['Avoided NG costs ($/year)']
-	h2_data['Abatement cost ($/tCO2)'] = h2_data['Cost ANR ($/y)']/(h2_data['Ann. avoided CO2 emissions (MMT-CO2/year)']*1e6)
+	h2_data['Abatement cost ($/tCO2)'] = h2_data['Cost SMR ($/y)']/(h2_data['Ann. avoided CO2 emissions (MMT-CO2/year)']*1e6)
 	#print('FOAK h2')
-	h2_data = h2_data[['ANR type', 'Abatement cost ($/tCO2)', 'Industry']]
+	h2_data = h2_data[['SMR type', 'Abatement cost ($/tCO2)', 'Industry']]
 	#print(h2_data['Abatement cost ($/tCO2)'].describe(percentiles=[.1,.25,.5,.75,.9]))
-	h2_data = h2_data.rename(columns={'ANR type':'SMR'})
+	h2_data = h2_data.rename(columns={'SMR type':'SMR'})
 	# Direct heat
-	heat_data = pd.read_excel(f'./results/process_heat/best_pathway_{anr_tag}_cogen_PTC_True.xlsx')
+	heat_data = pd.read_excel(f'./results/process_heat/best_pathway_{OAK}_cogen_PTC_True.xlsx')
 	heat_data = heat_data[heat_data['Pathway Net Ann. Rev. (M$/y)']>=0]
-	heat_data['Cost ANR ($/y)'] = (heat_data['CAPEX ($/y)']+heat_data['O&M ($/y)']+heat_data['Conversion']-heat_data['Avoided NG Cost ($/y)'])
-	heat_data['Abatement cost ($/tCO2)'] = heat_data['Cost ANR ($/y)']/(heat_data['Emissions_mmtco2/y']*1e6)
+	heat_data['Cost SMR ($/y)'] = (heat_data['CAPEX ($/y)']+heat_data['O&M ($/y)']+heat_data['Conversion']-heat_data['Avoided NG Cost ($/y)'])
+	heat_data['Abatement cost ($/tCO2)'] = heat_data['Cost SMR ($/y)']/(heat_data['Emissions_mmtco2/y']*1e6)
 	heat_data = heat_data[['SMR', 'Abatement cost ($/tCO2)']]
 	#print('FOAK heat')
 	#print(heat_data['Abatement cost ($/tCO2)'].describe(percentiles=[.1,.25,.5,.75,.9]))
@@ -486,24 +485,24 @@ def abatement_cost_plot():
 	#ax[0].set_yticks(ax[0].get_yticks(), ax[0].get_yticklabels(), rotation=-30, ha='left')
 
 	# FOAK on the left
-	anr_tag = 'NOAK'
+	OAK = 'NOAK'
 	import pp_industrial_hydrogen
-	h2_data = pp_industrial_hydrogen.load_data(anr_tag)
+	h2_data = pp_industrial_hydrogen.load_data(OAK)
 	# Select only profitable sites
 	h2_data = h2_data[h2_data['Net Annual Revenues with H2 PTC ($/MWe/y)']>=0]
-	h2_data['Cost ANR ($/y)'] = h2_data['ANR CAPEX ($/year)']+h2_data['H2 CAPEX ($/year)']+h2_data['ANR O&M ($/year)']+h2_data['H2 O&M ($/year)']\
+	h2_data['Cost SMR ($/y)'] = h2_data['SMR CAPEX ($/year)']+h2_data['H2 CAPEX ($/year)']+h2_data['SMR O&M ($/year)']+h2_data['H2 O&M ($/year)']\
 												+h2_data['Conversion costs ($/year)']-h2_data['Avoided NG costs ($/year)']
-	h2_data['Abatement cost ($/tCO2)'] = h2_data['Cost ANR ($/y)']/(h2_data['Ann. avoided CO2 emissions (MMT-CO2/year)']*1e6)
-	h2_data = h2_data[['ANR type', 'Abatement cost ($/tCO2)', 'Industry']]
+	h2_data['Abatement cost ($/tCO2)'] = h2_data['Cost SMR ($/y)']/(h2_data['Ann. avoided CO2 emissions (MMT-CO2/year)']*1e6)
+	h2_data = h2_data[['SMR type', 'Abatement cost ($/tCO2)', 'Industry']]
 	#print('NOAK h2')
 	#print(h2_data['Abatement cost ($/tCO2)'].describe(percentiles=[.1,.25,.5,.75,.9]))
-	h2_data = h2_data[['ANR type', 'Abatement cost ($/tCO2)', 'Industry']]
-	h2_data = h2_data.rename(columns={'ANR type':'SMR'})
+	h2_data = h2_data[['SMR type', 'Abatement cost ($/tCO2)', 'Industry']]
+	h2_data = h2_data.rename(columns={'SMR type':'SMR'})
 	# Direct heat
-	heat_data = pd.read_excel(f'./results/process_heat/best_pathway_{anr_tag}_cogen_PTC_True.xlsx')
+	heat_data = pd.read_excel(f'./results/process_heat/best_pathway_{OAK}_cogen_PTC_True.xlsx')
 	heat_data = heat_data[heat_data['Pathway Net Ann. Rev. (M$/y)']>=0]
-	heat_data['Cost ANR ($/y)'] = (heat_data['CAPEX ($/y)']+heat_data['O&M ($/y)']+heat_data['Conversion']-heat_data['Avoided NG Cost ($/y)'])
-	heat_data['Abatement cost ($/tCO2)'] = heat_data['Cost ANR ($/y)']/(heat_data['Emissions_mmtco2/y']*1e6)
+	heat_data['Cost SMR ($/y)'] = (heat_data['CAPEX ($/y)']+heat_data['O&M ($/y)']+heat_data['Conversion']-heat_data['Avoided NG Cost ($/y)'])
+	heat_data['Abatement cost ($/tCO2)'] = heat_data['Cost SMR ($/y)']/(heat_data['Emissions_mmtco2/y']*1e6)
 	heat_data = heat_data[['SMR', 'Abatement cost ($/tCO2)']]
 	#print('NOAK heat')
 	#print(heat_data['Abatement cost ($/tCO2)'].describe(percentiles=[.1,.25,.5,.75,.9]))
@@ -546,9 +545,9 @@ def cashflow_breakdown_plots(scenario, heat, h2):
 	cdf = heat.copy()
 	cdf.fillna(0, inplace=True)
 
-	cdf['SMR CAPEX'] = (-cdf[f'Annual_CAPEX_{OAK}']-cdf['Annual ANR CAPEX'])/1e6
+	cdf['SMR CAPEX'] = (-cdf[f'Annual_CAPEX_{OAK}']-cdf['Annual SMR CAPEX'])/1e6
 	cdf['H2 CAPEX'] = -cdf['Annual H2 CAPEX']/1e6
-	cdf['SMR O&M'] = -(cdf[f'FOPEX_{OAK}']+cdf[f'VOPEX_{OAK}'])/1e6-(cdf['ANR VOM']+cdf['ANR FOM'])/1e6
+	cdf['SMR O&M'] = -(cdf[f'FOPEX_{OAK}']+cdf[f'VOPEX_{OAK}'])/1e6-(cdf['SMR VOM']+cdf['SMR FOM'])/1e6
 	cdf['H2 O&M'] = -(cdf['H2 VOM']+cdf['H2 FOM'])/1e6
 	cdf['Conversion'] = -(cdf['Conversion'])/1e6
 	cdf['Avoided Fossil Fuel Costs'] = cdf['Avoided NG Cost ($/y)']/1e6
@@ -560,9 +559,9 @@ def cashflow_breakdown_plots(scenario, heat, h2):
 
 	cdf = h2.copy()
 
-	cdf['SMR CAPEX'] = -cdf['ANR CAPEX ($/year)']/1e6
+	cdf['SMR CAPEX'] = -cdf['SMR CAPEX ($/year)']/1e6
 	cdf['H2 CAPEX'] = -cdf['H2 CAPEX ($/year)']/1e6
-	cdf['SMR O&M'] = -cdf['ANR O&M ($/year)']/1e6
+	cdf['SMR O&M'] = -cdf['SMR O&M ($/year)']/1e6
 	cdf['H2 O&M'] = -cdf['H2 O&M ($/year)']/1e6
 	cdf['Conversion'] = -cdf['Conversion costs ($/year)']/1e6
 	cdf['Avoided Fossil Fuel Costs'] = cdf['Avoided NG costs ($/year)']/1e6
@@ -632,31 +631,31 @@ if __name__ =='__main__':
 	elif args.cashflow:
 		if args.cashflow == 'FOAK':
 			scenario = {'OAK':'FOAK', 'PTC':False}
-			heat = ANR_application_comparison.load_heat_results(anr_tag=scenario['OAK'], cogen_tag='cogen', with_PTC=scenario['PTC'])
+			heat = SMR_application_comparison.load_heat_results(OAK=scenario['OAK'], cogen_tag='cogen', with_PTC=scenario['PTC'])
 			heat = heat[heat['Annual Net Revenues (M$/y)']>0]
-			h2 = ANR_application_comparison.load_h2_results(anr_tag=scenario['OAK'], cogen_tag='cogen', with_PTC=scenario['PTC'])
+			h2 = SMR_application_comparison.load_h2_results(OAK=scenario['OAK'], cogen_tag='cogen', with_PTC=scenario['PTC'])
 			h2 = h2[h2['Annual Net Revenues (M$/y)']>0]
 			cashflow_breakdown_plots(scenario=scenario, heat=heat, h2=h2)
 			scenario = {'OAK':'FOAK', 'PTC':True}
-			heat = ANR_application_comparison.load_heat_results(anr_tag=scenario['OAK'], cogen_tag='cogen', with_PTC=scenario['PTC'])
+			heat = SMR_application_comparison.load_heat_results(OAK=scenario['OAK'], cogen_tag='cogen', with_PTC=scenario['PTC'])
 			heat = heat[heat['Annual Net Revenues (M$/y)']>0]
-			h2 = ANR_application_comparison.load_h2_results(anr_tag=scenario['OAK'], cogen_tag='cogen', with_PTC=scenario['PTC'])
+			h2 = SMR_application_comparison.load_h2_results(OAK=scenario['OAK'], cogen_tag='cogen', with_PTC=scenario['PTC'])
 			h2 = h2[h2['Annual Net Revenues (M$/y)']>0]
 			cashflow_breakdown_plots(scenario=scenario, heat=heat, h2=h2)
 		if args.cashflow == 'NOAK':
 			## NOAK no ptc after foak no ptc
 			scenario = {'OAK':'NOAK', 'PTC':False, 'FOAK_PTC':False}
 			# heat
-			heatf = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen', with_PTC=scenario['FOAK_PTC'])
+			heatf = SMR_application_comparison.load_heat_results(OAK='FOAK', cogen_tag='cogen', with_PTC=scenario['FOAK_PTC'])
 			heatf = heatf[heatf['Annual Net Revenues (M$/y)']>0]
-			heatn = ANR_application_comparison.load_heat_results(anr_tag='NOAK', cogen_tag='cogen', with_PTC=scenario['PTC'])
+			heatn = SMR_application_comparison.load_heat_results(OAK='NOAK', cogen_tag='cogen', with_PTC=scenario['PTC'])
 			heatn = heatn[heatn['Annual Net Revenues (M$/y)']>0]
 			to_drop = heatf.index.to_list()
 			heatn = heatn.drop(to_drop, errors='ignore')
 			# h2
-			h2f = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='cogen', with_PTC=scenario['FOAK_PTC'])
+			h2f = SMR_application_comparison.load_h2_results(OAK='FOAK', cogen_tag='cogen', with_PTC=scenario['FOAK_PTC'])
 			h2f = h2f[h2f['Annual Net Revenues (M$/y)']>0]
-			h2n = ANR_application_comparison.load_h2_results(anr_tag='NOAK', cogen_tag='cogen', with_PTC=scenario['PTC'])
+			h2n = SMR_application_comparison.load_h2_results(OAK='NOAK', cogen_tag='cogen', with_PTC=scenario['PTC'])
 			h2n = h2n[h2n['Annual Net Revenues (M$/y)']>0]
 			to_drop = h2f.index.to_list()
 			h2n = h2n.drop(to_drop, errors='ignore')
@@ -665,16 +664,16 @@ if __name__ =='__main__':
 			## NOAK no ptc after foak ptc
 			scenario = {'OAK':'NOAK', 'PTC':False, 'FOAK_PTC':True}
 			# heat
-			heatf = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen', with_PTC=scenario['FOAK_PTC'])
+			heatf = SMR_application_comparison.load_heat_results(OAK='FOAK', cogen_tag='cogen', with_PTC=scenario['FOAK_PTC'])
 			heatf = heatf[heatf['Annual Net Revenues (M$/y)']>0]
-			heatn = ANR_application_comparison.load_heat_results(anr_tag='NOAK', cogen_tag='cogen', with_PTC=scenario['PTC'])
+			heatn = SMR_application_comparison.load_heat_results(OAK='NOAK', cogen_tag='cogen', with_PTC=scenario['PTC'])
 			heatn = heatn[heatn['Annual Net Revenues (M$/y)']>0]
 			to_drop = heatf.index.to_list()
 			heatn = heatn.drop(to_drop, errors='ignore')
 			# h2
-			h2f = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='cogen', with_PTC=scenario['FOAK_PTC'])
+			h2f = SMR_application_comparison.load_h2_results(OAK='FOAK', cogen_tag='cogen', with_PTC=scenario['FOAK_PTC'])
 			h2f = h2f[h2f['Annual Net Revenues (M$/y)']>0]
-			h2n = ANR_application_comparison.load_h2_results(anr_tag='NOAK', cogen_tag='cogen', with_PTC=scenario['PTC'])
+			h2n = SMR_application_comparison.load_h2_results(OAK='NOAK', cogen_tag='cogen', with_PTC=scenario['PTC'])
 			h2n = h2n[h2n['Annual Net Revenues (M$/y)']>0]
 			to_drop = h2f.index.to_list()
 			h2n = h2n.drop(to_drop, errors='ignore')
@@ -683,16 +682,16 @@ if __name__ =='__main__':
 			# NOAK ptc after foak ptc
 			scenario = {'OAK':'NOAK', 'PTC':True, 'FOAK_PTC':True}
 			# heat
-			heatf = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen', with_PTC=scenario['FOAK_PTC'])
+			heatf = SMR_application_comparison.load_heat_results(OAK='FOAK', cogen_tag='cogen', with_PTC=scenario['FOAK_PTC'])
 			heatf = heatf[heatf['Annual Net Revenues (M$/y)']>0]
-			heatn = ANR_application_comparison.load_heat_results(anr_tag='NOAK', cogen_tag='cogen', with_PTC=scenario['PTC'])
+			heatn = SMR_application_comparison.load_heat_results(OAK='NOAK', cogen_tag='cogen', with_PTC=scenario['PTC'])
 			heatn = heatn[heatn['Annual Net Revenues (M$/y)']>0]
 			to_drop = heatf.index.to_list()
 			heatn = heatn.drop(to_drop, errors='ignore')
 			# h2
-			h2f = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='cogen', with_PTC=scenario['FOAK_PTC'])
+			h2f = SMR_application_comparison.load_h2_results(OAK='FOAK', cogen_tag='cogen', with_PTC=scenario['FOAK_PTC'])
 			h2f = h2f[h2f['Annual Net Revenues (M$/y)']>0]
-			h2n = ANR_application_comparison.load_h2_results(anr_tag='NOAK', cogen_tag='cogen', with_PTC=scenario['PTC'])
+			h2n = SMR_application_comparison.load_h2_results(OAK='NOAK', cogen_tag='cogen', with_PTC=scenario['PTC'])
 			h2n = h2n[h2n['Annual Net Revenues (M$/y)']>0]
 			to_drop = h2f.index.to_list()
 			h2n = h2n.drop(to_drop, errors='ignore')
