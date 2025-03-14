@@ -107,35 +107,8 @@ def save_foak_positive():
 foak_positive = waterfalls_cap_em.load_foak_positive()
 foak_positive['IRR (%)'] = foak_positive['IRR w PTC']*100
 plot_data = save_foak_positive()
-print(foak_positive['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
-print(foak_positive['IRR (%)'].describe(percentiles=[.1,.25,.5,.75,.9]))
-print(foak_positive['Depl. SMR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]))
-print('MR deployed capacity : ',sum(foak_positive[foak_positive.SMR=='MR']['Depl. SMR Cap. (MWe)']))
-print('MR deployed units : ',sum(foak_positive[foak_positive.SMR=='MR']['Depl. SMR Cap. (MWe)'])/6.7)
-print('MSR deployed capacity : ',sum(foak_positive[foak_positive.SMR=='MSR']['Depl. SMR Cap. (MWe)']))
-print('MSR deployed units : ',sum(foak_positive[foak_positive.SMR=='MSR']['Depl. SMR Cap. (MWe)'])/141)
-print('SFR deployed capacity : ',sum(foak_positive[foak_positive.SMR=='SFR']['Depl. SMR Cap. (MWe)']))
-print('SFR deployed units: ',sum(foak_positive[foak_positive.SMR=='SFR']['Depl. SMR Cap. (MWe)'])/80)
-print('PWR deployed capacity : ',sum(foak_positive[foak_positive.SMR=='PWR']['Depl. SMR Cap. (MWe)']))
-print('PWR deployed units : ',sum(foak_positive[foak_positive.SMR=='PWR']['Depl. SMR Cap. (MWe)'])/77)
-print('Total capacity deployed GWe : ', sum(foak_positive['Depl. SMR Cap. (MWe)'])/1e3)
 processheat = foak_positive[foak_positive.Application=='Process Heat']
 processh2 = foak_positive[foak_positive.Application!='Process Heat']
-print('Process heat capacity: ', sum(processheat['Depl. SMR Cap. (MWe)'])/1e3 )
-print('Process heat SMR-H2 capacity: ', sum(processheat[processheat.Pathway =='SMR-H2']['Depl. SMR Cap. (MWe)'])/1e3 )
-print('Process heat SMR+SMR-H2 capacity: ', sum(processheat[processheat.Pathway =='SMR+SMR-H2']['Depl. SMR Cap. (MWe)'])/1e3 )
-print('H2 AMmonia: ', sum(foak_positive[foak_positive.App=='Industrial Hydrogen-Ammonia']['Depl. SMR Cap. (MWe)'])/1e3 )
-print('H2 Steel: ', sum(foak_positive[foak_positive.App=='Industrial Hydrogen-Steel']['Depl. SMR Cap. (MWe)'])/1e3 )
-print('H2 Refining: ', sum(foak_positive[foak_positive.App=='Industrial Hydrogen-Refining']['Depl. SMR Cap. (MWe)'])/1e3 )
-
-
-
-print('/n IRR')
-print(foak_positive['IRR (%)'].describe(percentiles=[.1,.25,.5,.75,.9]))
-print('\n Heat')
-print(processheat['IRR (%)'].describe(percentiles=[.1,.25,.5,.75,.9]))
-print('\n H2')
-print(processh2['IRR (%)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 
 print('\n Deployment in states with bans')
 banss = foak_positive[foak_positive.state.isin(nuclear_ban)]
