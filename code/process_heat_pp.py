@@ -31,9 +31,11 @@ def load_results(OAK,with_PTC,cogen,cambium_scenario,year):
     return h2comp, h2all
 
 def main(OAK,with_PTC,cogen,cambium_scenario,year):
+    if cogen: cogen_tag = 'cogen'
+    else: cogen_tag = 'nocogen'
+    if with_PTC: ptc_tag = 'PTC'
+    else: ptc_tag = 'noPTC'
     h2comp, h2all = load_results(OAK,with_PTC,cogen,cambium_scenario,year)
-    print(h2comp)
-    print(h2all)
     comparison = pd.concat([h2comp,h2all],ignore_index=True)
     comparison.reset_index(inplace=True, drop=True)
     idx = comparison.groupby(['FACILITY_ID'])['Pathway Net Ann. Rev. ($/year)'].idxmax()
@@ -41,7 +43,7 @@ def main(OAK,with_PTC,cogen,cambium_scenario,year):
     best_pathway['Pathway Net Ann. Rev. (M$/y)'] = best_pathway['Pathway Net Ann. Rev. ($/year)']/1e6
     best_pathway['Pathway Net Ann. Rev. (M$/y/MWt)'] = best_pathway['Pathway Net Ann. Rev. (M$/y)']/best_pathway['Depl. SMR Cap. (MWt)']
     best_pathway['Pathway Net Ann. Rev. (M$/y/MWe)'] = best_pathway['Pathway Net Ann. Rev. (M$/y)']/best_pathway['Depl. SMR Cap. (MWe)']
-    print(best_pathway)
+    best_pathway.to_csv(f'./results/process_heat_{OAK}_{ptc_tag}_{cogen_tag}.csv')
     
 
 
