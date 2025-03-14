@@ -2,7 +2,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from utils import palette
 import matplotlib.pyplot as plt
-import ANR_application_comparison
+import SMR_application_comparison
 from plotly.subplots import make_subplots
 import waterfalls_cap_em 
 
@@ -45,17 +45,17 @@ fig.add_trace(go.Choropleth(
 
 
 def load_foak_positive_2():
-	h2_data = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='cogen')
-	h2_data = h2_data[['latitude', 'longitude', 'state', 'Depl. ANR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
-										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/y)', 'IRR w PTC', 'IRR wo PTC' ]]
+	h2_data = SMR_application_comparison.load_h2_results(OAK='FOAK', cogen_tag='cogen')
+	h2_data = h2_data[['latitude', 'longitude', 'state', 'Depl. SMR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
+										'Industry', 'Application', 'SMR', 'Annual Net Revenues (M$/y)', 'IRR w PTC', 'IRR wo PTC' ]]
 	h2_data['Emissions_mmtco2/y'] = h2_data['Ann. avoided CO2 emissions (MMT-CO2/year)']
-	h2_data.rename(columns={'ANR':'SMR'}, inplace=True)
+	h2_data.rename(columns={'SMR':'SMR'}, inplace=True)
 	h2_data['App'] = h2_data.apply(lambda x: x['Application']+'-'+x['Industry'].capitalize(), axis=1)
 	h2_data.reset_index(inplace=True)
 
-	heat_data = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen')
+	heat_data = SMR_application_comparison.load_heat_results(OAK='FOAK', cogen_tag='cogen')
 	heat_data = heat_data[['latitude', 'longitude', 'STATE', 'Emissions_mmtco2/y', 'SMR',
-												'Depl. ANR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)',
+												'Depl. SMR Cap. (MWe)', 'Industry', 'Breakeven NG price ($/MMBtu)',
 												'Annual Net Revenues (M$/y)', 'Application', 'IRR w PTC', 'IRR wo PTC']]
 	heat_data['App'] = 'Process Heat'
 	heat_data.rename(columns={'STATE':'state'}, inplace=True)
@@ -66,17 +66,15 @@ def load_foak_positive_2():
 	return foak_positive
 
 def save_foak_positive():
-	h2_data = ANR_application_comparison.load_h2_results(anr_tag='FOAK', cogen_tag='cogen')
-	h2_data = h2_data[['state', 'Depl. ANR Cap. (MWe)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
-										'Industry', 'Application', 'ANR', 'Annual Net Revenues (M$/y)', 'IRR w PTC']]
-	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions (MMtCO2/y)', 'state':'State', 'ANR':'SMR'}, inplace=True)
+	h2_data = SMR_application_comparison.load_h2_results(OAK='FOAK', cogen_tag='cogen')
+	h2_data = h2_data[['state', 'Depl. SMR Cap. (MWe)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
+										'Industry', 'Application', 'SMR', 'Annual Net Revenues (M$/y)', 'IRR w PTC']]
+	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions (MMtCO2/y)', 'state':'State', 'SMR':'SMR'}, inplace=True)
 	h2_data['application'] = h2_data.apply(lambda x:'H2-'+x['Industry'].capitalize(), axis=1)
 	h2_data = h2_data.reset_index(names=['id'])
 
-	heat_data = ANR_application_comparison.load_heat_results(anr_tag='FOAK', cogen_tag='cogen')
-	heat_data = heat_data[['STATE', 'Emissions_mmtco2/y', 'SMR',
-												'Depl. ANR Cap. (MWe)', 'Industry',
-												'Annual Net Revenues (M$/y)', 'Application', 'IRR w PTC']]
+	heat_data = SMR_application_comparison.load_heat_results(OAK='FOAK', cogen=True)
+	heat_data = heat_data[['STATE', 'Emissions_mmtco2/y', 'SMR','Depl. SMR Cap. (MWe)', 'Annual Net Revenues (M$/y)', 'Application', 'IRR w PTC']]
 	heat_data.rename(columns={'Emissions_mmtco2/y':'Emissions (MMtCO2/y)', 'STATE':'State'}, inplace=True)
 	heat_data['application'] = 'Process Heat'
 	heat_data = heat_data.reset_index(names=['id'])
@@ -85,7 +83,7 @@ def save_foak_positive():
 	foak_positive = pd.concat([h2_data, heat_data], ignore_index=True)
 	foak_positive = foak_positive[foak_positive['Annual Net Revenues (M$/y)'] >=0]
 	foak_positive.set_index('id', inplace=True)
-	foak_positive['Depl. ANR Cap. (MWe)'] = foak_positive['Depl. ANR Cap. (MWe)'].astype(int)
+	foak_positive['Depl. SMR Cap. (MWe)'] = foak_positive['Depl. SMR Cap. (MWe)'].astype(int)
 	foak_positive['IRR (%)'] = foak_positive['IRR w PTC']*100
 	foak_positive.sort_values(by='IRR (%)', ascending=False)
 
@@ -111,24 +109,24 @@ foak_positive['IRR (%)'] = foak_positive['IRR w PTC']*100
 plot_data = save_foak_positive()
 print(foak_positive['Annual Net Revenues (M$/y)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 print(foak_positive['IRR (%)'].describe(percentiles=[.1,.25,.5,.75,.9]))
-print(foak_positive['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]))
-print('Micro deployed capacity : ',sum(foak_positive[foak_positive.SMR=='Micro']['Depl. ANR Cap. (MWe)']))
-print('Micro deployed units : ',sum(foak_positive[foak_positive.SMR=='Micro']['Depl. ANR Cap. (MWe)'])/6.7)
-print('iMSR deployed capacity : ',sum(foak_positive[foak_positive.SMR=='iMSR']['Depl. ANR Cap. (MWe)']))
-print('iMSR deployed units : ',sum(foak_positive[foak_positive.SMR=='iMSR']['Depl. ANR Cap. (MWe)'])/141)
-print('PBR-HTGR deployed capacity : ',sum(foak_positive[foak_positive.SMR=='PBR-HTGR']['Depl. ANR Cap. (MWe)']))
-print('PBR-HTGR deployed units: ',sum(foak_positive[foak_positive.SMR=='PBR-HTGR']['Depl. ANR Cap. (MWe)'])/80)
-print('iPWR deployed capacity : ',sum(foak_positive[foak_positive.SMR=='iPWR']['Depl. ANR Cap. (MWe)']))
-print('iPWR deployed units : ',sum(foak_positive[foak_positive.SMR=='iPWR']['Depl. ANR Cap. (MWe)'])/77)
-print('Total capacity deployed GWe : ', sum(foak_positive['Depl. ANR Cap. (MWe)'])/1e3)
+print(foak_positive['Depl. SMR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]))
+print('MR deployed capacity : ',sum(foak_positive[foak_positive.SMR=='MR']['Depl. SMR Cap. (MWe)']))
+print('MR deployed units : ',sum(foak_positive[foak_positive.SMR=='MR']['Depl. SMR Cap. (MWe)'])/6.7)
+print('MSR deployed capacity : ',sum(foak_positive[foak_positive.SMR=='MSR']['Depl. SMR Cap. (MWe)']))
+print('MSR deployed units : ',sum(foak_positive[foak_positive.SMR=='MSR']['Depl. SMR Cap. (MWe)'])/141)
+print('SFR deployed capacity : ',sum(foak_positive[foak_positive.SMR=='SFR']['Depl. SMR Cap. (MWe)']))
+print('SFR deployed units: ',sum(foak_positive[foak_positive.SMR=='SFR']['Depl. SMR Cap. (MWe)'])/80)
+print('PWR deployed capacity : ',sum(foak_positive[foak_positive.SMR=='PWR']['Depl. SMR Cap. (MWe)']))
+print('PWR deployed units : ',sum(foak_positive[foak_positive.SMR=='PWR']['Depl. SMR Cap. (MWe)'])/77)
+print('Total capacity deployed GWe : ', sum(foak_positive['Depl. SMR Cap. (MWe)'])/1e3)
 processheat = foak_positive[foak_positive.Application=='Process Heat']
 processh2 = foak_positive[foak_positive.Application!='Process Heat']
-print('Process heat capacity: ', sum(processheat['Depl. ANR Cap. (MWe)'])/1e3 )
-print('Process heat SMR-H2 capacity: ', sum(processheat[processheat.Pathway =='SMR-H2']['Depl. ANR Cap. (MWe)'])/1e3 )
-print('Process heat SMR+SMR-H2 capacity: ', sum(processheat[processheat.Pathway =='SMR+SMR-H2']['Depl. ANR Cap. (MWe)'])/1e3 )
-print('H2 AMmonia: ', sum(foak_positive[foak_positive.App=='Industrial Hydrogen-Ammonia']['Depl. ANR Cap. (MWe)'])/1e3 )
-print('H2 Steel: ', sum(foak_positive[foak_positive.App=='Industrial Hydrogen-Steel']['Depl. ANR Cap. (MWe)'])/1e3 )
-print('H2 Refining: ', sum(foak_positive[foak_positive.App=='Industrial Hydrogen-Refining']['Depl. ANR Cap. (MWe)'])/1e3 )
+print('Process heat capacity: ', sum(processheat['Depl. SMR Cap. (MWe)'])/1e3 )
+print('Process heat SMR-H2 capacity: ', sum(processheat[processheat.Pathway =='SMR-H2']['Depl. SMR Cap. (MWe)'])/1e3 )
+print('Process heat SMR+SMR-H2 capacity: ', sum(processheat[processheat.Pathway =='SMR+SMR-H2']['Depl. SMR Cap. (MWe)'])/1e3 )
+print('H2 AMmonia: ', sum(foak_positive[foak_positive.App=='Industrial Hydrogen-Ammonia']['Depl. SMR Cap. (MWe)'])/1e3 )
+print('H2 Steel: ', sum(foak_positive[foak_positive.App=='Industrial Hydrogen-Steel']['Depl. SMR Cap. (MWe)'])/1e3 )
+print('H2 Refining: ', sum(foak_positive[foak_positive.App=='Industrial Hydrogen-Refining']['Depl. SMR Cap. (MWe)'])/1e3 )
 
 
 
@@ -141,11 +139,11 @@ print(processh2['IRR (%)'].describe(percentiles=[.1,.25,.5,.75,.9]))
 
 print('\n Deployment in states with bans')
 banss = foak_positive[foak_positive.state.isin(nuclear_ban)]
-print('Ban % capacity : ', 100*sum(banss['Depl. ANR Cap. (MWe)'])/sum(foak_positive['Depl. ANR Cap. (MWe)']))
+print('Ban % capacity : ', 100*sum(banss['Depl. SMR Cap. (MWe)'])/sum(foak_positive['Depl. SMR Cap. (MWe)']))
 restrs = foak_positive[foak_positive.state.isin(nuclear_restrictions)]
-print('Restrictions % capacity : ', 100*sum(restrs['Depl. ANR Cap. (MWe)'])/sum(foak_positive['Depl. ANR Cap. (MWe)']))
+print('Restrictions % capacity : ', 100*sum(restrs['Depl. SMR Cap. (MWe)'])/sum(foak_positive['Depl. SMR Cap. (MWe)']))
 # Size based on capacity deployed
-percentiles =  foak_positive['Depl. ANR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]).to_frame()
+percentiles =  foak_positive['Depl. SMR Cap. (MWe)'].describe(percentiles=[.1,.25,.5,.75,.9]).to_frame()
 
 
 def plot_irr(data, save_path, app_col='application'):
@@ -178,11 +176,11 @@ def set_size(cap):
 
 	return size
 
-foak_positive['size'] = foak_positive['Depl. ANR Cap. (MWe)'].apply(set_size)
+foak_positive['size'] = foak_positive['Depl. SMR Cap. (MWe)'].apply(set_size)
 
 def plot_waterfall(foak_positive):
-	df = foak_positive[['App', 'Emissions_mmtco2/y', 'Depl. ANR Cap. (MWe)']]
-	df = df.rename(columns={'Emissions_mmtco2/y':'Emissions', 'Depl. ANR Cap. (MWe)':'Capacity'})
+	df = foak_positive[['App', 'Emissions_mmtco2/y', 'Depl. SMR Cap. (MWe)']]
+	df = df.rename(columns={'Emissions_mmtco2/y':'Emissions', 'Depl. SMR Cap. (MWe)':'Capacity'})
 	df['Capacity'] = df['Capacity']/1e3
 	df = df.groupby('App').sum()
 	df = df.reset_index()
@@ -231,7 +229,7 @@ def plot_waterfall(foak_positive):
 	)
 	# Set y-axis titles
 	fig.update_yaxes(title_text='Avoided emissions (MMtCO2/y)', row=1, col=1)
-	fig.update_yaxes(title_text='ANR Capacity (GWe)', row=1, col=2)
+	fig.update_yaxes(title_text='SMR Capacity (GWe)', row=1, col=2)
 	fig.update_xaxes(tickangle=270)
 	# Set chart layout
 	fig.update_layout(
@@ -253,7 +251,7 @@ markers_applications = {'Process Heat':'cross', 'Industrial Hydrogen':'circle'}
 marker_symbols = foak_positive['Application'].map(markers_applications).to_list()
 
 # Get colors for each marker
-line_colors = [palette[anr] for anr in foak_positive['SMR']]
+line_colors = [palette[SMR] for SMR in foak_positive['SMR']]
 
 foak_positive = foak_positive.sort_values(by=['Application'], ascending=False)
 sup = foak_positive[foak_positive['IRR (%)'] >=36]
@@ -269,7 +267,7 @@ fig.add_trace(go.Scattergeo(
 				colorscale='Greys',
 				colorbar = dict(
 						title='IRR (%)',
-						titlefont = dict(size=16),
+						#titlefont = dict(size=16),
 						orientation='h',  # Set the orientation to 'h' for horizontal
 						x=0.5,  # Center the colorbar horizontally
 						y=-0.15,  # Position the colorbar below the x-axis
@@ -306,16 +304,16 @@ fig.add_trace(go.Scattergeo(
 		showlegend=False
 ))
 # Create custom legend
-custom_legend = {'iMSR - Process Heat':[palette['iMSR'], 'cross'],
-								 #'HTGR - Process Heat':[palette['HTGR'], 'cross'],
-								 'iPWR - Process Heat':[palette['iPWR'], 'cross'],
-								 'PBR-HTGR - Process Heat':[palette['PBR-HTGR'], 'cross'],
-								 #'Micro - Process Heat':[palette['Micro'], 'cross'],
-								 'iMSR - Industrial H2':[palette['iMSR'], 'circle'],
-								 #'HTGR - Industrial H2':[palette['HTGR'], 'circle'],
-								 #'iPWR - Industrial H2':[palette['iPWR'], 'circle'],
-								 'PBR-HTGR - Industrial H2':[palette['PBR-HTGR'], 'circle'],
-								 'Micro - Industrial H2':[palette['Micro'], 'circle']}
+custom_legend = {'MSR - Process Heat':[palette['MSR'], 'cross'],
+				'HTR - Process Heat':[palette['HTR'], 'cross'],
+				'PWR - Process Heat':[palette['PWR'], 'cross'],
+				'SFR - Process Heat':[palette['SFR'], 'cross'],
+				'MR - Process Heat':[palette['MR'], 'cross'],
+				'MSR - Industrial H2':[palette['MSR'], 'circle'],
+				'HTR - Industrial H2':[palette['HTR'], 'circle'],
+				'PWR - Industrial H2':[palette['PWR'], 'circle'],
+				'SFR - Industrial H2':[palette['SFR'], 'circle'],
+				'MR - Industrial H2':[palette['MR'], 'circle']}
 
 reactors_used = foak_positive['SMR'].unique()
 
@@ -384,5 +382,5 @@ fig.update_layout(
 )
 
 # Save
-fig.write_image('./results/map_FOAK_cogen.pdf', scale=4)
+fig.write_image('./results/map_FOAK_PTC_cogen.pdf', scale=4)
 
