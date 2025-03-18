@@ -39,7 +39,7 @@ def get_lat_lon(plant):
   lon = plant_df['longitude'].iloc[0]
   return lat, lon
 
-def build_steel_plant_deployment(plant, SMR_data, H2_data): 
+def build_steel_plant_deployment(plant, SMR_data, H2_data, ITC): 
   print(f'Start {plant}')
   model = ConcreteModel(plant)
 
@@ -66,8 +66,8 @@ def build_steel_plant_deployment(plant, SMR_data, H2_data):
   ############### PARAMETERS ##############
   # Financial 
   model.pWACC = Param(initialize = WACC)
-  model.pITC_SMR = Param(initialize = utils.ITC_SMR)
-  model.pITC_H2 = Param(initialize = utils.ITC_H2)
+  model.pITC_SMR = Param(initialize = ITC)
+  model.pITC_H2 = Param(initialize = ITC)
 
   ### Steel ###
   # Carbon emissions from DRI process at 95% H2 concentration
@@ -198,10 +198,10 @@ def build_steel_plant_deployment(plant, SMR_data, H2_data):
   return model
 
 
-def solve_steel_plant_deployment(plant, SMR_data, H2_data):
+def solve_steel_plant_deployment(plant, SMR_data, H2_data, ITC):
   steel_cap_ton_per_annum, h2_dem_kg_per_day, elec_dem_MWh_per_day = get_steel_plant_demand(plant)
 
-  model = build_steel_plant_deployment(plant, SMR_data, H2_data)
+  model = build_steel_plant_deployment(plant, SMR_data, H2_data, ITC)
   # for carbon accounting
   def compute_annual_carbon_emissions(model):
     return sum(sum(sum(model.pH2CarbonInt[h,g]*model.vQ[n,h,g]*model.pH2CapH2[h]*24*365 for g in model.G) for h in model.H) for n in model.N)+\
@@ -328,7 +328,7 @@ def compute_be_wo_PTC(results_ref):
   breakeven_price = breakeven_price_per_ton/utils.coal_heat_content
   return breakeven_price
 
-def main(SMR_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False): 
+def main(SMR_tag='FOAK', wacc=WACC, ITC=0.3, print_main_results=True, print_results=False): 
   # Go the present directory
   abspath = os.path.abspath(__file__)
   dname = os.path.dirname(abspath)
@@ -344,12 +344,12 @@ def main(SMR_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False
   # Build results dataset one by one
 
   with Pool(10) as pool:
-    results = pool.starmap(solve_steel_plant_deployment, [(plant, SMR_data, H2_data) for plant in steel_ids])
+    results = pool.starmap(solve_steel_plant_deployment, [(plant, SMR_data, H2_data, ITC) for plant in steel_ids])
   pool.close()
 
   df = pd.DataFrame(results)
 
-  excel_file = f'./results/raw_results_SMR_{SMR_tag}_h2_wacc_{str(wacc)}.xlsx'
+  excel_file = f'./results/raw_results_SMR_{SMR_tag}_ITC_{ITC}.xlsx'
   sheet_name = 'steel'
   if print_main_results:
     # Try to read the existing Excel file
@@ -376,7 +376,7 @@ def main(SMR_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False
 
 
 if __name__ == '__main__': 
-  main(SMR_tag=utils.LEARNING)
+  main(SMR_tag=utils.LEARNING, ITC=utils.ITC)
   #test()
 
 

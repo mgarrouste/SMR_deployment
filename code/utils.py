@@ -4,6 +4,7 @@ import glob
 
 N=1000
 LEARNING = 'FOAK'
+ITC = 0.3
 
 palette={'HTR':'orange', 
          'MSR':'blue', 
@@ -36,8 +37,6 @@ mcf_to_mmbtu = 1.038 #mmbtu/mcf
 #cost of captial
 WACC = 0.077
 # Credits
-ITC_SMR = 0.3 #%
-ITC_H2 = 0.3 #%
 h2_ptc = 3 #$/kgH2 clean
 elec_ptc = 25 #$/MWhe
 # SMR-H2

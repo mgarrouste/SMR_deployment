@@ -41,7 +41,7 @@ def get_lat_lon(ref_id):
   return lat, lon
 
 
-def solve_refinery_deployment(ref_id, SMR_data, H2_data):
+def solve_refinery_deployment(ref_id, SMR_data, H2_data, ITC):
   print(f'Start solve for {ref_id}')
   model = ConcreteModel(ref_id)
 
@@ -66,8 +66,8 @@ def solve_refinery_deployment(ref_id, SMR_data, H2_data):
   #### Parameters ####
   # Financial
   model.pWACC = Param(initialize = WACC)
-  model.pITC_SMR = Param(initialize = utils.ITC_SMR)
-  model.pITC_H2 = Param(initialize = utils.ITC_H2)
+  model.pITC_SMR = Param(initialize = ITC)
+  model.pITC_H2 = Param(initialize = ITC)
 
   ### H2 ###
   data = H2_data.reset_index(level='SMR')[['H2Cap (kgh2/h)']]
@@ -286,7 +286,7 @@ def compute_ng_be_wo_PTC(results_ref):
   return breakeven_price
 
 
-def main(SMR_tag='FOAK', wacc=WACC, print_main_results=True):
+def main(SMR_tag='FOAK', wacc=WACC, ITC=0.3, print_main_results=True):
   abspath = os.path.abspath(__file__)
   dname = os.path.dirname(abspath)
   os.chdir(dname)
@@ -296,11 +296,11 @@ def main(SMR_tag='FOAK', wacc=WACC, print_main_results=True):
   SMR_data, H2_data = utils.load_data(SMR_tag=SMR_tag)
 
   with Pool(10) as pool: 
-    results = pool.starmap(solve_refinery_deployment, [(ref_id, SMR_data, H2_data) for ref_id in ref_ids])
+    results = pool.starmap(solve_refinery_deployment, [(ref_id, SMR_data, H2_data, ITC) for ref_id in ref_ids])
   pool.close()
 
   df = pd.DataFrame(results)
-  excel_file = f'./results/raw_results_SMR_{SMR_tag}_h2_wacc_{str(wacc)}.xlsx'
+  excel_file = f'./results/raw_results_SMR_{SMR_tag}_ITC_{ITC}.xlsx'
   sheet_name = 'refining'
   if print_main_results:
     # Try to read the existing Excel file
@@ -327,4 +327,4 @@ def main(SMR_tag='FOAK', wacc=WACC, print_main_results=True):
 
 
 if __name__ == '__main__':
-  main(SMR_tag=utils.LEARNING)
+  main(SMR_tag=utils.LEARNING, ITC=utils.ITC)

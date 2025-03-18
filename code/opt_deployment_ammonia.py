@@ -12,8 +12,6 @@ their hydrogen demand
 """
 
 WACC = utils.WACC
-ITC_SMR = utils.ITC_SMR
-ITC_H2 = utils.ITC_H2
 
 MaxSMRMod = 40
 ELEC_PRICE = 30 #$/MWh-e
@@ -35,7 +33,7 @@ def get_ammonia_plant_demand(plant):
   lon = plant_df['longitude'].iloc[0]
   return ammonia_capacity, h2_demand_kg_per_day, elec_demand_MWe, state, lat, lon
 
-def build_ammonia_plant_deployment(plant, SMR_data, H2_data): 
+def build_ammonia_plant_deployment(plant, SMR_data, H2_data, ITC): 
   print(f'Ammonia plant {plant} : start solving')
   model = ConcreteModel(plant)
 
@@ -62,8 +60,8 @@ def build_ammonia_plant_deployment(plant, SMR_data, H2_data):
   ############### PARAMETERS ##############
   # Financial
   model.pWACC = Param(initialize = WACC)
-  model.pITC_H2 = Param(initialize = ITC_H2)
-  model.pITC_SMR = Param(initialize = ITC_SMR)
+  model.pITC_H2 = Param(initialize = ITC)
+  model.pITC_SMR = Param(initialize = ITC)
 
   ### Nuc NH3 ###
   model.pAuxNH3CAPEX = Param(initialize = auxNucNH3CAPEX)
@@ -184,8 +182,8 @@ def build_ammonia_plant_deployment(plant, SMR_data, H2_data):
   return model
 
 
-def solve_ammonia_plant_deployment(SMR_data, H2_data, plant, print_results):
-  model = build_ammonia_plant_deployment(plant, SMR_data, H2_data)
+def solve_ammonia_plant_deployment(SMR_data, H2_data, plant, ITC, print_results):
+  model = build_ammonia_plant_deployment(plant, SMR_data, H2_data, ITC)
   ammonia_capacity, h2_dem_kg_per_day, elec_dem_MWh_per_day, state, lat, lon = get_ammonia_plant_demand(plant)
   # for carbon accounting
   def compute_annual_carbon_emissions(model):
@@ -314,7 +312,7 @@ def compute_ng_be_without_ptc(results_ref):
 
 
 
-def main(SMR_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False): 
+def main(SMR_tag='FOAK', wacc=WACC, ITC=0.3, print_main_results=True, print_results=False): 
   # Go the present directory
   abspath = os.path.abspath(__file__)
   dname = os.path.dirname(abspath)
@@ -330,12 +328,12 @@ def main(SMR_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False
   # Build results dataset one by one
   
   with Pool(10) as pool:
-    results = pool.starmap(solve_ammonia_plant_deployment, [(SMR_data, H2_data, plant, print_results) for plant in plant_ids])
+    results = pool.starmap(solve_ammonia_plant_deployment, [(SMR_data, H2_data, plant, ITC, print_results) for plant in plant_ids])
   pool.close()
 
   df = pd.DataFrame(results)
 
-  excel_file = f'./results/raw_results_SMR_{SMR_tag}_h2_wacc_{str(wacc)}.xlsx'
+  excel_file = f'./results/raw_results_SMR_{SMR_tag}_ITC_{ITC}.xlsx'
   sheet_name = 'ammonia'
   if print_main_results:
     # Try to read the existing Excel file
@@ -365,4 +363,4 @@ def main(SMR_tag='FOAK', wacc=WACC, print_main_results=True, print_results=False
 
 
 if __name__ == '__main__': 
-  main(SMR_tag=utils.LEARNING)
+  main(SMR_tag=utils.LEARNING, ITC=utils.ITC)
