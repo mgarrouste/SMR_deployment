@@ -68,7 +68,7 @@ def compute_mean_ng_hlmp_mod(nrel_data):
     return mean_hlmp
 
 
-def compute_cashflows(smr_depl, cogen, with_PTC, cambium_scenario, year):
+def compute_cashflows(smr_depl, cogen, with_PTC, ITC, cambium_scenario, year):
     smr_depl['H2 Modules'] = smr_depl.apply(lambda x: math.ceil(x['Total H2 Dem. (kg/h)']/x['H2Cap (kgh2/h)']), axis=1)
     smr_depl['Depl. H2 Cap. (kgh2/h)'] = smr_depl['H2 Modules']*smr_depl['H2Cap (kgh2/h)']
     smr_depl['Depl. H2 Cap. (MWe)'] = smr_depl['H2 Modules']*smr_depl['H2Cap (MWe)']
@@ -84,8 +84,7 @@ def compute_cashflows(smr_depl, cogen, with_PTC, cambium_scenario, year):
     smr_depl['H2 CRF'] = (IR/(1-((1+IR)**(-1*(smr_depl['Life (y)_x'])))))
 
     # ITC
-    itc_SMR = utils.ITC_SMR
-    itc_h2 = utils.ITC_H2
+    itc_SMR, itc_h2 = ITC, ITC
 
     ## CAPEX
     smr_depl['Tot SMR CAPEX'] = smr_depl['Depl. SMR Cap. (MWe)']*smr_depl['SMR CAPEX ($/MWe)']*(1-itc_SMR)
@@ -167,7 +166,7 @@ def compute_be_ng_prices(smr_depl, cogen):
     return smr_depl
 
 
-def main(OAK,with_PTC,cogen,cambium_scenario,year):
+def main(OAK,with_PTC,cogen,ITC,cambium_scenario,year):
     if cogen: cogen_tag = 'cogen'
     else: cogen_tag = 'nocogen'
     if with_PTC: ptc_tag = 'PTC'
@@ -190,7 +189,7 @@ def main(OAK,with_PTC,cogen,cambium_scenario,year):
     # Get the cross production of demand and SMR-H2 data to consider all possible combinations
     smr_depl = nrel_data.merge(techs, how='cross') # full facilities
     # Compute cashflows in $/year
-    smr_depl = compute_cashflows(smr_depl, cogen, with_PTC, cambium_scenario, year)
+    smr_depl = compute_cashflows(smr_depl, cogen, with_PTC, ITC, cambium_scenario, year)
     # Select best h2 technologies
     smr_depl = select_best_h2(smr_depl)
     # Select best SMR design
@@ -200,9 +199,10 @@ def main(OAK,with_PTC,cogen,cambium_scenario,year):
     smr_depl.to_csv(f'./results/process_heat_h2all_{OAK}_{ptc_tag}_{cogen_tag}.csv', index=False)
 
 if __name__ == '__main__':
-    OAK = 'FOAK'
-    with_PTC = False
+    OAK = utils.LEARNING
+    with_PTC = utils.with_PTC
+    ITC = utils.ITC
     cogen = True
     cambium_scenario = 'MidCase'
     year = 2024
-    main(OAK,with_PTC,cogen,cambium_scenario,year)
+    main(OAK,with_PTC,cogen,ITC,cambium_scenario,year)
