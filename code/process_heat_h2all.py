@@ -196,7 +196,7 @@ def main(OAK,with_PTC,cogen,ITC,cambium_scenario,year):
     smr_depl = select_best_smr(smr_depl)
     # Compute BE NG prices
     smr_depl = compute_be_ng_prices(smr_depl,cogen)
-    smr_depl.to_csv(f'./results/process_heat_h2all_{OAK}_{ptc_tag}_{cogen_tag}.csv', index=False)
+    smr_depl.to_csv(f'./results/process_heat_h2all_{OAK}_{ptc_tag}_{cogen_tag}_ITC_{ITC}.csv', index=False)
 
 if __name__ == '__main__':
     OAK = utils.LEARNING

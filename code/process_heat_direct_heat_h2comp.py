@@ -123,15 +123,14 @@ def compute_cogen_revenues(df, surplus_cap_col_name, state_col_name, cambium_sce
   df['Electricity revenues ($/y)'] = df.apply(lambda x: x[surplus_cap_col_name]*elec_prices_df.loc[x[state_col_name]]*8760, axis=1)
   return df
 
-def compute_cashflows(smr_depl,with_PTC,cogen,cambium_scenario,year):
+def compute_cashflows(smr_depl,with_PTC,ITC,cogen,cambium_scenario,year):
     # Cashflows for SMR for direct heat: Annual_CAPEX, FOPEX, VOPEX, and Revenues (from avoided NG costs)
     # Compute costs in $/year
     # Capital recovery factor
     IR = utils.WACC
     smr_depl['SMR CRF'] = (IR/(1-((1+IR)**(-1*(smr_depl['Life (y)'])))))
     smr_depl['H2 CRF'] = (IR/(1-((1+IR)**(-1*(smr_depl['Life (y)'])))))
-    itc_SMR = utils.ITC_SMR
-    itc_h2 = utils.ITC_H2
+    itc_SMR, itc_h2 = ITC, ITC
 
     ## CAPEX
     smr_depl['Tot SMR CAPEX'] = smr_depl['Depl. SMR Cap. (MWe)']*smr_depl['SMR CAPEX ($/MWe)']*(1-itc_SMR)
@@ -227,7 +226,7 @@ def compute_ng_breakeven(smr_depl,cogen):
     return smr_depl
 
 
-def main(OAK,with_PTC,cogen,cambium_scenario,year):
+def main(OAK,with_PTC,cogen,ITC,cambium_scenario,year):
     if cogen: cogen_tag = 'cogen'
     else: cogen_tag = 'nocogen'
     if with_PTC: ptc_tag = 'PTC'
@@ -249,25 +248,25 @@ def main(OAK,with_PTC,cogen,cambium_scenario,year):
     # Compute the deployment of SMR required to serve the remaining H2 demand
     smr_depl = compute_smr_depl(direct_heat_results, techs)
     # Compute cashflows and IRR
-    smr_depl = compute_cashflows(smr_depl,with_PTC,cogen,cambium_scenario,year)
+    smr_depl = compute_cashflows(smr_depl,with_PTC,ITC,cogen,cambium_scenario,year)
     smr_depl = compute_irr(smr_depl)
     # Select best h2 technologies
     smr_depl = select_best_h2(smr_depl)
     # Select best SMR design at each location
     smr_depl = select_best_smr(smr_depl)
-    print(smr_depl)
     # Add location data
     smr_depl = smr_depl.merge(loc_data, on=['CITY', 'STATE'])
     # Compute BE NG price
     smr_depl = compute_ng_breakeven(smr_depl,cogen)
-    smr_depl.to_csv(f'./results/process_heat_direct_heat_h2comp_{OAK}_{ptc_tag}_{cogen_tag}.csv')
+    smr_depl.to_csv(f'./results/process_heat_direct_heat_h2comp_{OAK}_{ptc_tag}_{cogen_tag}_ITC_{ITC}.csv')
 
 
 
 if __name__ == '__main__':
-    OAK = 'FOAK'
-    with_PTC = False
+    OAK = utils.LEARNING
+    with_PTC = utils.with_PTC
+    ITC = utils.ITC
     cogen = True
     cambium_scenario = 'MidCase'
     year = 2024
-    main(OAK,with_PTC,cogen,cambium_scenario,year)
+    main(OAK,with_PTC,cogen,ITC,cambium_scenario,year)
