@@ -23,9 +23,9 @@ def load_elec_results(OAK):
   return df
   
 
-def load_h2_results(OAK, cogen_tag, with_PTC=True):
+def load_h2_results(OAK, cogen_tag, with_PTC=True, ITC=0.3):
   """"Loads all hydrogen results and returns results sorted by breakeven prices"""
-  h2_results_path = f'./results/clean_results_SMR_{OAK}_h2_wacc_0.077.xlsx'
+  h2_results_path = f'./results/clean_results_SMR_{OAK}_ITC_{ITC}.xlsx'
   industries = ['refining','steel','ammonia']
   list_df = []
   for ind in industries:
@@ -64,17 +64,17 @@ def load_h2_results(OAK, cogen_tag, with_PTC=True):
   return all_df 
 
 
-def load_heat_results(OAK, cogen, with_PTC=True):
+def load_heat_results(OAK, cogen, with_PTC=True, ITC=0.3):
   """Loads direct process heat results and returns them sorted by breakeven prices"""
   if cogen: cogen_tag = 'cogen'
   else: cogen_tag = 'nocogen'
   if with_PTC: ptc_tag = 'PTC'
   else: ptc_tag = 'noPTC'
-  heat_results_path = f'./results/process_heat_{OAK}_{ptc_tag}_{cogen_tag}.csv'
+  heat_results_path = f'./results/process_heat_{OAK}_{ptc_tag}_{cogen_tag}_ITC_{ITC}.csv'
   try:
     heat_df = pd.read_csv(heat_results_path, index_col='FACILITY_ID')
   except FileNotFoundError:
-    run_heat_analysis(OAK,with_PTC,cogen)
+    run_heat_analysis(OAK,with_PTC,cogen,ITC)
     heat_df = pd.read_csv(heat_results_path, index_col='FACILITY_ID')
   heat_df['Annual Net Revenues (M$/MWe/y)']  = heat_df['Pathway Net Ann. Rev. (M$/y)']/heat_df['Depl. SMR Cap. (MWe)']
   heat_df['Annual Net Revenues (M$/y)'] = heat_df['Pathway Net Ann. Rev. (M$/y)']

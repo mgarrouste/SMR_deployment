@@ -10,7 +10,7 @@ from utils import palette
 
 def load_foaknoPTC(printinfo=False):
 	# profitable FOAK without the H2 PTC
-	heat = SMR_application_comparison.load_heat_results(OAK='FOAK', cogen=True, with_PTC=False)
+	heat = SMR_application_comparison.load_heat_results(OAK='FOAK', cogen=True, with_PTC=False, ITC=0)
 	heat= heat[['STATE','latitude', 'longitude', 'NG price ($/MMBtu)', 'Emissions_mmtco2/y', 'SMR',
 											 'Depl. SMR Cap. (MWe)','Annual Net Revenues (M$/y)', 'Application', 'IRR wo PTC']]
 	heat = heat[heat['Annual Net Revenues (M$/y)']>0]
@@ -26,7 +26,7 @@ def load_foaknoPTC(printinfo=False):
 		print(heat['SMR'].unique())
 
 
-	h2 = SMR_application_comparison.load_h2_results(OAK='FOAK', cogen_tag='cogen')
+	h2 = SMR_application_comparison.load_h2_results(OAK='FOAK', cogen_tag='cogen', ITC=0)
 	h2 = h2.loc[:,~h2.columns.duplicated()]
 	h2 = h2.reset_index()
 	h2['Annual Net Revenues wo PTC (M$/y)'] = h2['Electricity revenues ($/y)']+h2['Net Revenues ($/year)']

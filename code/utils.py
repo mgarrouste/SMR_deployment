@@ -4,7 +4,7 @@ import glob
 
 N=1000
 LEARNING = 'FOAK'
-ITC = 0.3
+ITC = 0
 with_PTC = True
 
 palette={'HTR':'orange', 

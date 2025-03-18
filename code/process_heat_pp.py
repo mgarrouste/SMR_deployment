@@ -11,12 +11,12 @@ def load_results(OAK,with_PTC,cogen,ITC,cambium_scenario,year):
     try:
         h2comp = pd.read_csv(f'./results/process_heat_direct_heat_h2comp_{OAK}_{ptc_tag}_{cogen_tag}_ITC_{ITC}.csv')
     except FileNotFoundError:
-        run_direct_heat_h2comp(OAK,with_PTC,cogen,cambium_scenario,year)
+        run_direct_heat_h2comp(OAK,with_PTC,cogen,ITC,cambium_scenario,year)
         h2comp = pd.read_csv(f'./results/process_heat_direct_heat_h2comp_{OAK}_{ptc_tag}_{cogen_tag}_ITC_{ITC}.csv')
     try:
         h2all = pd.read_csv(f'./results/process_heat_h2all_{OAK}_{ptc_tag}_{cogen_tag}_ITC_{ITC}.csv')
     except FileNotFoundError:
-        run_h2all(OAK,with_PTC,cogen,cambium_scenario,year)
+        run_h2all(OAK,with_PTC,cogen,ITC,cambium_scenario,year)
         h2all = pd.read_csv(f'./results/process_heat_h2all_{OAK}_{ptc_tag}_{cogen_tag}_ITC_{ITC}.csv')
     h2comp['CAPEX ($/y)'] = h2comp['Annual_CAPEX']+h2comp['Annual SMR-H2 CAPEX']
     h2comp['O&M ($/y)'] =h2comp['FOPEX']+h2comp['VOPEX']+h2comp['SMR-H2 FOM']+h2comp['SMR-H2 VOM']

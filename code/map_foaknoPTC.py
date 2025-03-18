@@ -5,7 +5,7 @@ import os
 from utils import compute_average_electricity_prices, palette
 
 def load_data():
-	heat = load_heat_results(OAK='FOAK', cogen=True, with_PTC=False)
+	heat = load_heat_results(OAK='FOAK', cogen=True, with_PTC=False, ITC=0)
 	heat= heat[['STATE','latitude', 'longitude', 'NG price ($/MMBtu)', 'Emissions_mmtco2/y', 'SMR',
 											 'Depl. SMR Cap. (MWe)', 'Annual Net Revenues (M$/y)', 'Application', 'IRR wo PTC']]
 	heat = heat[heat['Annual Net Revenues (M$/y)']>0]
@@ -28,7 +28,7 @@ def load_data():
 	print(heat['SMR'].unique())
 
 
-	h2 = load_h2_results(OAK='FOAK', cogen_tag='cogen')
+	h2 = load_h2_results(OAK='FOAK', cogen_tag='cogen', ITC=0)
 	h2 = h2.loc[:,~h2.columns.duplicated()]
 	h2 = h2.reset_index()
 	h2['Annual Net Revenues wo PTC (M$/y)'] = h2['Electricity revenues ($/y)']+h2['Net Revenues ($/year)']
@@ -257,8 +257,8 @@ def main():
 	add_smr_layer(fig,df)
 
 	#add_nuclear_bans(fig)
-	
-	fig.write_image('./results/map_FOAK_noPTC.png', scale=4)
+	ITC = 0
+	fig.write_image(f'./results/map_FOAK_noPTC_ITC_{ITC}.png', scale=4)
 
 if __name__ == '__main__':
 	main()
