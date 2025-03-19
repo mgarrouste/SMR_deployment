@@ -47,6 +47,7 @@ def load_h2_results(OAK, cogen_tag, with_PTC=True, ITC=0.3):
   all_df = pd.concat(list_df)
   all_df['Application'] = 'Industrial Hydrogen'
   all_df['SMR'] = all_df['SMR type']
+  all_df['# SMR modules'] = all_df['# SMR modules'].astype(float)
   if cogen_tag=='cogen': 
     if with_PTC:
       all_df['Annual Net Revenues (M$/MWe/y)'] = all_df['Net Revenues with H2 PTC with elec ($/year)']/(1e6*all_df['Depl. SMR Cap. (MWe)'])
@@ -71,6 +72,7 @@ def load_heat_results(OAK, cogen, with_PTC=True, ITC=0.3):
   if with_PTC: ptc_tag = 'PTC'
   else: ptc_tag = 'noPTC'
   heat_results_path = f'./results/process_heat_{OAK}_{ptc_tag}_{cogen_tag}_ITC_{ITC}.csv'
+  print(heat_results_path)
   try:
     heat_df = pd.read_csv(heat_results_path, index_col='FACILITY_ID')
   except FileNotFoundError:

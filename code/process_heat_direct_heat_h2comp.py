@@ -93,9 +93,9 @@ def compute_smr_depl(direct_heat, techs):
     smr_depl['H2 Modules'] = smr_depl.apply(lambda x: math.ceil(x['Remaining H2 Dem. (kg/h)']/x['H2Cap (kgh2/h)']), axis=1)
     smr_depl['Depl. H2 Cap. (kgh2/h)'] = smr_depl['H2 Modules']*smr_depl['H2Cap (kgh2/h)']
     smr_depl['Depl. H2 Cap. (MWe)'] = smr_depl['H2 Modules']*smr_depl['H2Cap (MWe)']
-    smr_depl['SMR Modules'] = smr_depl.apply(lambda x: math.ceil(x['Depl. H2 Cap. (MWe)']/x['Power in MWe']), axis=1)
-    smr_depl['Depl. SMR Cap. (MWe)'] = smr_depl['SMR Modules']*smr_depl['Power in MWe']
-    smr_depl['Depl. SMR Cap. (MWt)'] = smr_depl['SMR Modules']*smr_depl['Power in MWt']
+    smr_depl['# SMR Modules'] = smr_depl.apply(lambda x: math.ceil(x['Depl. H2 Cap. (MWe)']/x['Power in MWe']), axis=1)
+    smr_depl['Depl. SMR Cap. (MWe)'] = smr_depl['# SMR Modules']*smr_depl['Power in MWe']
+    smr_depl['Depl. SMR Cap. (MWt)'] = smr_depl['# SMR Modules']*smr_depl['Power in MWt']
     smr_depl['Surplus SMR Cap. (MWe)'] = smr_depl['Depl. SMR Cap. (MWe)']-smr_depl['Depl. H2 Cap. (MWe)']
     smr_depl['Surplus SMR Cap. (MWt)'] = smr_depl['Surplus SMR Cap. (MWe)']/smr_depl['Thermal Efficiency']
     return smr_depl
@@ -175,7 +175,7 @@ def compute_cashflows(smr_depl,with_PTC,ITC,cogen,cambium_scenario,year):
     smr_depl['Depl. SMR Cap. (MWt)'] = smr_depl['Depl. SMR Cap. (MWt)']+smr_depl[ 'SMR_Capacity']
     smr_depl['Surplus SMR Cap. (MWe)'] = smr_depl['Surplus SMR Cap. (MWe)']+smr_depl['Surplus_Capacity_e']
     smr_depl['Surplus SMR Cap. (MWt)'] = smr_depl['Surplus SMR Cap. (MWt)']+smr_depl['Surplus_Capacity']
-    smr_depl['SMR Modules'] = smr_depl['SMR Modules']+smr_depl['Modules']
+    smr_depl['# SMR Modules'] = smr_depl['# SMR Modules']+smr_depl['Modules']
 
     smr_depl['SMR direct heat cost ($/year)'] = smr_depl['Annual_CAPEX']+smr_depl[f'FOPEX']+smr_depl[f'VOPEX']
     if with_PTC:

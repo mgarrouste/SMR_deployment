@@ -7,11 +7,12 @@ import seaborn as sns
 import os, argparse
 import numpy as np
 from utils import palette
+from process_heat_pp import main as run_heat_analysis
 
 def load_foaknoPTC(printinfo=False):
 	# profitable FOAK without the H2 PTC
 	heat = SMR_application_comparison.load_heat_results(OAK='FOAK', cogen=True, with_PTC=False, ITC=0)
-	heat= heat[['STATE','latitude', 'longitude', 'NG price ($/MMBtu)', 'Emissions_mmtco2/y', 'SMR',
+	heat= heat[['STATE','latitude', 'longitude', 'NG price ($/MMBtu)', 'Emissions_mmtco2/y', 'SMR','# SMR modules',
 											 'Depl. SMR Cap. (MWe)','Annual Net Revenues (M$/y)', 'Application', 'IRR wo PTC']]
 	heat = heat[heat['Annual Net Revenues (M$/y)']>0]
 	heat.rename(columns={'Emissions_mmtco2/y':'Emissions',
@@ -31,27 +32,43 @@ def load_foaknoPTC(printinfo=False):
 	h2 = h2.reset_index()
 	h2['Annual Net Revenues wo PTC (M$/y)'] = h2['Electricity revenues ($/y)']+h2['Net Revenues ($/year)']
 	if printinfo:	print('# process hydrogen facilities profitable wo PTc :{}'.format(len(h2[h2['Annual Net Revenues wo PTC (M$/y)']>0])))
-	heat.to_excel('./results/results_FOAK_noPTC.xlsx')
+	
+	foak_positive = pd.concat([heat, h2], ignore_index=True)
+	foak_positive = foak_positive[foak_positive['Annual Net Revenues (M$/y)'] >=0]
+	foak_positive.to_excel('./results/results_FOAK_noPTC_ITC_0.xlsx')
+	foak_positive = foak_positive.reset_index()
 	return heat
 
 def load_foak_positive(dropnoptc=False):
-	h2_data = SMR_application_comparison.load_h2_results(OAK='FOAK', cogen_tag='cogen')
+	h2_data = SMR_application_comparison.load_h2_results(OAK='FOAK', cogen_tag='cogen', ITC=0.3)
 	h2_data = h2_data[['latitude', 'longitude', 'Depl. SMR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
-										'Industry', 'Application', 'SMR', 'Annual Net Revenues (M$/y)', 'state','IRR w PTC']]
+										'# SMR modules','Industry', 'Application', 'SMR', 'Annual Net Revenues (M$/y)', 'state','IRR w PTC']]
 	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions', 'SMR':'SMR'}, inplace=True)
 	h2_data['App'] = h2_data.apply(lambda x: x['Application']+'-'+x['Industry'].capitalize(), axis=1)
 	h2_data.reset_index(inplace=True)
 
-	heat_data = SMR_application_comparison.load_heat_results(OAK='FOAK', cogen=True)
-	heat_data = heat_data[['latitude', 'longitude', 'STATE','Emissions_mmtco2/y', 'SMR','Pathway', 'Batch_Temp_degC', 'max_temp_degC', 'Surplus SMR Cap. (MWe)',
-							'Depl. SMR Cap. (MWe)', 'Breakeven NG price ($/MMBtu)','NG price ($/MMBtu)', 'Electricity revenues ($/y)',
+	#heat_data = SMR_application_comparison.load_heat_results(OAK='FOAK', cogen=True, ITC=0.3)
+	heat_results_path = './results/process_heat_FOAK_PTC_cogen_ITC_0.3.csv'
+	try:
+		heat_df = pd.read_csv(heat_results_path, index_col='FACILITY_ID')
+	except FileNotFoundError:
+		run_heat_analysis('FOAK',with_PTC=True,cogen=True,ITC=0.3)
+		heat_df = pd.read_csv(heat_results_path, index_col='FACILITY_ID')
+	heat_df['Annual Net Revenues (M$/MWe/y)']  = heat_df['Pathway Net Ann. Rev. (M$/y)']/heat_df['Depl. SMR Cap. (MWe)']
+	heat_df['Annual Net Revenues (M$/y)'] = heat_df['Pathway Net Ann. Rev. (M$/y)']
+	heat_df.sort_values(by=['Breakeven NG price ($/MMBtu)', 'Annual Net Revenues (M$/MWe/y)'], inplace=True)
+	heat_df['Application'] = 'Process Heat'
+	heat_df.to_csv('./test.csv')
+	heat_df = heat_df[['latitude', 'longitude', 'STATE','Emissions_mmtco2/y', 'SMR','Pathway', 'Batch_Temp_degC', 'max_temp_degC', 'Surplus SMR Cap. (MWe)',
+							'Depl. SMR Cap. (MWe)', 'Breakeven NG price ($/MMBtu)','NG price ($/MMBtu)', 'Electricity revenues ($/y)','# SMR Modules',
 							'Avoided NG Cost ($/y)','H2 PTC','Application', 'IRR w PTC','Annual Net Revenues (M$/y)']]
-	heat_data = heat_data.rename(columns={'Emissions_mmtco2/y':'Emissions','Breakeven NG price ($/MMBtu)':'Breakeven price ($/MMBtu)', 'STATE':'state'})
-	heat_data['App'] = 'Process Heat'
-	heat_data.reset_index(inplace=True, names='id')
+	heat_df = heat_df.rename(columns={'Emissions_mmtco2/y':'Emissions','Breakeven NG price ($/MMBtu)':'Breakeven price ($/MMBtu)', 'STATE':'state', '# SMR Modules':'# SMR modules'})
+	heat_df['App'] = 'Process Heat'
+	heat_df.reset_index(inplace=True, names='id')
 
-	foak_positive = pd.concat([heat_data, h2_data], ignore_index=True)
+	foak_positive = pd.concat([heat_df, h2_data], ignore_index=True)
 	foak_positive = foak_positive[foak_positive['Annual Net Revenues (M$/y)'] >=0]
+	foak_positive['# SMR modules'] = foak_positive['# SMR modules'].astype(float)
 
 	if dropnoptc:
 		foak_noPTC = load_foaknoPTC()
@@ -59,7 +76,7 @@ def load_foak_positive(dropnoptc=False):
 		foak_noPTC.set_index('id', inplace=True)
 		foak_to_drop = foak_noPTC.index.to_list()
 		foak_positive = foak_positive.drop(foak_to_drop, errors='ignore')
-	foak_positive.to_excel('./results/results_FOAK_PTC.xlsx')
+	foak_positive.to_excel('./results/results_FOAK_PTC_ITC_0.3.xlsx')
 	foak_positive = foak_positive.reset_index()
 	return foak_positive
 

@@ -6,7 +6,7 @@ import warnings
 warnings.simplefilter(action='ignore', category=pd.errors.SettingWithCopyWarning)
 warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 
-def pp_refining(results_path, clean_save_path, OAK):
+def pp_refining(results_path, clean_save_path, OAK, ITC):
     df = pd.read_excel(results_path, sheet_name='refining')
     df.sort_values(by=['Breakeven price ($/MMBtu)'], inplace=True)
     df.reset_index(inplace=True)
@@ -45,8 +45,8 @@ def pp_refining(results_path, clean_save_path, OAK):
     df = utils.compute_cogen(df, surplus_cap_col_name='Surplus SMR Cap. (MWe)', state_col_name='state', \
                             cambium_scenario=cambium_scenario, year = year)
     df['Net Revenues with H2 PTC with elec ($/year)'] = df['Net Revenues with H2 PTC ($/year)']+df['Electricity revenues ($/y)']
-    def compute_ref_capex_breakeven(SMR_crf, capacity, h2_capex, SMR_om, h2_om, conv, affc, h2ptc, elec, ptc=True):
-        alpha = SMR_crf*capacity*(1-utils.ITC_SMR)
+    def compute_ref_capex_breakeven(SMR_crf, capacity, h2_capex, SMR_om, h2_om, conv, affc, h2ptc, elec, ptc=True, ITC=ITC):
+        alpha = SMR_crf*capacity*(1-ITC)
         # Costs without SMR capex
         SMRh2_costs = h2_capex+SMR_om+h2_om+conv
         # BE CAPEX $/MWe
@@ -102,7 +102,7 @@ def pp_refining(results_path, clean_save_path, OAK):
         df.to_excel(excel_file, sheet_name=sheet_name)
 
 
-def pp_ammonia(results_path, clean_save_path, OAK):
+def pp_ammonia(results_path, clean_save_path, OAK, ITC):
     df = pd.read_excel(results_path, sheet_name='ammonia')
     df.sort_values(by=['Breakeven price ($/MMBtu)'], inplace=True)
     df.reset_index(inplace=True)
@@ -145,8 +145,8 @@ def pp_ammonia(results_path, clean_save_path, OAK):
     df = utils.compute_cogen(df, surplus_cap_col_name='Surplus SMR Cap. (MWe)', state_col_name='state', \
                          cambium_scenario=cambium_scenario, year = year)
     df['Net Revenues with H2 PTC with elec ($/year)'] = df['Net Revenues with H2 PTC ($/year)']+df['Electricity revenues ($/y)']
-    def compute_ammonia_capex_breakeven(SMR_crf, capacity, h2_capex, SMR_om, h2_om, conv, affc, h2ptc, elec, ptc=True):
-        alpha = SMR_crf*capacity*(1-utils.ITC_SMR)
+    def compute_ammonia_capex_breakeven(SMR_crf, capacity, h2_capex, SMR_om, h2_om, conv, affc, h2ptc, elec, ptc=True, ITC=ITC):
+        alpha = SMR_crf*capacity*(1-ITC)
         # Costs without SMR capex
         SMRh2_costs = h2_capex+SMR_om+h2_om+conv
         # BE CAPEX $/MWe
@@ -202,7 +202,7 @@ def pp_ammonia(results_path, clean_save_path, OAK):
         df.to_excel(excel_file, sheet_name=sheet_name)
 
 
-def pp_steel(results_path, clean_save_path, OAK):
+def pp_steel(results_path, clean_save_path, OAK, ITC):
     df = pd.read_excel(results_path, sheet_name='steel')
     df.sort_values(by=['Breakeven price ($/MMBtu)'], inplace=True)
     df.reset_index(inplace=True)
@@ -263,8 +263,8 @@ def pp_steel(results_path, clean_save_path, OAK):
                 res_be.to_excel(writer, sheet_name=sheetn)
     except FileNotFoundError:
         res_be.to_excel(excelf, sheet_name=sheetn)
-    def compute_steel_capex_breakeven(SMR_crf, capacity, h2_capex, SMR_om, h2_om, conv, affc, h2ptc, elec, ptc=True):
-        alpha = SMR_crf*capacity*(1-utils.ITC_SMR)
+    def compute_steel_capex_breakeven(SMR_crf, capacity, h2_capex, SMR_om, h2_om, conv, affc, h2ptc, elec, ptc=True, ITC=ITC):
+        alpha = SMR_crf*capacity*(1-ITC)
         # Costs without SMR capex
         SMRh2_costs = h2_capex+SMR_om+h2_om+conv
         # BE CAPEX $/MWe
@@ -320,17 +320,20 @@ def pp_steel(results_path, clean_save_path, OAK):
         df.to_excel(excel_file, sheet_name=sheet_name, index=False)
 
 
-def main(OAK,wacc,cambium_scenario,year):
-    results_path = f'./results/raw_results_SMR_{OAK}_h2_wacc_{str(wacc)}.xlsx'
-    clean_save_path = f'./results/clean_results_SMR_{OAK}_h2_wacc_{str(wacc)}.xlsx'
-    pp_refining(results_path, clean_save_path, OAK)
-    pp_ammonia(results_path,clean_save_path, OAK)
-    pp_steel(results_path, clean_save_path, OAK)
+def main(OAK,wacc,ITC,cambium_scenario,year):
+    results_path = f'./results/raw_results_SMR_{OAK}_ITC_{ITC}.xlsx'
+    clean_save_path = f'./results/clean_results_SMR_{OAK}_ITC_{ITC}.xlsx'
+    pp_refining(results_path, clean_save_path, OAK, ITC)
+    pp_ammonia(results_path,clean_save_path, OAK, ITC)
+    pp_steel(results_path, clean_save_path, OAK, ITC)
 
 
 if __name__ == '__main__':
-    OAK = 'FOAK'
+    OAK = utils.LEARNING
+    with_PTC = utils.with_PTC
+    ITC = utils.ITC
+    cogen = True
     wacc = utils.WACC
     cambium_scenario = 'MidCase'
     year = 2024
-    main(OAK,wacc,cambium_scenario,year)
+    main(OAK,wacc,ITC,cambium_scenario,year)
