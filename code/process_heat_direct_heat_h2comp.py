@@ -199,17 +199,23 @@ def compute_irr(smr_depl):
     return smr_depl
 
 
-def select_best_h2(smr_depl):
+def select_best_h2(smr_depl, with_PTC):
     smr_depl.reset_index(inplace=True,drop=True)
-    idx = smr_depl.groupby(['FACILITY_ID', 'Remaining_temp_degC', 'SMR'])['Net Ann. Rev. ($/year)'].idxmax()
+    if with_PTC:
+        idx = smr_depl.groupby(['FACILITY_ID', 'Remaining_temp_degC', 'SMR'])['IRR w PTC'].idxmax()
+    else:
+        idx = smr_depl.groupby(['FACILITY_ID', 'Remaining_temp_degC', 'SMR'])['IRR wo PTC'].idxmax()
     max_h2 = smr_depl.loc[idx]
     max_h2 = max_h2.reset_index(drop=True)
     return max_h2
 
-def select_best_smr(smr_depl):
+def select_best_smr(smr_depl, with_PTC):
    # Select SMR design corresponding to the maximum net annual revenue
     smr_depl.reset_index(inplace=True, drop=True)
-    idx = smr_depl.groupby(['FACILITY_ID'])['Net Ann. Rev. ($/year)'].idxmax()
+    if with_PTC:
+        idx = smr_depl.groupby(['FACILITY_ID'])['IRR w PTC'].idxmax()
+    else:
+        idx = smr_depl.groupby(['FACILITY_ID'])['IRR wo PTC'].idxmax()
     max_SMR = smr_depl.loc[idx]
     max_SMR = max_SMR.reset_index(drop=True)  
     return max_SMR   
@@ -255,9 +261,9 @@ def main(OAK,with_PTC,cogen,ITC,cambium_scenario,year):
     smr_depl = compute_cashflows(smr_depl,with_PTC,ITC,cogen,cambium_scenario,year)
     smr_depl = compute_irr(smr_depl)
     # Select best h2 technologies
-    smr_depl = select_best_h2(smr_depl)
+    smr_depl = select_best_h2(smr_depl, with_PTC)
     # Select best SMR design at each location
-    smr_depl = select_best_smr(smr_depl)
+    smr_depl = select_best_smr(smr_depl, with_PTC)
     # Add location data
     smr_depl = smr_depl.merge(loc_data, on=['CITY', 'STATE'])
     # Compute BE NG price

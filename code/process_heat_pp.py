@@ -38,7 +38,11 @@ def main(OAK,with_PTC,cogen,ITC,cambium_scenario='MidCase',year=2024):
     h2comp, h2all = load_results(OAK,with_PTC,cogen,ITC,cambium_scenario,year)
     comparison = pd.concat([h2comp,h2all],ignore_index=True)
     comparison.reset_index(inplace=True, drop=True)
-    idx = comparison.groupby(['FACILITY_ID'])['Pathway Net Ann. Rev. ($/year)'].idxmax()
+    if with_PTC:
+        idx = comparison.groupby(['FACILITY_ID'])['IRR w PTC'].idxmax()
+    else:
+        idx = comparison.groupby(['FACILITY_ID'])['IRR wo PTC'].idxmax()
+    #idx = comparison.groupby(['FACILITY_ID'])['Pathway Net Ann. Rev. ($/year)'].idxmax()
     best_pathway = comparison.loc[idx]
     best_pathway['Pathway Net Ann. Rev. (M$/y)'] = best_pathway['Pathway Net Ann. Rev. ($/year)']/1e6
     best_pathway['Pathway Net Ann. Rev. (M$/y/MWt)'] = best_pathway['Pathway Net Ann. Rev. (M$/y)']/best_pathway['Depl. SMR Cap. (MWt)']
