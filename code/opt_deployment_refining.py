@@ -127,6 +127,10 @@ def solve_refinery_deployment(ref_id, SMR_data, H2_data, ITC):
   @model.Param(model.G)
   def pSMRCAPEX(model, g):
     return float(SMR_data.loc[g]['CAPEX $/MWe'])
+  
+  @model.Param(model.G)
+  def pSMRLT(model,g):
+    return float(SMR_data.loc[g]['Life (y)'])
 
   @model.Param(model.G)
   def pSMRCRF(model, g):
@@ -193,6 +197,9 @@ def solve_refinery_deployment(ref_id, SMR_data, H2_data, ITC):
   def get_SMR_capex(model):
     return sum(model.pSMRCAPEX[g]*model.vS[g] for g in model.G)
   
+  def get_SMR_life(model):
+    return sum(model.pSMRLT[g]*model.vS[g] for g in model.G)
+  
   def get_deployed_cap(model):
     return sum(sum (model.vM[n,g]*model.pSMRCap[g] for g in model.G) for n in model.N)
   
@@ -242,6 +249,7 @@ def solve_refinery_deployment(ref_id, SMR_data, H2_data, ITC):
     results_ref['Ann. CO2 emissions (kgCO2eq/year)'] = value(compute_annual_carbon_emissions(model))
     results_ref['Initial investment ($)'] = value(compute_initial_investment(model))
     results_ref['SMR CAPEX ($/year)'] = value(compute_SMR_capex(model))
+    results_ref['Life (y)'] = value(get_SMR_life(model))
     results_ref['H2 CAPEX ($/year)'] = value(compute_h2_capex(model))
     results_ref['SMR O&M ($/year)'] = value(compute_SMR_om(model))
     results_ref['H2 O&M ($/year)'] = value(compute_h2_om(model))

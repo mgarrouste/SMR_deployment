@@ -4,8 +4,8 @@ import glob
 
 N=1000
 LEARNING = 'FOAK'
-ITC = 0.3
-with_PTC = True
+ITC = 0
+with_PTC = False
 
 palette={'HTR':'orange', 
          'MSR':'blue', 
@@ -73,7 +73,7 @@ ratio_ironore_DRI = 1.391 # tironore/tDRI
 bfbof_iron_cons = 1.226 #t_ironore/t_steel
 om_bfbof = 178.12 #$/t_steel
 
-def calculate_irr(Co, Celec, Ch2, Cff, lifetime=20, ptc=True, add_capex={}):
+def calculate_irr(Co, Celec, Ch2, Cff, lifetime=60, ptc=True, add_capex={}):
   """Calculates the IRR given: 
   Args: 
     Co (float): initial total investment, CAPEX SMR, H2, and conversion costs

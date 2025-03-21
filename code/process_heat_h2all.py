@@ -80,8 +80,8 @@ def compute_cashflows(smr_depl, cogen, with_PTC, ITC, cambium_scenario, year):
     # Compute costs in $/year
     # Capital recovery factor
     IR = utils.WACC
-    smr_depl['SMR CRF'] = (IR/(1-((1+IR)**(-1*(smr_depl['Life (y)_y'])))))
-    smr_depl['H2 CRF'] = (IR/(1-((1+IR)**(-1*(smr_depl['Life (y)_x'])))))
+    smr_depl['SMR CRF'] = (IR/(1-((1+IR)**(-1*(smr_depl['Life_SMR (y)'])))))
+    smr_depl['H2 CRF'] = (IR/(1-((1+IR)**(-1*(smr_depl['Life_H2 (y)'])))))
 
     # ITC
     itc_SMR, itc_h2 = ITC, ITC
@@ -128,8 +128,8 @@ def compute_cashflows(smr_depl, cogen, with_PTC, ITC, cambium_scenario, year):
         smr_depl = compute_cogen_revenues(smr_depl, 'Surplus SMR Cap. (MWe)', 'STATE',cambium_scenario,year)
         smr_depl['SMR-H2 Net Ann. Rev. ($/year)'] += smr_depl['Electricity revenues ($/y)']
     # Compute IRR
-    smr_depl['IRR w PTC'] = smr_depl.apply(lambda x: utils.calculate_irr(x['Initial investment ($)'], x['Electricity revenues ($/y)'], x['H2 PTC'], x['Avoided NG Cost ($/y)']), axis=1)
-    smr_depl['IRR wo PTC'] = smr_depl.apply(lambda x: utils.calculate_irr(x['Initial investment ($)'], x['Electricity revenues ($/y)'], x['H2 PTC'], x['Avoided NG Cost ($/y)'], ptc=False), axis=1)
+    smr_depl['IRR w PTC'] = smr_depl.apply(lambda x: utils.calculate_irr(x['Initial investment ($)'], x['Electricity revenues ($/y)'], x['H2 PTC'], x['Avoided NG Cost ($/y)'], lifetime=x['Life_SMR (y)']), axis=1)
+    smr_depl['IRR wo PTC'] = smr_depl.apply(lambda x: utils.calculate_irr(x['Initial investment ($)'], x['Electricity revenues ($/y)'], x['H2 PTC'], x['Avoided NG Cost ($/y)'], lifetime=x['Life_SMR (y)'],ptc=False), axis=1)
     return smr_depl
 
 

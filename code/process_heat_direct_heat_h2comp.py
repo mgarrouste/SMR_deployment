@@ -13,12 +13,14 @@ def import_smr_h2_data(OAK):
     h2_techs = pd.read_excel('./h2_tech.xlsx', sheet_name = 'Summary')
     h2_techs.rename(columns={'CAPEX ($/MWe)':'H2 CAPEX ($/MWe)',
                     'FOM ($/MWe-year)':'H2 FOM ($/MWe-year)',
-                    'VOM ($/MWhe)':'H2 VOM ($/MWhe)'}, inplace=True)
+                    'VOM ($/MWhe)':'H2 VOM ($/MWhe)', 
+                    'Life (y)':'Life_H2 (y)'}, inplace=True)
     SMRs = pd.read_excel('./SMR_inputs.xlsx', sheet_name=OAK)
     SMRs.rename(columns={'CAPEX $/MWe':'SMR CAPEX ($/MWe)',
                     'FOPEX $/MWe-y':'SMR FOM ($/MWe-year)',
                     'VOM in $/MWh-e':'SMR VOM ($/MWhe)', 
-                    'Startupfixedcost in $':'Start Cost ($)'}, inplace=True)
+                    'Startupfixedcost in $':'Start Cost ($)',
+                    'Life (y)':'Life_SMR (y)'}, inplace=True)
     techs = pd.merge(h2_techs, SMRs, left_on='SMR', right_on='Type')
     return techs
 
@@ -85,7 +87,7 @@ def compute_h2_demand(heat, temp, AHF_coeffs = [0, -0.00038, .90556]):
 
 
 def compute_smr_depl(direct_heat, techs):
-    techs_to_merge = techs[['SMR', 'H2Cap (kgh2/h)', 'H2Cap (MWe)', 'Power in MWe', 
+    techs_to_merge = techs[['SMR', 'H2Cap (kgh2/h)', 'H2Cap (MWe)', 'Power in MWe', 'Life_SMR (y)',
                             'SMR CAPEX ($/MWe)', 'H2 CAPEX ($/MWe)', 'SMR FOM ($/MWe-year)',
                             'H2 FOM ($/MWe-year)', 'Eq tot H2ElecCons (MWhe/kgh2)', 'SMR VOM ($/MWhe)',
                             'H2 VOM ($/MWhe)']]
@@ -192,8 +194,8 @@ def compute_cashflows(smr_depl,with_PTC,ITC,cogen,cambium_scenario,year):
 
 
 def compute_irr(smr_depl):
-    smr_depl['IRR w PTC'] = smr_depl.apply(lambda x: utils.calculate_irr(x['Initial investment ($)'], x['Electricity revenues ($/y)'], x['H2 PTC'], x['Avoided NG Cost ($/y)']), axis=1)
-    smr_depl['IRR wo PTC'] = smr_depl.apply(lambda x: utils.calculate_irr(x['Initial investment ($)'], x['Electricity revenues ($/y)'], x['H2 PTC'], x['Avoided NG Cost ($/y)'], ptc=False), axis=1)
+    smr_depl['IRR w PTC'] = smr_depl.apply(lambda x: utils.calculate_irr(x['Initial investment ($)'], x['Electricity revenues ($/y)'], x['H2 PTC'], x['Avoided NG Cost ($/y)'], lifetime=x['Life_SMR (y)']), axis=1)
+    smr_depl['IRR wo PTC'] = smr_depl.apply(lambda x: utils.calculate_irr(x['Initial investment ($)'], x['Electricity revenues ($/y)'], x['H2 PTC'], x['Avoided NG Cost ($/y)'], lifetime=x['Life_SMR (y)'], ptc=False), axis=1)
     return smr_depl
 
 
@@ -248,6 +250,7 @@ def main(OAK,with_PTC,cogen,ITC,cambium_scenario,year):
     direct_heat_results = direct_heat_results[~direct_heat_results['STATE'].isin(['HI', 'AK'])]
     # Compute the deployment of SMR required to serve the remaining H2 demand
     smr_depl = compute_smr_depl(direct_heat_results, techs)
+    print(smr_depl.columns)
     # Compute cashflows and IRR
     smr_depl = compute_cashflows(smr_depl,with_PTC,ITC,cogen,cambium_scenario,year)
     smr_depl = compute_irr(smr_depl)

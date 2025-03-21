@@ -138,6 +138,10 @@ def build_steel_plant_deployment(plant, SMR_data, H2_data, ITC):
   @model.Param(model.G)
   def pSMRCAPEX(model, g):
     return float(SMR_data.loc[g]['CAPEX $/MWe'])
+  
+  @model.Param(model.G)
+  def pSMRLT(model,g):
+    return float(SMR_data.loc[g]['Life (y)'])
 
   @model.Param(model.G)
   def pSMRCRF(model, g):
@@ -225,6 +229,9 @@ def solve_steel_plant_deployment(plant, SMR_data, H2_data, ITC):
   def get_SMR_capex(model):
     return sum(model.pSMRCAPEX[g]*model.vS[g] for g in model.G)
   
+  def get_SMR_life(model):
+    return sum(model.pSMRLT[g]*model.vS[g] for g in model.G)
+  
   def compute_conv_costs(model):
     crf = model.pWACC / (1 - (1/(1+model.pWACC)**20) )# assumes 20 years lifetime for shaft and eaf
     costs = steel_cap_ton_per_annum*(model.pEAFCAPEX*(1-model.pITC_H2)*crf + model.pShaftFCAPEX*(1-model.pITC_H2)*crf/model.pRatioSteelDRI + model.pEAFOM +\
@@ -281,6 +288,7 @@ def solve_steel_plant_deployment(plant, SMR_data, H2_data, ITC):
     results_dic['Ann. CO2 emissions (kgCO2eq/year)'] = value(compute_annual_carbon_emissions(model))
     results_dic['Initial investment ($)'] = value(compute_initial_investment(model))
     results_dic['SMR CAPEX ($/year)'] = value(compute_SMR_capex(model))
+    results_dic['Life (y)'] = value(get_SMR_life(model))
     results_dic['H2 CAPEX ($/year)'] = value(compute_h2_capex(model))
     results_dic['SMR O&M ($/year)'] = value(compute_SMR_om(model))
     results_dic['H2 O&M ($/year)'] = value(compute_h2_om(model))

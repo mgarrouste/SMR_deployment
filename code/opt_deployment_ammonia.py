@@ -126,6 +126,10 @@ def build_ammonia_plant_deployment(plant, SMR_data, H2_data, ITC):
     return float(SMR_data.loc[g]['CAPEX $/MWe'])
 
   @model.Param(model.G)
+  def pSMRLT(model,g):
+    return float(SMR_data.loc[g]['Life (y)'])
+
+  @model.Param(model.G)
   def pSMRCRF(model, g):
     return model.pWACC / (1 - (1/(1+model.pWACC)**float(SMR_data.loc[g,'Life (y)'])))
     
@@ -207,6 +211,9 @@ def solve_ammonia_plant_deployment(SMR_data, H2_data, plant, ITC, print_results)
   def get_SMR_capex(model):
     return sum(model.pSMRCAPEX[g]*model.vS[g] for g in model.G)
   
+  def get_SMR_life(model):
+    return sum(model.pSMRLT[g]*model.vS[g] for g in model.G)
+  
   def compute_conv_costs(model):
     crf = model.pWACC / (1 - (1/(1+model.pWACC)**auxNucNH3LT) ) 
     costs =auxNucNH3CAPEX*crf*(1-model.pITC_H2)
@@ -262,6 +269,7 @@ def solve_ammonia_plant_deployment(SMR_data, H2_data, plant, ITC, print_results)
     results_ref['Ann. CO2 emissions (kgCO2eq/year)'] = value(compute_annual_carbon_emissions(model))
     results_ref['Initial investment ($)'] = value(compute_initial_investment(model))
     results_ref['SMR CAPEX ($/year)'] = value(compute_SMR_capex(model))
+    results_ref['Life (y)'] = value(get_SMR_life(model))
     results_ref['SMR CRF'] = value(get_crf(model))
     results_ref['Depl. SMR Cap. (MWe)'] = value(get_deployed_cap(model))
     results_ref['Depl H2 Cap. (MWe)'] = value(get_eq_elec_dem_h2(model))
