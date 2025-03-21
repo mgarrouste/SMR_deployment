@@ -72,9 +72,9 @@ def compute_cashflows(smr_depl, cogen, with_PTC, ITC, cambium_scenario, year):
     smr_depl['H2 Modules'] = smr_depl.apply(lambda x: math.ceil(x['Total H2 Dem. (kg/h)']/x['H2Cap (kgh2/h)']), axis=1)
     smr_depl['Depl. H2 Cap. (kgh2/h)'] = smr_depl['H2 Modules']*smr_depl['H2Cap (kgh2/h)']
     smr_depl['Depl. H2 Cap. (MWe)'] = smr_depl['H2 Modules']*smr_depl['H2Cap (MWe)']
-    smr_depl['# SMR Modules'] = smr_depl.apply(lambda x: math.ceil(x['Depl. H2 Cap. (MWe)']/x['Power in MWe']), axis=1)
-    smr_depl['Depl. SMR Cap. (MWe)'] = smr_depl['# SMR Modules']*smr_depl['Power in MWe']
-    smr_depl['Depl. SMR Cap. (MWt)'] = smr_depl['# SMR Modules']*smr_depl['Power in MWt']
+    smr_depl['# SMR modules'] = smr_depl.apply(lambda x: math.ceil(x['Depl. H2 Cap. (MWe)']/x['Power in MWe']), axis=1)
+    smr_depl['Depl. SMR Cap. (MWe)'] = smr_depl['# SMR modules']*smr_depl['Power in MWe']
+    smr_depl['Depl. SMR Cap. (MWt)'] = smr_depl['# SMR modules']*smr_depl['Power in MWt']
     smr_depl['Surplus SMR Cap. (MWe)'] = smr_depl['Depl. SMR Cap. (MWe)']-smr_depl['Depl. H2 Cap. (MWe)']
     smr_depl['Surplus SMR Cap. (MWt)'] = smr_depl['Surplus SMR Cap. (MWe)']/smr_depl['Thermal Efficiency']
     # Compute costs in $/year

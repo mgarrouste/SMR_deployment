@@ -175,7 +175,8 @@ def compute_cashflows(smr_depl,with_PTC,ITC,cogen,cambium_scenario,year):
     smr_depl['Depl. SMR Cap. (MWt)'] = smr_depl['Depl. SMR Cap. (MWt)']+smr_depl[ 'SMR_Capacity']
     smr_depl['Surplus SMR Cap. (MWe)'] = smr_depl['Surplus SMR Cap. (MWe)']+smr_depl['Surplus_Capacity_e']
     smr_depl['Surplus SMR Cap. (MWt)'] = smr_depl['Surplus SMR Cap. (MWt)']+smr_depl['Surplus_Capacity']
-    smr_depl['# SMR Modules'] = smr_depl['# SMR Modules']+smr_depl['Modules']
+    smr_depl['# SMR modules'] = smr_depl['# SMR Modules']+smr_depl['Modules']
+    smr_depl.drop(columns = ['# SMR Modules', 'Modules'], inplace=True)
 
     smr_depl['SMR direct heat cost ($/year)'] = smr_depl['Annual_CAPEX']+smr_depl[f'FOPEX']+smr_depl[f'VOPEX']
     if with_PTC:
