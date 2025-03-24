@@ -1,5 +1,6 @@
 import pandas as pd
 from process_heat_pp import main as run_heat_analysis
+from utils import WACC
 
 
 def load_h2_results(OAK, with_PTC, ITC):
@@ -69,7 +70,19 @@ def load_results(OAK,with_PTC,ITC):
     df = pd.concat([heat, h2], ignore_index=True)
     return df
 
+
+def exclude_foak_sites(noak_results, foak_results, tag):
+    print(f"Exluding FOAK profitable sites from NOAK deployement phase for scenario {tag}")
+    foak_deployed = foak_results[(foak_results['IRR']>=WACC*100)]
+    foak_deployed_sites = foak_deployed['id'].unique()
+    print(f'FOAK sites profitably deployed {len(foak_deployed)}')
+    print(f'NOAK sites before removing FOAK deployed sites {len(noak_results)}')
+    noak_results = noak_results[~(noak_results['id'].isin(foak_deployed_sites))]
+    print(f'NOAK sites after removing FOAK deployed sites {len(noak_results)}')
+    return noak_results
+
 def main():
+    # FOAK
     foak_noPTC = load_results('FOAK',with_PTC=False,ITC=0)
     foak_noPTC.to_excel('./results/all_FOAK_noPTC_ITC_0.xlsx', index=False)
     foak_PTC = load_results('FOAK',with_PTC=True,ITC=0.3)
@@ -78,6 +91,23 @@ def main():
     foak_PTC['tag'] = 'PTC_ITC'
     foak = pd.concat([foak_PTC, foak_noPTC], ignore_index=True)
     foak.to_excel('./results/all_FOAK.xlsx')
+
+
+    # NOAK
+    # No incentives
+    noak_noPTC = load_results('NOAK_wo_inc',with_PTC=False,ITC=0)
+    noak_noPTC = exclude_foak_sites(noak_results=noak_noPTC, foak_results=foak_noPTC, tag="No incentive")
+    noak_noPTC.to_excel('./results/all_NOAK_wo_inc_ITC_0.xlsx', index=False)
+    # With 45V and 48E
+    noak_PTC = load_results('NOAK_with_inc',with_PTC=True,ITC=0.3)
+    noak_PTC = exclude_foak_sites(noak_results=noak_PTC, foak_results=foak_PTC, tag="With 45V and 48E")
+    noak_PTC.to_excel('./results/all_NOAK_with_inc_ITC_0.3.xlsx', index=False)
+    # Concatenate results for viz in Tableau
+    noak_noPTC['tag'] = 'noPTC_noITC'
+    noak_PTC['tag'] = 'PTC_ITC'
+    noak = pd.concat([noak_PTC, noak_noPTC], ignore_index=True)
+    noak.to_excel('./results/all_NOAK.xlsx')
+
 
 if __name__ == '__main__':
     main()
