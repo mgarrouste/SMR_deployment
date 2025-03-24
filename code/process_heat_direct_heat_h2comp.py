@@ -256,7 +256,6 @@ def main(OAK,with_PTC,cogen,ITC,cambium_scenario,year):
     direct_heat_results = direct_heat_results[~direct_heat_results['STATE'].isin(['HI', 'AK'])]
     # Compute the deployment of SMR required to serve the remaining H2 demand
     smr_depl = compute_smr_depl(direct_heat_results, techs)
-    print(smr_depl.columns)
     # Compute cashflows and IRR
     smr_depl = compute_cashflows(smr_depl,with_PTC,ITC,cogen,cambium_scenario,year)
     smr_depl = compute_irr(smr_depl)

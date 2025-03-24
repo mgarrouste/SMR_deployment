@@ -6,7 +6,7 @@ import warnings
 warnings.simplefilter(action='ignore', category=pd.errors.SettingWithCopyWarning)
 warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 
-def pp_refining(results_path, clean_save_path, OAK, ITC):
+def pp_refining(results_path, clean_save_path, OAK, ITC, cambium_scenario, year):
     df = pd.read_excel(results_path, sheet_name='refining')
     df.sort_values(by=['Breakeven price ($/MMBtu)'], inplace=True)
     df.reset_index(inplace=True)
@@ -102,7 +102,7 @@ def pp_refining(results_path, clean_save_path, OAK, ITC):
         df.to_excel(excel_file, sheet_name=sheet_name)
 
 
-def pp_ammonia(results_path, clean_save_path, OAK, ITC):
+def pp_ammonia(results_path, clean_save_path, OAK, ITC, cambium_scenario, year):
     df = pd.read_excel(results_path, sheet_name='ammonia')
     df.sort_values(by=['Breakeven price ($/MMBtu)'], inplace=True)
     df.reset_index(inplace=True)
@@ -202,7 +202,7 @@ def pp_ammonia(results_path, clean_save_path, OAK, ITC):
         df.to_excel(excel_file, sheet_name=sheet_name)
 
 
-def pp_steel(results_path, clean_save_path, OAK, ITC):
+def pp_steel(results_path, clean_save_path, OAK, ITC, cambium_scenario, year):
     df = pd.read_excel(results_path, sheet_name='steel')
     df.sort_values(by=['Breakeven price ($/MMBtu)'], inplace=True)
     df.reset_index(inplace=True)
@@ -320,12 +320,12 @@ def pp_steel(results_path, clean_save_path, OAK, ITC):
         df.to_excel(excel_file, sheet_name=sheet_name, index=False)
 
 
-def main(OAK,wacc,ITC,cambium_scenario,year):
+def main(OAK,wacc,ITC,cambium_scenario='MidCase',year=2024):
     results_path = f'./results/raw_results_SMR_{OAK}_ITC_{ITC}.xlsx'
     clean_save_path = f'./results/clean_results_SMR_{OAK}_ITC_{ITC}.xlsx'
-    pp_refining(results_path, clean_save_path, OAK, ITC)
-    pp_ammonia(results_path,clean_save_path, OAK, ITC)
-    pp_steel(results_path, clean_save_path, OAK, ITC)
+    pp_refining(results_path, clean_save_path, OAK, ITC, cambium_scenario=cambium_scenario, year=year)
+    pp_ammonia(results_path,clean_save_path, OAK, ITC, cambium_scenario=cambium_scenario, year=year)
+    pp_steel(results_path, clean_save_path, OAK, ITC, cambium_scenario=cambium_scenario, year=year)
 
 
 if __name__ == '__main__':
