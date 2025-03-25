@@ -9,19 +9,25 @@ from openpyxl import load_workbook
 
 def launch_opt(noak_tag, itc):
     # check if results already exist
-    wb = load_workbook(f'./results/raw_results_SMR_{noak_tag}_ITC_{itc}.xlsx', read_only=True)
-    if 'refining' not in wb.sheetnames:
-        print("Refining optimization")
-        opt_refining(SMR_tag=noak_tag, ITC=itc)
-    elif "ammonia" not in wb.sheetnames:
-        print("Ammonia optimization")
-        opt_ammonia(SMR_tag=noak_tag, ITC=itc)
-    elif "steel" not in wb.sheetnames:
-        print("Steel optimization")   
+    try:
+        wb = load_workbook(f'./results/raw_results_SMR_{noak_tag}_ITC_{itc}.xlsx', read_only=True)
+        if 'refining' not in wb.sheetnames:
+            print("Refining optimization")
+            opt_refining(SMR_tag=noak_tag, ITC=itc)
+        elif "ammonia" not in wb.sheetnames:
+            print("Ammonia optimization")
+            opt_ammonia(SMR_tag=noak_tag, ITC=itc)
+        elif "steel" not in wb.sheetnames:
+            print("Steel optimization")   
+            opt_steel(SMR_tag=noak_tag, ITC=itc)
+        else:
+            print("Results already exist, proceeding to post-processing \n")
+    except FileNotFoundError:
         opt_steel(SMR_tag=noak_tag, ITC=itc)
-    else:
-        print("Results already exist, proceeding to post-processing \n")
+        opt_refining(SMR_tag=noak_tag, ITC=itc)
+        opt_ammonia(SMR_tag=noak_tag, ITC=itc)
 
+    
 def pp_noak_results(noak_tag, itc):
     pp_opt(OAK=noak_tag, ITC=itc, wacc=WACC)
 
