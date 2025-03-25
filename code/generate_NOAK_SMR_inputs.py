@@ -7,8 +7,8 @@ This script reads the results from the FOAK deployment stage and computes the CA
 deployment stage using a learning rate of 7.5% and assuming the learning curve flattens out after 5 units deployed
 """
 
-# Use a 7.5% learning rate
-learning_rate = 0.075
+# Use a 7% learning rate
+learning_rate = 0.07
 
 
 def compute_SMR_deployment(with_inc):
