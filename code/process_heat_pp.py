@@ -18,11 +18,20 @@ def load_results(OAK,with_PTC,cogen,ITC,cambium_scenario,year):
     except FileNotFoundError:
         run_h2all(OAK,with_PTC,cogen,ITC,cambium_scenario,year)
         h2all = pd.read_csv(f'./results/process_heat_h2all_{OAK}_{ptc_tag}_{cogen_tag}_ITC_{ITC}.csv')
+
+    if not with_PTC:
+        h2comp.drop(columns=['Breakeven NG price ($/MMBtu)'], inplace=True)
+        h2comp['Breakeven NG price ($/MMBtu)'] = h2comp['BE wo PTC ($/MMBtu)']
+        h2comp.drop(columns=['BE wo PTC ($/MMBtu)'], inplace=True)
+        h2all.drop(columns=['Breakeven NG price ($/MMBtu)'], inplace=True)
+        h2all['Breakeven NG price ($/MMBtu)'] = h2all['BE wo PTC ($/MMBtu)']
+        h2all.drop(columns=['BE wo PTC ($/MMBtu)'], inplace=True)
     h2comp['CAPEX ($/y)'] = h2comp['Annual_CAPEX']+h2comp['Annual SMR-H2 CAPEX']
     h2comp['O&M ($/y)'] =h2comp['FOPEX']+h2comp['VOPEX']+h2comp['SMR-H2 FOM']+h2comp['SMR-H2 VOM']
     h2comp.rename(columns={'Remaining H2 Dem. (kg/h)':'H2 Dem. (kg/h)', 'Heat_demand_MWh/hr':'Heat Demand (MW)', 'Highest_Temp_served_degC':'max_temp_degC', 'SMR':'SMR'}, inplace=True)
     h2comp['Pathway'] = 'Direct heat+H2'
     h2comp['Pathway Net Ann. Rev. ($/year)'] = h2comp['Net Ann. Rev. ($/year)']
+
     h2all['O&M ($/y)'] = h2all['SMR-H2 FOM']+h2all['SMR-H2 VOM']
     h2all.rename(columns={'Annual SMR-H2 CAPEX':'CAPEX ($/y)', 'MMTCO2E':'Emissions_mmtco2/y', 'Total H2 Dem. (kg/h)':'H2 Dem. (kg/h)', 
                    'SMR':'SMR'}, inplace=True)
@@ -52,9 +61,9 @@ def main(OAK,with_PTC,cogen,ITC,cambium_scenario='MidCase',year=2024):
 
 
 if __name__ == '__main__':
-    OAK = utils.LEARNING
-    with_PTC = utils.with_PTC
-    ITC = utils.ITC
+    OAK = 'NOAK_wo_inc'
+    with_PTC = False
+    ITC = 0
     cogen = True
     cambium_scenario = 'MidCase'
     year = 2024
