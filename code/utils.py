@@ -21,7 +21,7 @@ cashflows_color_map = {'SMR CAPEX': 'navy',
                'Conversion':'grey',
                'Avoided Fossil Fuel Costs':'darkorchid', 
                'H2 PTC':'red', 
-               'Electricity (cogen)':'pink'}
+               'Electricity (from surplus cap.)':'pink'}
 #INflation
 conversion_2021usd_to_2020usd = 0.99 #2020$/2021$ source: data.bls.gov
 conversion_2022usd_to_2020usd = 1/1.09 #2020$/2022$

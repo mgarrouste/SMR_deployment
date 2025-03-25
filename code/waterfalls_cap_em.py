@@ -563,7 +563,7 @@ def cashflow_breakdown_plots_irr(scenario, heat, h2):
 	if scenario['OAK']=='NOAK':
 		width_ratios = [10,1]
 	elif scenario['OAK']=='FOAK' and scenario['PTC']==False:
-		width_ratios = [8,1]
+		width_ratios = [2,1]
 	else: width_ratios = [1,1]
 	if scenario['PTC'] == False: irr = 'IRR wo PTC'
 	else: irr = 'IRR w PTC'
@@ -581,10 +581,11 @@ def cashflow_breakdown_plots_irr(scenario, heat, h2):
 	cdf['Conversion'] = -(cdf['Conversion'])/1e6
 	cdf['Avoided Fossil Fuel Costs'] = cdf['Avoided NG Cost ($/y)']/1e6
 	cdf['H2 PTC'] = cdf['H2 PTC']/1e6
-	cdf['Electricity (cogen)'] = cdf['Electricity revenues ($/y)']/1e6
+	cdf['Electricity (from surplus cap.)'] = cdf['Electricity revenues ($/y)']/1e6
 	cdfheat = cdf.sort_values(by=irr, ascending=True, ignore_index=True)
-	cashflow_list = ['SMR CAPEX','H2 CAPEX','SMR O&M',	'H2 O&M','Conversion','Avoided Fossil Fuel Costs','H2 PTC', 'Electricity (cogen)']
 
+	cashflow_list = ['SMR CAPEX','H2 CAPEX','SMR O&M','H2 O&M','Conversion','Avoided Fossil Fuel Costs','Electricity (from surplus cap.)']
+	if with_ptc: cashflow_list+=['H2 PTC']
 
 	cdf = h2.copy()
 
@@ -595,8 +596,9 @@ def cashflow_breakdown_plots_irr(scenario, heat, h2):
 	cdf['Conversion'] = -cdf['Conversion costs ($/year)']/1e6
 	cdf['Avoided Fossil Fuel Costs'] = cdf['Avoided NG costs ($/year)']/1e6
 	cdf['H2 PTC'] = cdf['H2 PTC Revenues ($/year)']/1e6
-	cdf['Electricity (cogen)'] = cdf['Electricity revenues ($/y)']/1e6
+	cdf['Electricity (from surplus cap.)'] = cdf['Electricity revenues ($/y)']/1e6
 	cdfh2 = cdf.sort_values(by=irr, ascending=True)
+	print(cdfh2[cashflow_list+[irr]])
 	
 	if len(cdfheat)>0:
 		cdfheat[cashflow_list].plot(ax=ax[0], kind='bar', stacked=True, color=cashflows_color_map, width=1)
@@ -751,21 +753,22 @@ if __name__ =='__main__':
 			## NOAK no ptc after foak no ptc
 			scenario = {'OAK':'NOAK', 'PTC':False, 'FOAK_PTC':False}
 			# heat
-			heatf = SMR_application_comparison.load_heat_results(OAK='FOAK', cogen_tag='cogen', with_PTC=scenario['FOAK_PTC'], ITC=0)
+			heatf = SMR_application_comparison.load_heat_results(OAK='FOAK', cogen=True, with_PTC=scenario['FOAK_PTC'], ITC=0)
 			heatf = heatf[heatf['Annual Net Revenues (M$/y)']>0]
-			heatn = SMR_application_comparison.load_heat_results(OAK='NOAK', cogen_tag='cogen', with_PTC=scenario['PTC'], ITC=0)
+			heatn = SMR_application_comparison.load_heat_results(OAK='NOAK_wo_inc', cogen=True, with_PTC=scenario['PTC'], ITC=0)
 			heatn = heatn[heatn['Annual Net Revenues (M$/y)']>0]
 			to_drop = heatf.index.to_list()
 			heatn = heatn.drop(to_drop, errors='ignore')
 			# h2
 			h2f = SMR_application_comparison.load_h2_results(OAK='FOAK', cogen_tag='cogen', with_PTC=scenario['FOAK_PTC'], ITC=0)
 			h2f = h2f[h2f['Annual Net Revenues (M$/y)']>0]
-			h2n = SMR_application_comparison.load_h2_results(OAK='NOAK', cogen_tag='cogen', with_PTC=scenario['PTC'], ITC=0)
+			h2n = SMR_application_comparison.load_h2_results(OAK='NOAK_wo_inc', cogen_tag='cogen', with_PTC=scenario['PTC'], ITC=0)
 			h2n = h2n[h2n['Annual Net Revenues (M$/y)']>0]
 			to_drop = h2f.index.to_list()
 			h2n = h2n.drop(to_drop, errors='ignore')
 			# Plot cashflows
-			cashflow_breakdown_plots(scenario=scenario, heat=heatn, h2=h2n)
+			cashflow_breakdown_plots_irr(scenario=scenario, heat=heatn, h2=h2n)
+			"""
 			## NOAK no ptc after foak ptc
 			scenario = {'OAK':'NOAK', 'PTC':False, 'FOAK_PTC':True}
 			# heat
@@ -783,23 +786,24 @@ if __name__ =='__main__':
 			to_drop = h2f.index.to_list()
 			h2n = h2n.drop(to_drop, errors='ignore')
 			# Plot cashflows
-			cashflow_breakdown_plots(scenario=scenario, heat=heatn, h2=h2n)
+			cashflow_breakdown_plots(scenario=scenario, heat=heatn, h2=h2n)"
+			"""
 			# NOAK ptc after foak ptc
 			scenario = {'OAK':'NOAK', 'PTC':True, 'FOAK_PTC':True}
 			# heat
-			heatf = SMR_application_comparison.load_heat_results(OAK='FOAK', cogen_tag='cogen', with_PTC=scenario['FOAK_PTC'])
+			heatf = SMR_application_comparison.load_heat_results(OAK='FOAK', cogen=True, with_PTC=scenario['FOAK_PTC'])
 			heatf = heatf[heatf['Annual Net Revenues (M$/y)']>0]
-			heatn = SMR_application_comparison.load_heat_results(OAK='NOAK', cogen_tag='cogen', with_PTC=scenario['PTC'])
+			heatn = SMR_application_comparison.load_heat_results(OAK='NOAK_with_inc', cogen=True, with_PTC=scenario['PTC'])
 			heatn = heatn[heatn['Annual Net Revenues (M$/y)']>0]
 			to_drop = heatf.index.to_list()
 			heatn = heatn.drop(to_drop, errors='ignore')
 			# h2
 			h2f = SMR_application_comparison.load_h2_results(OAK='FOAK', cogen_tag='cogen', with_PTC=scenario['FOAK_PTC'])
 			h2f = h2f[h2f['Annual Net Revenues (M$/y)']>0]
-			h2n = SMR_application_comparison.load_h2_results(OAK='NOAK', cogen_tag='cogen', with_PTC=scenario['PTC'])
+			h2n = SMR_application_comparison.load_h2_results(OAK='NOAK_with_inc', cogen_tag='cogen', with_PTC=scenario['PTC'])
 			h2n = h2n[h2n['Annual Net Revenues (M$/y)']>0]
 			to_drop = h2f.index.to_list()
 			h2n = h2n.drop(to_drop, errors='ignore')
 			# Plot cashflows
-			cashflow_breakdown_plots(scenario=scenario, heat=heatn, h2=h2n)
+			cashflow_breakdown_plots_irr(scenario=scenario, heat=heatn, h2=h2n)
 			
