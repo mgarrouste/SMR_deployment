@@ -61,10 +61,15 @@ def main(OAK,with_PTC,cogen,ITC,cambium_scenario='MidCase',year=2024):
 
 
 if __name__ == '__main__':
-    OAK = 'NOAK_wo_inc'
-    with_PTC = False
-    ITC = 0
     cogen = True
     cambium_scenario = 'MidCase'
     year = 2024
-    main(OAK,with_PTC,cogen,ITC,cambium_scenario,year)
+    scenarios_foak = {"FOAK_wo_inc":["FOAK",False,0],
+                      "FOAK_with_inc":["FOAK",True,0.3]}
+    scenarios_noak = {'NOAK_wo_inc':["NOAK_wo_inc",False,0],
+                      'NOAK_with_inc':["NOAK_with_inc",True,0.3]}
+    for sc, inc in scenarios_foak.items():
+        oak = inc[0]
+        with_PTC = inc[1]
+        ITC = inc[2]
+        main(oak,with_PTC,cogen,ITC,cambium_scenario,year)

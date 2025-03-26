@@ -95,18 +95,21 @@ def main():
 
     # NOAK
     # No incentives
-    noak_noPTC = load_results('NOAK_wo_inc',with_PTC=False,ITC=0)
-    noak_noPTC = exclude_foak_sites(noak_results=noak_noPTC, foak_results=foak_noPTC, tag="No incentive")
-    noak_noPTC.to_excel('./results/all_NOAK_wo_inc_ITC_0.xlsx', index=False)
-    # With 45V and 48E
-    noak_PTC = load_results('NOAK_with_inc',with_PTC=True,ITC=0.3)
-    noak_PTC = exclude_foak_sites(noak_results=noak_PTC, foak_results=foak_PTC, tag="With 45V and 48E")
-    noak_PTC.to_excel('./results/all_NOAK_with_inc_ITC_0.3.xlsx', index=False)
-    # Concatenate results for viz in Tableau
-    noak_noPTC['tag'] = 'noPTC_noITC'
-    noak_PTC['tag'] = 'PTC_ITC'
-    noak = pd.concat([noak_PTC, noak_noPTC], ignore_index=True)
-    noak.to_excel('./results/all_NOAK.xlsx')
+    try:
+        noak_noPTC = load_results('NOAK_wo_inc',with_PTC=False,ITC=0)
+        noak_noPTC = exclude_foak_sites(noak_results=noak_noPTC, foak_results=foak_noPTC, tag="No incentive")
+        noak_noPTC.to_excel('./results/all_NOAK_wo_inc_ITC_0.xlsx', index=False)
+        # With 45V and 48E
+        noak_PTC = load_results('NOAK_with_inc',with_PTC=True,ITC=0.3)
+        noak_PTC = exclude_foak_sites(noak_results=noak_PTC, foak_results=foak_PTC, tag="With 45V and 48E")
+        noak_PTC.to_excel('./results/all_NOAK_with_inc_ITC_0.3.xlsx', index=False)
+        # Concatenate results for viz in Tableau
+        noak_noPTC['tag'] = 'noPTC_noITC'
+        noak_PTC['tag'] = 'PTC_ITC'
+        noak = pd.concat([noak_PTC, noak_noPTC], ignore_index=True)
+        noak.to_excel('./results/all_NOAK.xlsx')
+    except FileNotFoundError:
+        print('NOAK deployment phase not run yet, skip prepping data for Tableau viz')
 
 
 if __name__ == '__main__':
