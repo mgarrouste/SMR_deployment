@@ -73,7 +73,8 @@ def load_results(OAK,with_PTC,ITC):
 
 def exclude_foak_sites(noak_results, foak_results, tag):
     print(f"Exluding FOAK profitable sites from NOAK deployement phase for scenario {tag}")
-    foak_deployed = foak_results[(foak_results['IRR']>=WACC*100)]
+    #foak_deployed = foak_results[(foak_results['IRR']>=WACC*100)]
+    foak_deployed = foak_results[foak_results['Annual Net Revenues (M$/y)']>0]
     foak_deployed_sites = foak_deployed['id'].unique()
     print(f'FOAK sites profitably deployed {len(foak_deployed)}')
     print(f'NOAK sites before removing FOAK deployed sites {len(noak_results)}')

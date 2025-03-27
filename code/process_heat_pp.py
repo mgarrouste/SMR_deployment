@@ -68,7 +68,7 @@ if __name__ == '__main__':
                       "FOAK_with_inc":["FOAK",True,0.3]}
     scenarios_noak = {'NOAK_wo_inc':["NOAK_wo_inc",False,0],
                       'NOAK_with_inc':["NOAK_with_inc",True,0.3]}
-    for sc, inc in scenarios_foak.items():
+    for sc, inc in scenarios_noak.items():
         oak = inc[0]
         with_PTC = inc[1]
         ITC = inc[2]

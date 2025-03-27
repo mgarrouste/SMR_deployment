@@ -22,7 +22,7 @@ def compute_SMR_deployment(with_inc):
     # Select profitable sites: positive annual net revenues and IRR > WACC
     foak_r = foak_r[foak_r['Annual Net Revenues (M$/y)']>0]
     foak_r['IRR'] = foak_r['IRR'].astype(float)
-    foak_r = foak_r[foak_r.IRR >= WACC*100]
+    #foak_r = foak_r[foak_r.IRR >= WACC*100]
     # Compute the total deoloyed units for each design
     smr_depl = {}
     for smr in palette.keys():
@@ -35,8 +35,8 @@ def apply_learning_rate(smr_depl, with_inc):
     foak_inputs = pd.read_excel(excel_file, sheet_name='FOAK', index_col='Type')
     noak_inputs = foak_inputs.copy()
     for smr,nb_units in smr_depl.items():
-        # Learning flattens out after 5 units
-        if nb_units >=5: nb_units =5
+        # Learning flattens out after 7 units
+        if nb_units >=7: nb_units =7
         foak_capex = foak_inputs.loc[smr, 'CAPEX $/MWe']
         if nb_units >0:
             noak_capex = foak_capex*(nb_units**log2(1-learning_rate))

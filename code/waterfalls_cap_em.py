@@ -31,16 +31,16 @@ def load_foaknoPTC(printinfo=False):
 	h2 = h2.loc[:,~h2.columns.duplicated()]
 	h2 = h2.reset_index()
 	h2['Annual Net Revenues wo PTC (M$/y)'] = h2['Electricity revenues ($/y)']+h2['Net Revenues ($/year)']
+	h2 = h2[['Annual Net Revenues wo PTC (M$/y)']>0]
 	if printinfo:	print('# process hydrogen facilities profitable wo PTc :{}'.format(len(h2[h2['Annual Net Revenues wo PTC (M$/y)']>0])))
 	
 	foak_positive = pd.concat([heat, h2], ignore_index=True)
-	foak_positive = foak_positive[foak_positive['Annual Net Revenues (M$/y)'] >=0]
 	foak_positive.to_excel('./results/results_FOAK_noPTC_ITC_0.xlsx')
 	foak_positive = foak_positive.reset_index()
-	return heat
+	return foak_positive
 
 def load_foak_positive(dropnoptc=False):
-	h2_data = SMR_application_comparison.load_h2_results(OAK='FOAK', cogen_tag='cogen', ITC=0.3)
+	h2_data = SMR_application_comparison.load_h2_results(OAK='FOAK', cogen_tag='cogen', ITC=0.3, with_PTC=True)
 	h2_data = h2_data[['latitude', 'longitude', 'Depl. SMR Cap. (MWe)', 'Breakeven price ($/MMBtu)', 'Ann. avoided CO2 emissions (MMT-CO2/year)', 
 										'# SMR modules','Industry', 'Application', 'SMR', 'Annual Net Revenues (M$/y)', 'state','IRR w PTC']]
 	h2_data.rename(columns={'Ann. avoided CO2 emissions (MMT-CO2/year)':'Emissions', 'SMR':'SMR'}, inplace=True)
@@ -475,8 +475,15 @@ def abatement_cost_plot():
 
 	# FOAK on the left
 	OAK = 'FOAK'
-	import pp_industrial_hydrogen
-	h2_data = pp_industrial_hydrogen.load_data(OAK)
+	list_df = []
+	industries = {'ammonia':'Ammonia', 
+              'refining':'Refining', 
+              'steel':'Steel'}
+	for ind, ind_label in industries.items():
+		df = pd.read_excel(f'./results/clean_results_SMR_{OAK}_ITC_{itc}.xlsx', sheet_name=ind)
+		df['Industry'] = ind_label
+		list_df.append(df)
+	h2_data = pd.concat(list_df, ignore_index=True)
 	# Select only profitable sites  !
 	h2_data = h2_data[h2_data['Net Annual Revenues with H2 PTC ($/MWe/y)']>=0]
 	h2_data['Cost SMR ($/y)'] = h2_data['SMR CAPEX ($/year)']+h2_data['H2 CAPEX ($/year)']+h2_data['SMR O&M ($/year)']+h2_data['H2 O&M ($/year)']\
@@ -627,7 +634,7 @@ def cashflow_breakdown_plots_irr(scenario, heat, h2):
 		ax[1].set_title('Process Hydrogen')
 	else: 
 		ax[1].axis('off')
-		ax02.set_ylabel('IRR (%)', color='royalblue')
+		#ax12.set_ylabel('IRR (%)', color='royalblue')
 	h00, l00 = ax[0].get_legend_handles_labels()
 	h01, l01 = ax[1].get_legend_handles_labels()
 	by_label = dict(zip(l00+l01, h00+h01))
