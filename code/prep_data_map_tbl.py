@@ -52,7 +52,7 @@ def load_heat_results(OAK, with_PTC=True, ITC=0.3):
     heat_df['Annual Net Revenues (M$/MWe/y)']  = heat_df['Pathway Net Ann. Rev. (M$/y)']/heat_df['Depl. SMR Cap. (MWe)']
     heat_df['Annual Net Revenues (M$/y)'] = heat_df['Pathway Net Ann. Rev. (M$/y)']
     heat_df['Application'] = 'Process Heat'
-    list_cols = ['STATE','latitude', 'longitude', 'SMR','# SMR modules','Breakeven NG price ($/MMBtu)',
+    list_cols = ['STATE','latitude', 'longitude', 'SMR','# SMR modules','Breakeven NG price ($/MMBtu)','Breakeven CAPEX ($/MWe)',
 											 'Depl. SMR Cap. (MWe)','Annual Net Revenues (M$/y)', 'Annual Net Revenues (M$/MWe/y)','Application']
     if with_PTC: list_cols += ['IRR w PTC']
     else: list_cols += ['IRR wo PTC']

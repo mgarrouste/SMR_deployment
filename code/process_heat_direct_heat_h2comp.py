@@ -87,7 +87,7 @@ def compute_h2_demand(heat, temp, AHF_coeffs = [0, -0.00038, .90556]):
 
 
 def compute_smr_depl(direct_heat, techs):
-    techs_to_merge = techs[['SMR', 'H2Cap (kgh2/h)', 'H2Cap (MWe)', 'Power in MWe', 'Life_SMR (y)',
+    techs_to_merge = techs[['SMR', 'H2Cap (kgh2/h)', 'H2Cap (MWe)', 'Life_SMR (y)',
                             'SMR CAPEX ($/MWe)', 'H2 CAPEX ($/MWe)', 'SMR FOM ($/MWe-year)',
                             'H2 FOM ($/MWe-year)', 'Eq tot H2ElecCons (MWhe/kgh2)', 'SMR VOM ($/MWhe)',
                             'H2 VOM ($/MWhe)']]
@@ -235,6 +235,18 @@ def compute_ng_breakeven(smr_depl,cogen):
     return smr_depl
 
 
+def compute_capex_breakeven(smr_depl,cogen,with_PTC,ITC):
+    if with_PTC:
+        smr_depl['Breakeven CAPEX ($/MWe)'] = (smr_depl['H2 PTC']+smr_depl['Electricity revenues ($/y)']+smr_depl['Avoided NG Cost ($/y)']
+                                               -(smr_depl['Annual H2 CAPEX']+smr_depl['SMR-H2 VOM']+smr_depl['SMR-H2 FOM']+smr_depl['Conversion']
+                                                 ))/(smr_depl['Depl. SMR Cap. (MWe)']*smr_depl['SMR CRF']*(1-ITC))
+    else:
+        smr_depl['Breakeven CAPEX ($/MWe)'] = (smr_depl['Electricity revenues ($/y)']+smr_depl['Avoided NG Cost ($/y)']
+                                               -(smr_depl['Annual H2 CAPEX']+smr_depl['SMR-H2 VOM']+smr_depl['SMR-H2 FOM']+smr_depl['Conversion']
+                                                 ))/(smr_depl['Depl. SMR Cap. (MWe)']*smr_depl['SMR CRF']*(1-ITC))
+    return smr_depl
+
+
 def main(OAK,with_PTC,cogen,ITC,cambium_scenario,year):
     if cogen: cogen_tag = 'cogen'
     else: cogen_tag = 'nocogen'
@@ -265,17 +277,23 @@ def main(OAK,with_PTC,cogen,ITC,cambium_scenario,year):
     smr_depl = select_best_smr(smr_depl, with_PTC)
     # Add location data
     smr_depl = smr_depl.merge(loc_data, on=['CITY', 'STATE'])
-    # Compute BE NG price
+    # Compute BE NG price and BE CAPEX
     smr_depl = compute_ng_breakeven(smr_depl,cogen)
+    smr_depl = compute_capex_breakeven(smr_depl,cogen,with_PTC,ITC)
     smr_depl.to_csv(f'./results/process_heat_direct_heat_h2comp_{OAK}_{ptc_tag}_{cogen_tag}_ITC_{ITC}.csv')
 
 
 
 if __name__ == '__main__':
-    OAK = utils.LEARNING
-    with_PTC = utils.with_PTC
-    ITC = utils.ITC
     cogen = True
     cambium_scenario = 'MidCase'
     year = 2024
-    main(OAK,with_PTC,cogen,ITC,cambium_scenario,year)
+    scenarios_foak = {"FOAK_wo_inc":["FOAK",False,0],
+                      "FOAK_with_inc":["FOAK",True,0.3]}
+    scenarios_noak = {'NOAK_wo_inc':["NOAK_wo_inc",False,0],
+                      'NOAK_with_inc':["NOAK_with_inc",True,0.3]}
+    for sc, inc in scenarios_foak.items():
+        oak = inc[0]
+        with_PTC = inc[1]
+        ITC = inc[2]
+        main(oak,with_PTC,cogen,ITC,cambium_scenario,year)

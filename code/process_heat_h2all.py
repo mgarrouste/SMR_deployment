@@ -171,6 +171,17 @@ def compute_be_ng_prices(smr_depl, cogen):
                                                     (smr_depl['mean_NG_HLMP_mod']*smr_depl['Heat Demand (MW)']*8760)
     return smr_depl
 
+def compute_capex_breakeven(smr_depl,cogen,with_PTC,ITC):
+    if with_PTC:
+        smr_depl['Breakeven CAPEX ($/MWe)'] = (smr_depl['H2 PTC']+smr_depl['Electricity revenues ($/y)']+smr_depl['Avoided NG Cost ($/y)']
+                                               -(smr_depl['Annual H2 CAPEX']+smr_depl['SMR-H2 VOM']+smr_depl['SMR-H2 FOM']+smr_depl['Conversion']
+                                                 ))/(smr_depl['Depl. SMR Cap. (MWe)']*smr_depl['SMR CRF']*(1-ITC))
+    else:
+        smr_depl['Breakeven CAPEX ($/MWe)'] = (smr_depl['Electricity revenues ($/y)']+smr_depl['Avoided NG Cost ($/y)']
+                                               -(smr_depl['Annual H2 CAPEX']+smr_depl['SMR-H2 VOM']+smr_depl['SMR-H2 FOM']+smr_depl['Conversion']
+                                                 ))/(smr_depl['Depl. SMR Cap. (MWe)']*smr_depl['SMR CRF']*(1-ITC))
+    return smr_depl
+
 
 def main(OAK,with_PTC,cogen,ITC,cambium_scenario,year):
     if cogen: cogen_tag = 'cogen'
@@ -200,8 +211,9 @@ def main(OAK,with_PTC,cogen,ITC,cambium_scenario,year):
     smr_depl = select_best_h2(smr_depl, with_PTC)
     # Select best SMR design
     smr_depl = select_best_smr(smr_depl, with_PTC)
-    # Compute BE NG prices
+    # Compute BE NG prices and BE CAPEX
     smr_depl = compute_be_ng_prices(smr_depl,cogen)
+    smr_depl = compute_capex_breakeven(smr_depl,cogen,with_PTC,ITC)
     smr_depl.to_csv(f'./results/process_heat_h2all_{OAK}_{ptc_tag}_{cogen_tag}_ITC_{ITC}.csv', index=False)
 
 if __name__ == '__main__':
