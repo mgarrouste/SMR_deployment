@@ -45,8 +45,9 @@ def main(OAK,with_PTC,cogen,ITC,cambium_scenario='MidCase',year=2024):
     if with_PTC: ptc_tag = 'PTC'
     else: ptc_tag = 'noPTC'
     h2comp, h2all = load_results(OAK,with_PTC,cogen,ITC,cambium_scenario,year)
-    comparison = pd.concat([h2comp,h2all],ignore_index=True)
-    comparison.reset_index(inplace=True, drop=True)
+    #comparison = pd.concat([h2comp,h2all],ignore_index=True)
+    #comparison.reset_index(inplace=True, drop=True)
+    comparison = h2comp.copy()
     if with_PTC:
         idx = comparison.groupby(['FACILITY_ID'])['IRR w PTC'].idxmax()
     else:
@@ -68,7 +69,7 @@ if __name__ == '__main__':
                       "FOAK_with_inc":["FOAK",True,0.3]}
     scenarios_noak = {'NOAK_wo_inc':["NOAK_wo_inc",False,0],
                       'NOAK_with_inc':["NOAK_with_inc",True,0.3]}
-    for sc, inc in scenarios_noak.items():
+    for sc, inc in scenarios_foak.items():
         oak = inc[0]
         with_PTC = inc[1]
         ITC = inc[2]

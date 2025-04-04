@@ -574,7 +574,7 @@ def cashflow_breakdown_plots_irr(scenario, heat, h2):
 	else: width_ratios = [1,1]
 	if scenario['PTC'] == False: irr = 'IRR wo PTC'
 	else: irr = 'IRR w PTC'
-	fig, ax = plt.subplots(1,2, figsize=(9,5), width_ratios=width_ratios)
+	fig, ax = plt.subplots(1,2, figsize=(9,5), width_ratios=width_ratios, sharey=True)
 	from utils import cashflows_color_map
 	OAK = scenario['OAK']
 	with_ptc = scenario['PTC']
@@ -605,30 +605,29 @@ def cashflow_breakdown_plots_irr(scenario, heat, h2):
 	cdf['H2 PTC'] = cdf['H2 PTC Revenues ($/year)']/1e6
 	cdf['Electricity (from surplus cap.)'] = cdf['Electricity revenues ($/y)']/1e6
 	cdfh2 = cdf.sort_values(by=irr, ascending=True)
-	print(cdfh2[cashflow_list+[irr]])
 	
 	if len(cdfheat)>0:
 		cdfheat[cashflow_list].plot(ax=ax[0], kind='bar', stacked=True, color=cashflows_color_map, width=1)
-		ax02 = ax[0].twinx()
-		cdfheat[[irr]].plot(ax=ax02, color='royalblue', marker='+', linestyle='')
+		#ax02 = ax[0].twinx()
+		#cdfheat[[irr]].plot(ax=ax02, color='royalblue', marker='+', linestyle='')
 		ax[0].tick_params(axis='x', which='both', bottom=False, labelbottom=False)
 		ax[0].set_ylabel('Cashflow (M$/y)')
 		ax[0].set_xlabel('Industrial site')
-		ax02.get_legend().set_visible(False)
-		ax02.tick_params(axis='y', colors='royalblue')
+		#ax02.get_legend().set_visible(False)
+		#ax02.tick_params(axis='y', colors='royalblue')
 		ax[0].yaxis.grid(True)
 		ax[0].get_legend().set_visible(False)
 		ax[0].set_title('Process Heat')
 	else: ax[0].axis('off')
 	if len(cdfh2)>0:
 		cdfh2[cashflow_list].plot(ax=ax[1], kind='bar', stacked=True, color=cashflows_color_map, width=1)
-		ax12 = ax[1].twinx()
-		cdfh2[[irr]].plot(ax=ax12, color='royalblue', marker='+', linestyle='')
+		#ax12 = ax[1].twinx()
+		#cdfh2[[irr]].plot(ax=ax12, color='royalblue', marker='+', linestyle='')
 		ax[1].tick_params(axis='x', which='both', bottom=False, labelbottom=False)
 		ax[1].set_xlabel('Industrial site')
-		ax12.set_ylabel('IRR (%)', color='royalblue')
-		ax12.get_legend().set_visible(False)
-		ax12.tick_params(axis='y', colors='royalblue')
+		#ax12.set_ylabel('IRR (%)', color='royalblue')
+		#ax12.get_legend().set_visible(False)
+		#ax12.tick_params(axis='y', colors='royalblue')
 		ax[1].yaxis.grid(True)
 		ax[1].get_legend().set_visible(False)
 		ax[1].set_title('Process Hydrogen')
@@ -746,15 +745,15 @@ if __name__ =='__main__':
 		if args.cashflow == 'FOAK':
 			scenario = {'OAK':'FOAK', 'PTC':False}
 			heat = SMR_application_comparison.load_heat_results(OAK=scenario['OAK'], cogen=True, with_PTC=scenario['PTC'], ITC=0)
-			heat = heat[heat['Annual Net Revenues (M$/y)']>0]
+			#heat = heat[heat['Annual Net Revenues (M$/y)']>0]
 			h2 = SMR_application_comparison.load_h2_results(OAK=scenario['OAK'], cogen_tag='cogen', with_PTC=scenario['PTC'], ITC=0)
-			h2 = h2[h2['Annual Net Revenues (M$/y)']>0]
+			#h2 = h2[h2['Annual Net Revenues (M$/y)']>0]
 			cashflow_breakdown_plots_irr(scenario=scenario, heat=heat, h2=h2)
 			scenario = {'OAK':'FOAK', 'PTC':True}
 			heat = SMR_application_comparison.load_heat_results(OAK=scenario['OAK'], cogen=True, with_PTC=scenario['PTC'])
-			heat = heat[heat['Annual Net Revenues (M$/y)']>0]
+			#heat = heat[heat['Annual Net Revenues (M$/y)']>0]
 			h2 = SMR_application_comparison.load_h2_results(OAK=scenario['OAK'], cogen_tag='cogen', with_PTC=scenario['PTC'])
-			h2 = h2[h2['Annual Net Revenues (M$/y)']>0]
+			#h2 = h2[h2['Annual Net Revenues (M$/y)']>0]
 			cashflow_breakdown_plots_irr(scenario=scenario, heat=heat, h2=h2)
 		if args.cashflow == 'NOAK':
 			## NOAK no ptc after foak no ptc
