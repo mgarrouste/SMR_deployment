@@ -98,7 +98,7 @@ def main():
     # No incentives
     try:
         noak_noPTC = load_results('NOAK_wo_inc',with_PTC=False,ITC=0)
-        noak_noPTC = exclude_foak_sites(noak_results=noak_noPTC, foak_results=foak_noPTC, tag="No incentive")
+        noak_noPTC = exclude_foak_sites(noak_results=noak_noPTC, foak_results=foak_PTC, tag="No incentive")
         noak_noPTC.to_excel('./results/all_NOAK_wo_inc_ITC_0.xlsx', index=False)
         # With 45V and 48E
         noak_PTC = load_results('NOAK_with_inc',with_PTC=True,ITC=0.3)
