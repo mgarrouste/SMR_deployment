@@ -1,10 +1,6 @@
 import pandas as pd
-import numpy as np
 import math
 import utils
-import matplotlib.pyplot as plt
-import seaborn as sns
-import glob, os
 from geopy.geocoders import Nominatim
 from geopy.extra.rate_limiter import RateLimiter
 from process_heat_direct_heat_h2comp import compute_h2_demand, get_coordinates_facilities, import_smr_h2_data, compute_cogen_revenues

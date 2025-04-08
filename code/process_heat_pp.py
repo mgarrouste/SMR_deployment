@@ -1,7 +1,6 @@
 import pandas as pd
 from process_heat_direct_heat_h2comp import main as run_direct_heat_h2comp
 from process_heat_h2all import main as run_h2all
-import utils
 
 def load_results(OAK,with_PTC,cogen,ITC,cambium_scenario,year):
     if cogen: cogen_tag = 'cogen'
